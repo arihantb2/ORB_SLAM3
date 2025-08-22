@@ -19,10 +19,6 @@
 #include "Atlas.h"
 #include "Viewer.h"
 
-#include "GeometricCamera.h"
-#include "Pinhole.h"
-#include "KannalaBrandt8.h"
-
 namespace ORB_SLAM3
 {
 
