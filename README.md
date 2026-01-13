@@ -1,5 +1,54 @@
-# ORB-SLAM3
+# ORB-SLAM3 with Conda and Python Bidings
+This is an adaptation of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) to simplify its installation with Conda, OpenCV 4, and generate Python3.11 bindings.
 
+# 0. On the shoulders of giants
+* ORB-SLAM was developed by [Raul Mur-Artal](http://webdiis.unizar.es/~raulmur/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/), [J. M. M. Montiel](http://webdiis.unizar.es/~josemari/) and [Dorian Galvez-Lopez](http://doriangalvez.com/) ([DBoW2](https://github.com/dorian3d/DBoW2)), with additional work from Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez for ORB-SLAM3.
+* The Python binding was done adapting ORB_SLAM2-PythonBindings API developed by [John Skinner](https://github.com/jskinn/ORB_SLAM2-PythonBindings), with contributions from [Dmytro Mishkin](https://github.com/ducha-aiki), and using [Python-Boost-OpenCV Converter](https://github.com/Algomorph/pyboostcvconverter) by Gregory Kramida.
+
+
+# 1. Prerequisites
+This repo has been tested with **Ubuntu 20.04**. 
+
+ - **C++11 Compiler** It relies on thread and chrono functionalities of C++11.
+ - **Conda** to install dependencies (Pangolin, OpenCV, Eigen3, etc).
+ - **Python Bindings** are created with Boost-python for Python3.10 
+ - [DBoW2](https://github.com/dorian3d/DBoW2) and [g2o](https://github.com/RainerKuemmerle/g2o) are used to perform place recognition and non-linear optimizations respectively. They are included in the *Thirdparty* folder.
+## 1.1 Known Bugss:
+ - When using the Viewer, after completing the script, at shutdown Pangolin produces a segmentation fault. This does not affect the SLAM and results saving.
+ - Sometimes when the camera tracking is lost, the gauss_newton in the PnP solver does not converge and produces a segmentation fault. This is probably fixed in ORB-SLAM3 with the Atlas.
+
+# 2. Install
+
+Clone the repository:
+```
+git clone https://github.com/tberriel/ORB_SLAM3.git
+```
+
+Install the conda environment from env.yml:
+```
+cd ORB_SLAM3
+conda env create -n orbslam -f env.yml
+conda activate orbslam
+
+# Instal conda C compilers to avoid relying on system defaults. These are generic version hardware agnostic.
+conda install cxx-compiler -c conda-forge
+# Install OpenGL
+conda install libegl libegl-devel libgl libgl-devel libgles libgles-devel libglvnd libglvnd-devel libglx libglx-devel libopengl libopengl-devel -c conda-forge
+# Install Eigen, Pangolin, OpenCV, Numpy
+conda install glew eigen=3.4 pangolin-opengl=0.9.2 libopencv=4.11 numpy=2.4 boost -c conda-forge 
+```
+And then run the script `build.sh` to build the *Thirdparty* libraries and *ORB-SLAM3* creating the python bindings.
+```
+conda activate orbslam
+# Install DBoW2, G20, and ORB-SLAM3 with python bindings 
+bash build.sh 
+```
+
+This will install ORB-SLAM3 and all its dependencies into the selected conda environment *lib*. Nevertheless, executables **mono_tum**, **mono_kitti**, **rgbd_tum**, **stereo_kitti**, **mono_euroc** and **stereo_euroc** will be in *Examples* folder.
+To use from python just `import orbslam3`.  
+
+
+# ORB-SLAM3
 ### V1.0, December 22th, 2021
 **Authors:** Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, [José M. M. Montiel](http://webdiis.unizar.es/~josemari/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/).
 

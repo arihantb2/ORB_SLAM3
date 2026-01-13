@@ -3,8 +3,8 @@
 LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 
 find_package(NumPy REQUIRED)
-find_package(PythonLibs 3.10 REQUIRED)
-find_package(Boost 1.80.0 REQUIRED COMPONENTS python310)
+find_package(PythonLibs 3.11 REQUIRED)
+find_package(Boost 1.80.0 REQUIRED COMPONENTS python311)
 
 # RPATH fiddling for the library, so that the installed version can find the linked libraries
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -35,5 +35,5 @@ ${Pangolin_LIBRARIES}
 )
 
 install(TARGETS ${TARGET_MODULE_NAME} 
-        DESTINATION lib/python3.10/site-packages)
+        DESTINATION lib/python3.11/site-packages)
         
