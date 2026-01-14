@@ -1,0 +1,27 @@
+[project]
+name = "orbslam3"
+version = "0.0.0"
+description = "ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.21.6,<1.28.0",
+    "opencv-python>=4.5.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+
+# Note: The orbslam3 Python module (orbslam2/orbslam3) must be built from source
+# using CMake. It is not available on PyPI. After building the project, the module
+# will be available in your Python environment.
