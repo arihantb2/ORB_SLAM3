@@ -40,6 +40,35 @@ target_link_libraries(${TARGET_MODULE_NAME}
     ${Pangolin_LIBRARIES}
 )
 
-# Use the dynamic site-packages path instead of hardcoded 3.11
+# Install destination must be relative, otherwise CMAKE_INSTALL_PREFIX is ignored.
+include(GNUInstallDirs)
+
+# Default to an in-prefix site-packages path (previous behavior), with an override.
+set(_orbslam_py_default_install_dir
+    "${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages"
+)
+set(ORBSLAM_PYTHON_INSTALL_DIR
+    "${_orbslam_py_default_install_dir}"
+    CACHE PATH
+    "Install directory for orbslam3 Python module (relative to CMAKE_INSTALL_PREFIX)"
+)
+
+# If CMake reports a relative Python site-arch path, prefer it (keeps distro layouts).
+if(DEFINED Python_SITEARCH AND NOT IS_ABSOLUTE "${Python_SITEARCH}")
+    if(ORBSLAM_PYTHON_INSTALL_DIR STREQUAL "${_orbslam_py_default_install_dir}")
+        set(ORBSLAM_PYTHON_INSTALL_DIR
+            "${Python_SITEARCH}"
+            CACHE PATH
+            "Install directory for orbslam3 Python module (relative to CMAKE_INSTALL_PREFIX)"
+            FORCE
+        )
+    endif()
+elseif(DEFINED Python_SITEARCH AND IS_ABSOLUTE "${Python_SITEARCH}")
+    message(STATUS
+        "Python_SITEARCH is absolute (${Python_SITEARCH}); "
+        "installing orbslam3 into ${ORBSLAM_PYTHON_INSTALL_DIR} under CMAKE_INSTALL_PREFIX"
+    )
+endif()
+
 install(TARGETS ${TARGET_MODULE_NAME} 
-        DESTINATION ${Python_SITEARCH})
+        DESTINATION "${ORBSLAM_PYTHON_INSTALL_DIR}")
