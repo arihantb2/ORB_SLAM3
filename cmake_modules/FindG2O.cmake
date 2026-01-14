@@ -10,19 +10,28 @@ if(G2O_INCLUDE_DIRS AND G2O_LIBRARIES)
   set(G2O_FIND_QUIETLY TRUE)
 endif()
 
-# Default search path for g2o (can be overridden by CMAKE_PREFIX_PATH or G2O_ROOT_DIR)
-set(G2O_DEFAULT_SEARCH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/g2o/install)
+# Default search paths for g2o (can be overridden by CMAKE_PREFIX_PATH or G2O_ROOT_DIR)
+# First check if g2o is built as a subdirectory (build directory)
+# Then check install directory
+set(G2O_SEARCH_PATHS "")
+if(CMAKE_BINARY_DIR)
+    list(APPEND G2O_SEARCH_PATHS ${CMAKE_BINARY_DIR})
+endif()
+list(APPEND G2O_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/g2o/install)
+
 if(DEFINED ENV{G2O_ROOT_DIR})
-    set(G2O_DEFAULT_SEARCH_PATH $ENV{G2O_ROOT_DIR})
+    set(G2O_SEARCH_PATHS $ENV{G2O_ROOT_DIR})
 endif()
 if(G2O_ROOT_DIR)
-    set(G2O_DEFAULT_SEARCH_PATH ${G2O_ROOT_DIR})
+    set(G2O_SEARCH_PATHS ${G2O_ROOT_DIR})
 endif()
 
 
 find_path(G2O_INCLUDE_DIR
   NAMES g2o/core/optimizable_graph.h # A distinctive header file
-  PATHS ${G2O_DEFAULT_SEARCH_PATH}/include
+  PATHS 
+    ${G2O_SEARCH_PATHS}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/g2o
   NO_DEFAULT_PATH
 )
 
@@ -31,9 +40,16 @@ set(G2O_COMPONENT_LIBRARIES core stuff types_sba types_sim3) # Add solver_eigen 
 
 set(G2O_LIBRARIES_TEMP "")
 foreach(COMPONENT ${G2O_COMPONENT_LIBRARIES})
+  set(SEARCH_PATHS_FOR_LIB "")
+  foreach(SEARCH_PATH ${G2O_SEARCH_PATHS})
+    list(APPEND SEARCH_PATHS_FOR_LIB ${SEARCH_PATH}/lib)
+  endforeach()
+  if(CMAKE_BINARY_DIR)
+    list(APPEND SEARCH_PATHS_FOR_LIB ${CMAKE_BINARY_DIR}/lib)
+  endif()
   find_library(G2O_${COMPONENT}_LIBRARY
     NAMES g2o_${COMPONENT} # Assumes library names like libg2o_core.so
-    PATHS ${G2O_DEFAULT_SEARCH_PATH}/lib
+    PATHS ${SEARCH_PATHS_FOR_LIB}
     NO_DEFAULT_PATH
   )
   if(G2O_${COMPONENT}_LIBRARY)

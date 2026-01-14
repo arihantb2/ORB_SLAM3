@@ -1,34 +1,23 @@
-#echo "Configuring and building Thirdparty/DBoW2 ..."
-cd Thirdparty
-cd DBoW2
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j
-cd ../..
+#!/bin/bash
 
-echo "Configuring and building Thirdparty/g2o ..."
+# Build script for ORB_SLAM3
+# This script configures and builds ORB_SLAM3 with all dependencies
 
-cd g2o
-mkdir build
-cd build
-cmake .. -DCMAKE_INSTALL_PREFIX="../install" \
-         -DCMAKE_BUILD_TYPE="Release" 
-make -j install
-cd ../../
+set -e  # Exit on error
 
-cd ../
-echo "Uncompress vocabulary ..."
+echo "Building ORB_SLAM3..."
 
-if [ ! -f Vocabulary/ORBvoc.txt ]; then
-    cd Vocabulary
-    tar -xf ORBvoc.txt.tar.gz
-    cd ..
-fi
+# Configure CMake
+echo "Configuring build..."
+cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    ${CMAKE_INSTALL_PREFIX:+-DCMAKE_INSTALL_PREFIX=$CMAKE_INSTALL_PREFIX} \
+    ${CONDA_PREFIX:+-DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX}
 
-echo "Configuring and building ORB_SLAM3 ..."
+# Build
+echo "Building..."
+cmake --build build -j8
 
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-make -j4 install
+echo "Build complete!"
+echo "Executables are in: build/bin"
+echo "Libraries are in: build/lib"
