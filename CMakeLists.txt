@@ -79,7 +79,6 @@ add_subdirectory(src)
 # that collect their respective subdirectories
 
 add_subdirectory(Examples)
-add_subdirectory(Examples_old)
 
 # ---------------
 # Installation instructions.
