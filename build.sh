@@ -1,34 +1,31 @@
-#echo "Configuring and building Thirdparty/DBoW2 ..."
-cd Thirdparty
-cd DBoW2
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j
-cd ../..
+#!/bin/bash
 
-echo "Configuring and building Thirdparty/g2o ..."
+# Build script for ORB_SLAM3
+# This script configures and builds ORB_SLAM3 with all dependencies
 
-cd g2o
-mkdir build
-cd build
-cmake .. -DCMAKE_INSTALL_PREFIX="../install" \
-         -DCMAKE_BUILD_TYPE="Release" 
-make -j install
-cd ../../
+set -e  # Exit on error
 
-cd ../
-echo "Uncompress vocabulary ..."
+echo "Building ORB_SLAM3..."
 
-if [ ! -f Vocabulary/ORBvoc.txt ]; then
-    cd Vocabulary
-    tar -xf ORBvoc.txt.tar.gz
-    cd ..
+# Configure CMake
+echo "Configuring build..."
+
+# Install prefix precedence:
+# - If CMAKE_INSTALL_PREFIX is set, it should win (explicit user intent).
+# - Otherwise, if CONDA_PREFIX is set, install into the active conda env.
+INSTALL_PREFIX_ARG=""
+if [[ -n "${CMAKE_INSTALL_PREFIX:-}" ]]; then
+    INSTALL_PREFIX_ARG="-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}"
+elif [[ -n "${CONDA_PREFIX:-}" ]]; then
+    INSTALL_PREFIX_ARG="-DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}"
 fi
 
-echo "Configuring and building ORB_SLAM3 ..."
+cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    ${INSTALL_PREFIX_ARG}
 
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
-make -j4 install
+# Build
+echo "Building..."
+cmake --build build -j8
+
+echo "Build complete!"

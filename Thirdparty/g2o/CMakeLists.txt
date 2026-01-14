@@ -55,16 +55,8 @@ IF(APPLE)
   SET(CMAKE_INSTALL_RPATH "")
 ENDIF(APPLE)
 
-# Set the output directory for the build executables and libraries
-SET(g2o_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Target for the binaries")
-IF(WIN32)
-  SET(g2o_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Target for the libraries")
-ELSE(WIN32)
-  SET(g2o_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib CACHE PATH "Target for the libraries")
-ENDIF(WIN32)
-SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${g2o_LIBRARY_OUTPUT_DIRECTORY})
-SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${g2o_LIBRARY_OUTPUT_DIRECTORY})
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${g2o_RUNTIME_OUTPUT_DIRECTORY})
+# Output directories are now managed by the parent project
+# (Removed global CMAKE_*_OUTPUT_DIRECTORY settings to follow CMake best practices)
 
 # Detect OS and define macros appropriately
 IF(WIN32)
