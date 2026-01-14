@@ -20,13 +20,13 @@ if(realsense2_FOUND)
     target_link_libraries(mono_realsense_D435i ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples/Monocular directory
+# Install executables to bin/Examples directory
 install(TARGETS mono_tum mono_kitti mono_euroc mono_tum_vi
-    DESTINATION Examples/Monocular
+    DESTINATION bin/Examples
     COMPONENT examples)
 
 if(realsense2_FOUND)
     install(TARGETS mono_realsense_t265 mono_realsense_D435i
-        DESTINATION Examples/Monocular
+        DESTINATION bin/Examples
         COMPONENT examples)
 endif()

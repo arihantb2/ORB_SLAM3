@@ -14,13 +14,13 @@ if(realsense2_FOUND)
     target_link_libraries(mono_inertial_realsense_D435i_old ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples_old/Monocular-Inertial directory
+# Install executables to bin/Examples_old directory
 install(TARGETS mono_inertial_euroc_old mono_inertial_tum_vi_old
-    DESTINATION Examples_old/Monocular-Inertial
+    DESTINATION bin/Examples_old
     COMPONENT examples)
 
 if(realsense2_FOUND)
     install(TARGETS mono_inertial_realsense_t265_old mono_inertial_realsense_D435i_old
-        DESTINATION Examples_old/Monocular-Inertial
+        DESTINATION bin/Examples_old
         COMPONENT examples)
 endif()

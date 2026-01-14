@@ -17,13 +17,13 @@ if(realsense2_FOUND)
     target_link_libraries(stereo_realsense_D435i_old ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples_old/Stereo directory
+# Install executables to bin/Examples_old directory
 install(TARGETS stereo_kitti_old stereo_euroc_old stereo_tum_vi_old
-    DESTINATION Examples_old/Stereo
+    DESTINATION bin/Examples_old
     COMPONENT examples)
 
 if(realsense2_FOUND)
     install(TARGETS stereo_realsense_t265_old stereo_realsense_D435i_old
-        DESTINATION Examples_old/Stereo
+        DESTINATION bin/Examples_old
         COMPONENT examples)
 endif()

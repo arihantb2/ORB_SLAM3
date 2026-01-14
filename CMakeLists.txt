@@ -79,10 +79,11 @@ add_subdirectory(Examples_old)
 install(TARGETS DBoW2
     DESTINATION  lib
     COMPONENT library)
-install(FILES
-        ${G2O_LIBRARIES}
+
+install(FILES ${G2O_LIBRARIES}
     DESTINATION lib
     COMPONENT library)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
     DESTINATION include/ORB_SLAM3
     COMPONENT library
@@ -94,10 +95,11 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
     COMPONENT library
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
     DESTINATION include/ORB_SLAM3/Thirdparty
     COMPONENT library
-FILES_MATCHING REGEX ".*\\.h(pp)?")
+    FILES_MATCHING REGEX ".*\\.h(pp)?")
 # ----------------------------------------------------------------------------
 # Python Bindings (Optional)
 # ----------------------------------------------------------------------------

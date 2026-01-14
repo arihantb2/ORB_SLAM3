@@ -14,13 +14,13 @@ if(realsense2_FOUND)
     target_link_libraries(stereo_inertial_realsense_D435i ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples/Stereo-Inertial directory
+# Install executables to bin/Examples directory
 install(TARGETS stereo_inertial_euroc stereo_inertial_tum_vi
-    DESTINATION Examples/Stereo-Inertial
+    DESTINATION bin/Examples
     COMPONENT examples)
 
 if(realsense2_FOUND)
     install(TARGETS stereo_inertial_realsense_t265 stereo_inertial_realsense_D435i
-        DESTINATION Examples/Stereo-Inertial
+        DESTINATION bin/Examples
         COMPONENT examples)
 endif()

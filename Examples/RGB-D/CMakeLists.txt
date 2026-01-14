@@ -8,13 +8,13 @@ if(realsense2_FOUND)
     target_link_libraries(rgbd_realsense_D435i ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples/RGB-D directory
+# Install executables to bin/Examples directory
 install(TARGETS rgbd_tum
-    DESTINATION Examples/RGB-D
+    DESTINATION bin/Examples
     COMPONENT examples)
 
 if(realsense2_FOUND)
     install(TARGETS rgbd_realsense_D435i
-        DESTINATION Examples/RGB-D
+        DESTINATION bin/Examples
         COMPONENT examples)
 endif()

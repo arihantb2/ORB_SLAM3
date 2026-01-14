@@ -5,9 +5,9 @@ if(realsense2_FOUND)
     target_link_libraries(rgbd_inertial_realsense_D435i_old ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples_old/RGB-D-Inertial directory
+# Install executables to bin/Examples_old directory
 if(realsense2_FOUND)
     install(TARGETS rgbd_inertial_realsense_D435i_old
-        DESTINATION Examples_old/RGB-D-Inertial
+        DESTINATION bin/Examples_old
         COMPONENT examples)
 endif()

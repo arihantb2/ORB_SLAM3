@@ -19,5 +19,3 @@ echo "Building..."
 cmake --build build -j8
 
 echo "Build complete!"
-echo "Executables are in: build/bin"
-echo "Libraries are in: build/lib"

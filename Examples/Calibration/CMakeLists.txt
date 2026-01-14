@@ -8,9 +8,9 @@ if(realsense2_FOUND)
     target_link_libraries(recorder_realsense_T265 ${PROJECT_NAME})
 endif()
 
-# Install executables to Examples/Calibration directory
+# Install executables to bin/Examples directory
 if(realsense2_FOUND)
     install(TARGETS recorder_realsense_D435i recorder_realsense_T265
-        DESTINATION Examples/Calibration
+        DESTINATION bin/Examples
         COMPONENT examples)
 endif()
