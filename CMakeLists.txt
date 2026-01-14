@@ -44,6 +44,15 @@ if(NOT EXISTS ${VOCABULARY_FILE} AND EXISTS ${VOCABULARY_ARCHIVE})
     message(STATUS "Vocabulary extraction will be performed during build")
 elseif(EXISTS ${VOCABULARY_FILE})
     message(STATUS "Vocabulary file already exists: ${VOCABULARY_FILE}")
+else()
+    message(FATAL_ERROR
+        "Vocabulary not found.\n"
+        "Expected either:\n"
+        "  - ${VOCABULARY_FILE}\n"
+        "  - ${VOCABULARY_ARCHIVE}\n"
+        "Without the vocabulary, ORB_SLAM3 will build but crash at runtime when loading fails.\n"
+        "Please add the vocabulary file/archive under Vocabulary/ and re-run CMake."
+    )
 endif()
 
 # ==============================================================================
