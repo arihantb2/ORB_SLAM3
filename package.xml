@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypeof="xml"?>
 <package format="3">
-  <name>orb_slam3</name>
+  <name>ORB_SLAM3</name>
   <version>0.0.1</version>
   <description>ORB-SLAM3 library packaged for CMake/colcon.</description>
   <maintainer email="maintainer@example.com">Maintainer</maintainer>

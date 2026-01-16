@@ -8,6 +8,23 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(OpenCV 4.2)
 find_dependency(Eigen3 3.3.7 NO_MODULE)
+
+# Ensure ROS 2 install prefix is in CMAKE_PREFIX_PATH for Pangolin lookup
+# Pangolin is installed via ros-jazzy-pangolin package at /opt/ros/jazzy
+# Check common ROS 2 install locations and add to search path
+set(_pangolin_search_paths
+    "/opt/ros/jazzy"
+    "/opt/ros/humble"
+    "/opt/ros/iron"
+    "/opt/ros/foxy"
+)
+foreach(_path IN LISTS _pangolin_search_paths)
+    if(EXISTS "${_path}/lib/x86_64-linux-gnu/cmake/Pangolin")
+        list(APPEND CMAKE_PREFIX_PATH "${_path}")
+        break()
+    endif()
+endforeach()
+
 find_dependency(Pangolin)
 
 if(@realsense2_FOUND@)

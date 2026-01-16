@@ -94,7 +94,7 @@ add_subdirectory(src)
 # Examples and Examples_old directories have their own CMakeLists.txt files
 # that collect their respective subdirectories
 
-add_subdirectory(Examples)
+# add_subdirectory(Examples)
 
 # ---------------
 # Installation instructions.
