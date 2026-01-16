@@ -78,9 +78,10 @@ else(TARGET Eigen3::Eigen)
 endif(TARGET Eigen3::Eigen)
 
 # Associate target with include directory
+# Install interface is managed by parent ORB_SLAM3 project
 target_include_directories(sophus INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    "$<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>"
 )
 
 # Declare all used C++11 features
@@ -109,50 +110,9 @@ if(BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-# Export package for use from the build tree
-set(SOPHUS_CMAKE_EXPORT_DIR ${CMAKE_INSTALL_DATADIR}/sophus/cmake)
-
+# Export package for use from the build tree (for build-tree usage only)
+# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
 set_target_properties(sophus PROPERTIES EXPORT_NAME Sophus)
 
-install(TARGETS sophus EXPORT SophusTargets)
-install(EXPORT SophusTargets
-  NAMESPACE Sophus::
-  DESTINATION ${SOPHUS_CMAKE_EXPORT_DIR}
-)
-
 export(TARGETS sophus NAMESPACE Sophus:: FILE SophusTargets.cmake)
-export(PACKAGE Sophus)
-
-configure_package_config_file(
-  SophusConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/SophusConfig.cmake
-  INSTALL_DESTINATION ${SOPHUS_CMAKE_EXPORT_DIR}
-  NO_CHECK_REQUIRED_COMPONENTS_MACRO
-)
-
-# Remove architecture dependence. Sophus is a header-only library.
-set(TEMP_SIZEOF_VOID_P ${CMAKE_SIZEOF_VOID_P})
-unset(CMAKE_SIZEOF_VOID_P)
-
-# Write version to file
-write_basic_package_version_file (
-  SophusConfigVersion.cmake
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-
-# Recover architecture dependence
-set(CMAKE_SIZEOF_VOID_P ${TEMP_SIZEOF_VOID_P})
-
-# Install cmake targets
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/SophusConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/SophusConfigVersion.cmake
-  DESTINATION ${SOPHUS_CMAKE_EXPORT_DIR}
-)
-
-# Install header files
-install(
-  FILES ${SOPHUS_HEADER_FILES}
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sophus
-)
+# Note: install commands are disabled - handled by parent ORB_SLAM3 project

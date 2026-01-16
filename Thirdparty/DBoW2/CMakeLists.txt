@@ -38,6 +38,10 @@ endif()
 # (Removed deprecated LIBRARY_OUTPUT_PATH)
 
 add_library(DBoW2 SHARED ${SRCS_DBOW2} ${SRCS_DUTILS})
-target_include_directories(DBoW2 PUBLIC ${OpenCV_INCLUDE_DIRS})
+target_include_directories(DBoW2 PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/DBoW2>
+  ${OpenCV_INCLUDE_DIRS}
+)
 target_link_libraries(DBoW2 ${OpenCV_LIBS})
 

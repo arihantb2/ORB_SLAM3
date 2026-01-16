@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# g2o is provided as exported targets (ORB_SLAM3::core, ORB_SLAM3::stuff, etc.)
+# and does not require find_dependency. Consumers should link against
+# ORB_SLAM3::ORB_SLAM3 which transitively includes all g2o targets.
+
+find_dependency(OpenCV 4.2)
+find_dependency(Eigen3 3.3.7 NO_MODULE)
+find_dependency(Pangolin)
+
+if(@realsense2_FOUND@)
+    find_dependency(realsense2)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/ORB_SLAM3Targets.cmake")

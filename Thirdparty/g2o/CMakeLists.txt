@@ -204,7 +204,7 @@ SET(G2O_LGPL_SHARED_LIBS ${BUILD_LGPL_SHARED_LIBS})
 SET(G2O_CXX_COMPILER "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER}")
 configure_file(config.h.in ${PROJECT_BINARY_DIR}/g2o/config.h)
 include_directories(${PROJECT_BINARY_DIR})
-INSTALL(FILES ${PROJECT_BINARY_DIR}/g2o/config.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o)
+# Note: config.h is installed by the parent ORB_SLAM3 CMakeLists.txt to maintain proper install structure
 
 # Include the subdirectories
 ADD_SUBDIRECTORY(g2o)

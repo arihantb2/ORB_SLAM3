@@ -48,11 +48,12 @@ TARGET_LINK_LIBRARIES(test_isometry3d_mappings types_slam3d)
 ADD_EXECUTABLE(test_slam3d_jacobian test_slam3d_jacobian.cpp)
 TARGET_LINK_LIBRARIES(test_slam3d_jacobian types_slam3d)
 
-INSTALL(TARGETS types_slam3d
-  RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-)
+# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
+# INSTALL(TARGETS types_slam3d
+#   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+#   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+#   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+# )
 
 FILE(GLOB headers "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
-INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/types/slam3d)
+# INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/types/slam3d)

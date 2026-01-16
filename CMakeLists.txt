@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(ORB_SLAM3)
+project(ORB_SLAM3 VERSION 0.0.1)
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+set(ORB_SLAM3_VERSION ${PROJECT_VERSION})
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -68,7 +72,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
-find_package(G2O REQUIRED)
+
+# g2o is always built internally from Thirdparty/g2o
+# Set up g2o variables based on build tree
+message(STATUS "Using g2o from build tree (Thirdparty/g2o)")
+
+# Collect g2o libraries from targets (only those that exist, as some are conditionally built)
+set(G2O_LIBRARIES "")
+foreach(TARGET_NAME stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
+    if(TARGET ${TARGET_NAME})
+        list(APPEND G2O_LIBRARIES ${TARGET_NAME})
+    endif()
+endforeach()
+
 find_package(realsense2)
 
 # Build the main library
@@ -83,30 +99,110 @@ add_subdirectory(Examples)
 # ---------------
 # Installation instructions.
 # ---------------
+# Install Thirdparty libraries
 install(TARGETS DBoW2
-    DESTINATION  lib
+    EXPORT ORB_SLAM3Targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     COMPONENT library)
 
-install(FILES ${G2O_LIBRARIES}
-    DESTINATION lib
-    COMPONENT library)
+# Install g2o libraries from build tree
+# Note: Target names are without prefix, but OUTPUT_NAME includes g2o_ prefix
+# Collect only the targets that actually exist (some may be conditionally built)
+set(G2O_INSTALL_TARGETS "")
+foreach(TARGET_NAME stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
+    if(TARGET ${TARGET_NAME})
+        list(APPEND G2O_INSTALL_TARGETS ${TARGET_NAME})
+    endif()
+endforeach()
+
+if(G2O_INSTALL_TARGETS)
+    # Set up INTERFACE_INCLUDE_DIRECTORIES for all g2o targets
+    # This ensures consumers can use g2o targets directly with proper includes
+    foreach(TARGET_NAME ${G2O_INSTALL_TARGETS})
+        if(TARGET ${TARGET_NAME})
+            target_include_directories(${TARGET_NAME} INTERFACE
+                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/g2o>
+                $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/Thirdparty/g2o>
+                $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/g2o>
+            )
+        endif()
+    endforeach()
+    
+    install(TARGETS ${G2O_INSTALL_TARGETS}
+        EXPORT ORB_SLAM3Targets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT library)
+endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
-    DESTINATION include/ORB_SLAM3
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3
     COMPONENT library
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
-    DESTINATION include/ORB_SLAM3/CameraModels
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/CameraModels
     COMPONENT library
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
 
+# Install Thirdparty headers (DBoW2, g2o source headers)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
-    DESTINATION include/ORB_SLAM3/Thirdparty
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty
     COMPONENT library
-    FILES_MATCHING REGEX ".*\\.h(pp)?")
+    FILES_MATCHING REGEX ".*\\.h(pp)?"
+    PATTERN "Sophus" EXCLUDE)
+
+# Install Sophus headers to correct location
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/Sophus/sophus
+    COMPONENT library
+    FILES_MATCHING PATTERN "*.hpp")
+
+# Install generated g2o config.h to the correct location under ORB_SLAM3
+install(FILES ${CMAKE_BINARY_DIR}/Thirdparty/g2o/g2o/config.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/g2o/g2o
+    COMPONENT library)
+
+install(FILES ${PROJECT_SOURCE_DIR}/cmake_modules/FindORB_SLAM3.cmake
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/cmake/${PROJECT_NAME})
+
+install(FILES ${PROJECT_SOURCE_DIR}/package.xml
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/orb_slam3)
+
+set(ORB_SLAM3_INSTALL_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+
+configure_package_config_file(
+    ${PROJECT_SOURCE_DIR}/cmake/ORB_SLAM3Config.cmake.in
+    ${PROJECT_BINARY_DIR}/ORB_SLAM3Config.cmake
+    INSTALL_DESTINATION ${ORB_SLAM3_INSTALL_CONFIG_DIR}
+)
+
+write_basic_package_version_file(
+    ${PROJECT_BINARY_DIR}/ORB_SLAM3ConfigVersion.cmake
+    VERSION ${ORB_SLAM3_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+install(EXPORT ORB_SLAM3Targets
+    NAMESPACE ORB_SLAM3::
+    DESTINATION ${ORB_SLAM3_INSTALL_CONFIG_DIR}
+)
+
+install(FILES
+    ${PROJECT_BINARY_DIR}/ORB_SLAM3Config.cmake
+    ${PROJECT_BINARY_DIR}/ORB_SLAM3ConfigVersion.cmake
+    DESTINATION ${ORB_SLAM3_INSTALL_CONFIG_DIR}
+)
+
+export(EXPORT ORB_SLAM3Targets
+    FILE ${PROJECT_BINARY_DIR}/ORB_SLAM3Targets.cmake
+    NAMESPACE ORB_SLAM3::
+)
 # ----------------------------------------------------------------------------
 # Python Bindings (Optional)
 # ----------------------------------------------------------------------------

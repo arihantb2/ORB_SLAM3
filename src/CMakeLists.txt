@@ -32,12 +32,17 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
-    ${PROJECT_SOURCE_DIR}/include 
-    ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus 
-    ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2
-    ${PROJECT_SOURCE_DIR}/Thirdparty/g2o
-    ${G2O_INCLUDE_DIRS} 
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/Sophus>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/g2o>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/Thirdparty/g2o>
+    $<INSTALL_INTERFACE:include/ORB_SLAM3>
+    $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>
+    $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/DBoW2>
+    $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/g2o>
 )
+
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
@@ -61,6 +66,9 @@ endif()
 
 # Install the library
 install(TARGETS ${PROJECT_NAME}
-    DESTINATION lib
+    EXPORT ORB_SLAM3Targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     COMPONENT library
 )
