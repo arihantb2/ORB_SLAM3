@@ -37,6 +37,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/g2o>
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/Thirdparty/g2o>
+    $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/ORB_SLAM3>
     $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>
     $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/DBoW2>
