@@ -204,7 +204,7 @@ void Viewer::Run()
     Twc.SetIdentity();
     pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
     Ow.SetIdentity();
-    cv::namedWindow("ORB-SLAM3: Current Frame");
+    // cv::namedWindow("ORB-SLAM3: Current Frame");
 
     bool bFollow = true;
     bool bLocalizationMode = false;
@@ -317,26 +317,26 @@ void Viewer::Run()
 
         pangolin::FinishFrame();
 
-        cv::Mat toShow;
-        cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
+        // cv::Mat toShow;
+        // cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
 
-        if(both){
-            cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
-            cv::hconcat(im,imRight,toShow);
-        }
-        else{
-            toShow = im;
-        }
+        // if(both){
+        //     cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
+        //     cv::hconcat(im,imRight,toShow);
+        // }
+        // else{
+        //     toShow = im;
+        // }
 
-        if(mImageViewerScale != 1.f)
-        {
-            int width = toShow.cols * mImageViewerScale;
-            int height = toShow.rows * mImageViewerScale;
-            cv::resize(toShow, toShow, cv::Size(width, height));
-        }
+        // if(mImageViewerScale != 1.f)
+        // {
+        //     int width = toShow.cols * mImageViewerScale;
+        //     int height = toShow.rows * mImageViewerScale;
+        //     cv::resize(toShow, toShow, cv::Size(width, height));
+        // }
 
-        cv::imshow("ORB-SLAM3: Current Frame",toShow);
-        cv::waitKey(mT);
+        // cv::imshow("ORB-SLAM3: Current Frame",toShow);
+        // cv::waitKey(mT);
 
         if(menuReset)
         {

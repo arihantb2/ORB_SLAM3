@@ -317,6 +317,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 
 
     N = mvKeys.size();
+    
     if(mvKeys.empty())
         return;
 

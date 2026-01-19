@@ -325,6 +325,8 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+    mDetectedKeyPoints  = mpTracker->mCurrentFrame.mvKeys;
+    mTrackedOutliers    = mpTracker->mCurrentFrame.mvbOutlier;
 
     return Tcw;
 }
@@ -397,6 +399,8 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+    mDetectedKeyPoints  = mpTracker->mCurrentFrame.mvKeys;
+    mTrackedOutliers    = mpTracker->mCurrentFrame.mvbOutlier;
     return Tcw;
 }
 
@@ -473,6 +477,8 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+    mDetectedKeyPoints  = mpTracker->mCurrentFrame.mvKeys;
+    mTrackedOutliers    = mpTracker->mCurrentFrame.mvbOutlier;
 
     return Tcw;
 }
@@ -1112,6 +1118,35 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
 {
     unique_lock<mutex> lock(mMutexState);
     return mTrackedKeyPointsUn;
+}
+
+vector<cv::KeyPoint> System::GetDetectedKeyPoints()
+{
+    unique_lock<mutex> lock(mMutexState);
+    return mDetectedKeyPoints;
+}
+
+vector<cv::KeyPoint> System::GetTrackedKeyPoints()
+{
+    // Backwards-compatible alias
+    return GetDetectedKeyPoints();
+}
+
+vector<cv::KeyPoint> System::GetTrackedInlierKeyPoints()
+{
+    unique_lock<mutex> lock(mMutexState);
+    vector<cv::KeyPoint> out;
+    const size_t n = mDetectedKeyPoints.size();
+    if (mTrackedMapPoints.size() != n || mTrackedOutliers.size() != n)
+        return out;
+
+    out.reserve(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (mTrackedMapPoints[i] && !mTrackedOutliers[i])
+            out.push_back(mDetectedKeyPoints[i]);
+    }
+    return out;
 }
 
 Tracking* System::GetTracker() const {

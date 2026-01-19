@@ -176,6 +176,17 @@ public:
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+    // Detected keypoints in the last processed frame (Frame::mvKeys).
+    // These are in the same pixel coordinates as the image fed into Track* (before undistortion),
+    // so they are suitable for direct overlay.
+    std::vector<cv::KeyPoint> GetDetectedKeyPoints();
+
+    // Backwards-compat alias (historically named "tracked" but actually returns detected mvKeys).
+    std::vector<cv::KeyPoint> GetTrackedKeyPoints();
+
+    // Subset of detected keypoints that are currently tracked (i.e., have a MapPoint association)
+    // and are not flagged as outliers. Useful if you only want "successful tracks".
+    std::vector<cv::KeyPoint> GetTrackedInlierKeyPoints();
 
     Tracking *GetTracker() const;
     int GetLastBigChangeIdx();
@@ -256,7 +267,12 @@ private:
     // Tracking state
     int mTrackingState;
     std::vector<MapPoint*> mTrackedMapPoints;
+    // Undistorted keypoints (mvKeysUn) of last frame
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
+    // Original/detected keypoints (mvKeys) of last frame, suitable for overlay on the input image
+    std::vector<cv::KeyPoint> mDetectedKeyPoints;
+    // Outlier flags aligned with mDetectedKeyPoints / mTrackedMapPoints
+    std::vector<bool> mTrackedOutliers;
     std::mutex mMutexState;
 
     //
