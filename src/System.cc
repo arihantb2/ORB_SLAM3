@@ -27,6 +27,7 @@
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/string.hpp>
+#include <chrono>
 #include <iomanip>
 #include <thread>
 
@@ -524,6 +525,45 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
+    if (mpViewer)
+    {
+        mpViewer->RequestFinish();
+    }
+
+    const auto current_id = std::this_thread::get_id();
+    const bool local_thread = mptLocalMapping && mptLocalMapping->get_id() == current_id;
+    const bool loop_thread = mptLoopClosing && mptLoopClosing->get_id() == current_id;
+    const bool viewer_thread = mptViewer && mptViewer->get_id() == current_id;
+
+    while (mpLocalMapper && !local_thread && !mpLocalMapper->isFinished())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    while (mpLoopCloser && !loop_thread && !mpLoopCloser->isFinished())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    while (mpViewer && !viewer_thread && !mpViewer->isFinished())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    if (mptLocalMapping && mptLocalMapping->joinable() && mptLocalMapping->get_id() != current_id)
+    {
+        mptLocalMapping->join();
+    }
+
+    if (mptLoopClosing && mptLoopClosing->joinable() && mptLoopClosing->get_id() != current_id)
+    {
+        mptLoopClosing->join();
+    }
+
+    if (mptViewer && mptViewer->joinable() && mptViewer->get_id() != current_id)
+    {
+        mptViewer->join();
+    }
 
     if (!mStrSaveAtlasToFile.empty())
     {
