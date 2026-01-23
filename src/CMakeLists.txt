@@ -3,11 +3,11 @@
 add_library(${PROJECT_NAME} SHARED
     System.cc
     Tracking.cc
+    ParseParams.cc
     LocalMapping.cc
     LoopClosing.cc
     ORBextractor.cc
     ORBmatcher.cc
-    FrameDrawer.cc
     Converter.cc
     MapPoint.cc
     KeyFrame.cc

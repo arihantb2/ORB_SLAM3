@@ -22,8 +22,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 
-#include <sophus/se3.hpp>
 #include <Eigen/Core>
+#include <sophus/se3.hpp>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -34,7 +34,7 @@ namespace ORB_SLAM3
 {
 
 template <class Archive>
-void serializeSophusSE3(Archive &ar, Sophus::SE3f &T, const unsigned int version)
+void serializeSophusSE3(Archive& ar, Sophus::SE3f& T, const unsigned int version)
 {
     Eigen::Vector4f quat;
     Eigen::Vector3f transl;
@@ -46,8 +46,8 @@ void serializeSophusSE3(Archive &ar, Sophus::SE3f &T, const unsigned int version
         transl = T.translation();
     }
 
-    ar & boost::serialization::make_array(quat.data(), quat.size());
-    ar & boost::serialization::make_array(transl.data(), transl.size());
+    ar& boost::serialization::make_array(quat.data(), quat.size());
+    ar& boost::serialization::make_array(transl.data(), transl.size());
 
     if (Archive::is_loading::value)
     {
@@ -73,14 +73,17 @@ void serializeDiagonalMatrix(Archive &ar, Eigen::DiagonalMatrix<float, dim> &D, 
     }
 }*/
 
-template<class Archive>
+template <class Archive>
 void serializeMatrix(Archive& ar, cv::Mat& mat, const unsigned int version)
 {
     int cols, rows, type;
     bool continuous;
 
-    if (Archive::is_saving::value) {
-        cols = mat.cols; rows = mat.rows; type = mat.type();
+    if (Archive::is_saving::value)
+    {
+        cols = mat.cols;
+        rows = mat.rows;
+        type = mat.type();
         continuous = mat.isContinuous();
     }
 
@@ -89,38 +92,43 @@ void serializeMatrix(Archive& ar, cv::Mat& mat, const unsigned int version)
     if (Archive::is_loading::value)
         mat.create(rows, cols, type);
 
-    if (continuous) {
+    if (continuous)
+    {
         const unsigned int data_size = rows * cols * mat.elemSize();
-        ar & boost::serialization::make_array(mat.ptr(), data_size);
-    } else {
-        const unsigned int row_size = cols*mat.elemSize();
-        for (int i = 0; i < rows; i++) {
-            ar & boost::serialization::make_array(mat.ptr(i), row_size);
+        ar& boost::serialization::make_array(mat.ptr(), data_size);
+    }
+    else
+    {
+        const unsigned int row_size = cols * mat.elemSize();
+        for (int i = 0; i < rows; i++)
+        {
+            ar& boost::serialization::make_array(mat.ptr(i), row_size);
         }
     }
 }
 
-template<class Archive>
+template <class Archive>
 void serializeMatrix(Archive& ar, const cv::Mat& mat, const unsigned int version)
 {
     cv::Mat matAux = mat;
 
-    serializeMatrix(ar, matAux,version);
+    serializeMatrix(ar, matAux, version);
 
     if (Archive::is_loading::value)
     {
         cv::Mat* ptr;
-        ptr = (cv::Mat*)( &mat );
+        ptr = (cv::Mat*)(&mat);
         *ptr = matAux;
     }
 }
 
-template<class Archive>
+template <class Archive>
 void serializeVectorKeyPoints(Archive& ar, const std::vector<cv::KeyPoint>& vKP, const unsigned int version)
 {
     int NumEl;
 
-    if (Archive::is_saving::value) {
+    if (Archive::is_saving::value)
+    {
         NumEl = vKP.size();
     }
 
@@ -130,7 +138,7 @@ void serializeVectorKeyPoints(Archive& ar, const std::vector<cv::KeyPoint>& vKP,
     if (Archive::is_loading::value)
         vKPaux.reserve(NumEl);
 
-    for(int i=0; i < NumEl; ++i)
+    for (int i = 0; i < NumEl; ++i)
     {
         cv::KeyPoint KPi;
 
@@ -152,15 +160,14 @@ void serializeVectorKeyPoints(Archive& ar, const std::vector<cv::KeyPoint>& vKP,
             vKPaux.push_back(KPi);
     }
 
-
     if (Archive::is_loading::value)
     {
-        std::vector<cv::KeyPoint> *ptr;
-        ptr = (std::vector<cv::KeyPoint>*)( &vKP );
+        std::vector<cv::KeyPoint>* ptr;
+        ptr = (std::vector<cv::KeyPoint>*)(&vKP);
         *ptr = vKPaux;
     }
 }
 
-} // namespace ORB_SLAM3
+}  // namespace ORB_SLAM3
 
-#endif // SERIALIZATION_UTILS_H
+#endif  // SERIALIZATION_UTILS_H

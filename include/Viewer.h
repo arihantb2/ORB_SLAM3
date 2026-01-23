@@ -16,15 +16,13 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef VIEWER_H
 #define VIEWER_H
 
-#include "FrameDrawer.h"
 #include "MapDrawer.h"
-#include "Tracking.h"
-#include "System.h"
 #include "Settings.h"
+#include "System.h"
+#include "Tracking.h"
 
 #include <mutex>
 
@@ -32,7 +30,6 @@ namespace ORB_SLAM3
 {
 
 class Tracking;
-class FrameDrawer;
 class MapDrawer;
 class System;
 class Settings;
@@ -41,7 +38,8 @@ class Viewer
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, const string &strSettingPath, Settings* settings);
+    Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, const string& strSettingPath,
+           Settings* settings);
 
     void newParameterLoader(Settings* settings);
 
@@ -64,14 +62,13 @@ public:
     //void SetTrackingPause();
 
     bool both;
-private:
 
-    bool ParseViewerParamFile(cv::FileStorage &fSettings);
+private:
+    bool ParseViewerParamFile(cv::FileStorage& fSettings);
 
     bool Stop();
 
     System* mpSystem;
-    FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
     Tracking* mpTracker;
 
@@ -93,12 +90,8 @@ private:
     std::mutex mMutexStop;
 
     bool mbStopTrack;
-
 };
 
-}
+}  // namespace ORB_SLAM3
 
-
-#endif // VIEWER_H
-	
-
+#endif  // VIEWER_H

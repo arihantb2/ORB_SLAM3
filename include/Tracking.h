@@ -16,37 +16,33 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef TRACKING_H
 #define TRACKING_H
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-#include "Viewer.h"
-#include "FrameDrawer.h"
 #include "Atlas.h"
+#include "Frame.h"
+#include "ImuTypes.h"
+#include "KeyFrameDatabase.h"
 #include "LocalMapping.h"
 #include "LoopClosing.h"
-#include "Frame.h"
-#include "ORBVocabulary.h"
-#include "KeyFrameDatabase.h"
-#include "ORBextractor.h"
 #include "MapDrawer.h"
-#include "System.h"
-#include "ImuTypes.h"
+#include "ORBVocabulary.h"
+#include "ORBextractor.h"
 #include "Settings.h"
+#include "System.h"
+#include "Viewer.h"
 
 #include "CameraModels/GeometricCamera.h"
 
 #include <mutex>
-#include <unordered_set>
 
 namespace ORB_SLAM3
 {
 
 class Viewer;
-class FrameDrawer;
 class Atlas;
 class LocalMapping;
 class LoopClosing;
@@ -54,27 +50,28 @@ class System;
 class Settings;
 
 class Tracking
-{  
+{
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Atlas* pAtlas,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings,
-             const bool newMaps, const string &_nameSeq=std::string());
+    Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
+             const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps,
+             const string& _nameSeq = std::string());
 
     ~Tracking();
 
     // Parse the config file
-    bool ParseCamParamFile(cv::FileStorage &fSettings);
-    bool ParseORBParamFile(cv::FileStorage &fSettings);
-    bool ParseIMUParamFile(cv::FileStorage &fSettings);
+    bool ParseCamParamFile(cv::FileStorage& fSettings);
+    bool ParseORBParamFile(cv::FileStorage& fSettings);
+    bool ParseIMUParamFile(cv::FileStorage& fSettings);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    Sophus::SE3f GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
-    Sophus::SE3f GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
-    Sophus::SE3f GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
+    Sophus::SE3f GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp,
+                                 string filename);
+    Sophus::SE3f GrabImageRGBD(const cv::Mat& imRGB, const cv::Mat& imD, const double& timestamp, string filename);
+    Sophus::SE3f GrabImageMonocular(const cv::Mat& im, const double& timestamp, string filename);
 
-    void GrabImuData(const IMU::Point &imuMeasurement);
+    void GrabImuData(const IMU::Point& imuMeasurement);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -84,18 +81,15 @@ public:
 
     // Load new settings
     // The focal lenght should be similar or scale prediction will fail when projecting points
-    void ChangeCalibration(const string &strSettingPath);
+    void ChangeCalibration(const string& strSettingPath);
 
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
-    void InformOnlyTracking(const bool &flag);
+    void InformOnlyTracking(const bool& flag);
 
     bool isLastFrameKeyframe();
 
-    void UpdateFrameIMU(const float s, const IMU::Bias &b, KeyFrame* pCurrentKeyFrame);
-    KeyFrame* GetLastKeyFrame()
-    {
-        return mpLastKeyFrame;
-    }
+    void UpdateFrameIMU(const float s, const IMU::Bias& b, KeyFrame* pCurrentKeyFrame);
+    KeyFrame* GetLastKeyFrame() { return mpLastKeyFrame; }
 
     void CreateMapInAtlas();
     //std::mutex mMutexTracks;
@@ -106,29 +100,22 @@ public:
     int GetMatchesInliers();
 
     //DEBUG
-    void SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, string strFolder="");
+    void SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, string strFolder = "");
     void SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, Map* pMap);
 
     float GetImageScale();
 
-#ifdef REGISTER_LOOP
-    void RequestStop();
-    bool isStopped();
-    void Release();
-    bool stopRequested();
-#endif
-
 public:
-
     // Tracking states
-    enum eTrackingState{
-        SYSTEM_NOT_READY=-1,
-        NO_IMAGES_YET=0,
-        NOT_INITIALIZED=1,
-        OK=2,
-        RECENTLY_LOST=3,
-        LOST=4,
-        OK_KLT=5
+    enum eTrackingState
+    {
+        SYSTEM_NOT_READY = -1,
+        NO_IMAGES_YET = 0,
+        NOT_INITIALIZED = 1,
+        OK = 2,
+        RECENTLY_LOST = 3,
+        LOST = 4,
+        OK_KLT = 5
     };
 
     eTrackingState mState;
@@ -169,34 +156,16 @@ public:
 
     float mMeanTrack;
     bool mbInitWith3KFs;
-    double t0; // time-stamp of first read frame
-    double t0vis; // time-stamp of first inserted keyframe
-    double t0IMU; // time-stamp of IMU initialization
+    double t0;     // time-stamp of first read frame
+    double t0vis;  // time-stamp of first inserted keyframe
+    double t0IMU;  // time-stamp of IMU initialization
     bool mFastInit = false;
-
 
     vector<MapPoint*> GetLocalMapMPS();
 
     bool mbWriteStats;
 
-#ifdef REGISTER_TIMES
-    void LocalMapStats2File();
-    void TrackStats2File();
-    void PrintTimeStats();
-
-    vector<double> vdRectStereo_ms;
-    vector<double> vdResizeImage_ms;
-    vector<double> vdORBExtract_ms;
-    vector<double> vdStereoMatch_ms;
-    vector<double> vdIMUInteg_ms;
-    vector<double> vdPosePred_ms;
-    vector<double> vdLMTrack_ms;
-    vector<double> vdNewKF_ms;
-    vector<double> vdTrackTotal_ms;
-#endif
-
 protected:
-
     // Main tracking function. It is independent of the input sensor.
     void Track();
 
@@ -237,7 +206,7 @@ protected:
     bool mbAtlasNewMaps;
 
     // Imu preintegration from last frame
-    IMU::Preintegrated *mpImuPreintegratedFromLastKF;
+    IMU::Preintegrated* mpImuPreintegratedFromLastKF;
 
     // Queue of IMU measurements between frames
     std::list<IMU::Point> mlQueueImuData;
@@ -247,7 +216,7 @@ protected:
     std::mutex mMutexImuQueue;
 
     // Imu calibration parameters
-    IMU::Calib *mpImuCalib;
+    IMU::Calib* mpImuCalib;
 
     // Last Bias Estimation (at keyframe creation)
     IMU::Bias mLastBias;
@@ -263,7 +232,7 @@ protected:
     LoopClosing* mpLoopClosing;
 
     //ORB
-    ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
+    ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
     ORBextractor* mpIniORBextractor;
 
     //BoW
@@ -278,13 +247,12 @@ protected:
     KeyFrame* mpReferenceKF;
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
-    
+
     // System
     System* mpSystem;
-    
+
     //Drawers
     Viewer* mpViewer;
-    FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
     bool bStepByStep;
 
@@ -354,27 +322,19 @@ protected:
     double mTime_LocalMapTrack;
     double mTime_NewKF_Dec;
 
-    GeometricCamera* mpCamera, *mpCamera2;
+    GeometricCamera *mpCamera, *mpCamera2;
 
     int initID, lastID;
 
     Sophus::SE3f mTlr;
 
     void newParameterLoader(Settings* settings);
-
-#ifdef REGISTER_LOOP
-    bool Stop();
-
-    bool mbStopped;
-    bool mbStopRequested;
-    bool mbNotStop;
-    std::mutex mMutexStop;
-#endif
+    void oldParameterLoader(const string& strSettingPath);
 
 public:
     cv::Mat mImRight;
 };
 
-} //namespace ORB_SLAM
+}  // namespace ORB_SLAM3
 
-#endif // TRACKING_H
+#endif  // TRACKING_H

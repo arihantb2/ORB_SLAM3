@@ -16,23 +16,22 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
 
-#include "KeyFrame.h"
-#include "Frame.h"
-#include "Map.h"
 #include "Converter.h"
+#include "Frame.h"
+#include "KeyFrame.h"
+#include "Map.h"
 
 #include "SerializationUtils.h"
 
-#include <opencv2/core/core.hpp>
 #include <mutex>
+#include <opencv2/core/core.hpp>
 
-#include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/serialization.hpp>
 
 namespace ORB_SLAM3
 {
@@ -45,8 +44,8 @@ class MapPoint
 {
 
     friend class boost::serialization::access;
-    template<class Archive>
-    void serialize(Archive & ar, const unsigned int version)
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version)
     {
         ar & mnId;
         ar & mnFirstKFid;
@@ -83,13 +82,13 @@ class MapPoint
         //serializeMatrix(ar,mNormalVectorMerge,version);
 
         // Protected variables
-        ar & boost::serialization::make_array(mWorldPos.data(), mWorldPos.size());
-        ar & boost::serialization::make_array(mNormalVector.data(), mNormalVector.size());
+        ar& boost::serialization::make_array(mWorldPos.data(), mWorldPos.size());
+        ar& boost::serialization::make_array(mNormalVector.data(), mNormalVector.size());
         //ar & BOOST_SERIALIZATION_NVP(mBackupObservationsId);
         //ar & mObservations;
         ar & mBackupObservationsId1;
         ar & mBackupObservationsId2;
-        serializeMatrix(ar,mDescriptor,version);
+        serializeMatrix(ar, mDescriptor, version);
         ar & mBackupRefKFId;
         //ar & mnVisible;
         //ar & mnFound;
@@ -99,19 +98,17 @@ class MapPoint
 
         ar & mfMinDistance;
         ar & mfMaxDistance;
-
     }
-
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     MapPoint();
 
-    MapPoint(const Eigen::Vector3f &Pos, KeyFrame* pRefKF, Map* pMap);
+    MapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF, Map* pMap);
-    MapPoint(const Eigen::Vector3f &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
+    MapPoint(const Eigen::Vector3f& Pos, Map* pMap, Frame* pFrame, const int& idxF);
 
-    void SetWorldPos(const Eigen::Vector3f &Pos);
+    void SetWorldPos(const Eigen::Vector3f& Pos);
     Eigen::Vector3f GetWorldPos();
 
     Eigen::Vector3f GetNormal();
@@ -119,27 +116,25 @@ public:
 
     KeyFrame* GetReferenceKeyFrame();
 
-    std::map<KeyFrame*,std::tuple<int,int>> GetObservations();
+    std::map<KeyFrame*, std::tuple<int, int>> GetObservations();
     int Observations();
 
-    void AddObservation(KeyFrame* pKF,int idx);
+    void AddObservation(KeyFrame* pKF, int idx);
     void EraseObservation(KeyFrame* pKF);
 
-    std::tuple<int,int> GetIndexInKeyFrame(KeyFrame* pKF);
+    std::tuple<int, int> GetIndexInKeyFrame(KeyFrame* pKF);
     bool IsInKeyFrame(KeyFrame* pKF);
 
     void SetBadFlag();
     bool isBad();
 
-    void Replace(MapPoint* pMP);    
+    void Replace(MapPoint* pMP);
     MapPoint* GetReplaced();
 
-    void IncreaseVisible(int n=1);
-    void IncreaseFound(int n=1);
+    void IncreaseVisible(int n = 1);
+    void IncreaseFound(int n = 1);
     float GetFoundRatio();
-    inline int GetFound(){
-        return mnFound;
-    }
+    inline int GetFound() { return mnFound; }
 
     void ComputeDistinctiveDescriptors();
 
@@ -149,15 +144,15 @@ public:
 
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
-    int PredictScale(const float &currentDist, KeyFrame*pKF);
-    int PredictScale(const float &currentDist, Frame* pF);
+    int PredictScale(const float& currentDist, KeyFrame* pKF);
+    int PredictScale(const float& currentDist, Frame* pF);
 
     Map* GetMap();
     void UpdateMap(Map* pMap);
 
     void PrintObservations();
 
-    void PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP);
+    void PreSave(set<KeyFrame*>& spKF, set<MapPoint*>& spMP);
     void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid);
 
 public:
@@ -187,7 +182,7 @@ public:
     // Variables used by loop closing
     long unsigned int mnLoopPointForKF;
     long unsigned int mnCorrectedByKF;
-    long unsigned int mnCorrectedReference;    
+    long unsigned int mnCorrectedReference;
     Eigen::Vector3f mPosGBA;
     long unsigned int mnBAGlobalForKF;
     long unsigned int mnBALocalForMerge;
@@ -195,7 +190,6 @@ public:
     // Variable used by merging
     Eigen::Vector3f mPosMerge;
     Eigen::Vector3f mNormalVectorMerge;
-
 
     // Fopr inverse depth optimization
     double mInvDepth;
@@ -207,50 +201,48 @@ public:
 
     unsigned int mnOriginMapId;
 
-protected:    
+protected:
+    // Position in absolute coordinates
+    Eigen::Vector3f mWorldPos;
 
-     // Position in absolute coordinates
-     Eigen::Vector3f mWorldPos;
+    // Keyframes observing the point and associated index in keyframe
+    std::map<KeyFrame*, std::tuple<int, int>> mObservations;
+    // For save relation without pointer, this is necessary for save/load function
+    std::map<long unsigned int, int> mBackupObservationsId1;
+    std::map<long unsigned int, int> mBackupObservationsId2;
 
-     // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*,std::tuple<int,int> > mObservations;
-     // For save relation without pointer, this is necessary for save/load function
-     std::map<long unsigned int, int> mBackupObservationsId1;
-     std::map<long unsigned int, int> mBackupObservationsId2;
+    // Mean viewing direction
+    Eigen::Vector3f mNormalVector;
 
-     // Mean viewing direction
-     Eigen::Vector3f mNormalVector;
+    // Best descriptor to fast matching
+    cv::Mat mDescriptor;
 
-     // Best descriptor to fast matching
-     cv::Mat mDescriptor;
+    // Reference KeyFrame
+    KeyFrame* mpRefKF;
+    long unsigned int mBackupRefKFId;
 
-     // Reference KeyFrame
-     KeyFrame* mpRefKF;
-     long unsigned int mBackupRefKFId;
+    // Tracking counters
+    int mnVisible;
+    int mnFound;
 
-     // Tracking counters
-     int mnVisible;
-     int mnFound;
+    // Bad flag (we do not currently erase MapPoint from memory)
+    bool mbBad;
+    MapPoint* mpReplaced;
+    // For save relation without pointer, this is necessary for save/load function
+    long long int mBackupReplacedId;
 
-     // Bad flag (we do not currently erase MapPoint from memory)
-     bool mbBad;
-     MapPoint* mpReplaced;
-     // For save relation without pointer, this is necessary for save/load function
-     long long int mBackupReplacedId;
+    // Scale invariance distances
+    float mfMinDistance;
+    float mfMaxDistance;
 
-     // Scale invariance distances
-     float mfMinDistance;
-     float mfMaxDistance;
+    Map* mpMap;
 
-     Map* mpMap;
-
-     // Mutex
-     std::mutex mMutexPos;
-     std::mutex mMutexFeatures;
-     std::mutex mMutexMap;
-
+    // Mutex
+    std::mutex mMutexPos;
+    std::mutex mMutexFeatures;
+    std::mutex mMutexMap;
 };
 
-} //namespace ORB_SLAM
+}  // namespace ORB_SLAM3
 
-#endif // MAPPOINT_H
+#endif  // MAPPOINT_H

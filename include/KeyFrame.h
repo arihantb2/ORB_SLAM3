@@ -16,18 +16,17 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
 
-#include "MapPoint.h"
 #include "DBoW2/BowVector.h"
 #include "DBoW2/FeatureVector.h"
+#include "Frame.h"
+#include "ImuTypes.h"
+#include "KeyFrameDatabase.h"
+#include "MapPoint.h"
 #include "ORBVocabulary.h"
 #include "ORBextractor.h"
-#include "Frame.h"
-#include "KeyFrameDatabase.h"
-#include "ImuTypes.h"
 
 #include "CameraModels/GeometricCamera.h"
 #include "SerializationUtils.h"
@@ -35,9 +34,8 @@
 #include <mutex>
 
 #include <boost/serialization/base_object.hpp>
-#include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
-
+#include <boost/serialization/vector.hpp>
 
 namespace ORB_SLAM3
 {
@@ -53,17 +51,17 @@ class KeyFrame
 {
     friend class boost::serialization::access;
 
-    template<class Archive>
+    template <class Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & mnId;
-        ar & const_cast<long unsigned int&>(mnFrameId);
-        ar & const_cast<double&>(mTimeStamp);
+        ar& const_cast<long unsigned int&>(mnFrameId);
+        ar& const_cast<double&>(mTimeStamp);
         // Grid
-        ar & const_cast<int&>(mnGridCols);
-        ar & const_cast<int&>(mnGridRows);
-        ar & const_cast<float&>(mfGridElementWidthInv);
-        ar & const_cast<float&>(mfGridElementHeightInv);
+        ar& const_cast<int&>(mnGridCols);
+        ar& const_cast<int&>(mnGridRows);
+        ar& const_cast<float&>(mfGridElementWidthInv);
+        ar& const_cast<float&>(mfGridElementHeightInv);
 
         // Variables of tracking
         //ar & mnTrackReferenceForFrame;
@@ -108,42 +106,42 @@ class KeyFrame
         // Scale
         ar & mfScale;
         // Calibration parameters
-        ar & const_cast<float&>(fx);
-        ar & const_cast<float&>(fy);
-        ar & const_cast<float&>(invfx);
-        ar & const_cast<float&>(invfy);
-        ar & const_cast<float&>(cx);
-        ar & const_cast<float&>(cy);
-        ar & const_cast<float&>(mbf);
-        ar & const_cast<float&>(mb);
-        ar & const_cast<float&>(mThDepth);
+        ar& const_cast<float&>(fx);
+        ar& const_cast<float&>(fy);
+        ar& const_cast<float&>(invfx);
+        ar& const_cast<float&>(invfy);
+        ar& const_cast<float&>(cx);
+        ar& const_cast<float&>(cy);
+        ar& const_cast<float&>(mbf);
+        ar& const_cast<float&>(mb);
+        ar& const_cast<float&>(mThDepth);
         serializeMatrix(ar, mDistCoef, version);
         // Number of Keypoints
-        ar & const_cast<int&>(N);
+        ar& const_cast<int&>(N);
         // KeyPoints
         serializeVectorKeyPoints<Archive>(ar, mvKeys, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysUn, version);
-        ar & const_cast<vector<float>& >(mvuRight);
-        ar & const_cast<vector<float>& >(mvDepth);
-        serializeMatrix<Archive>(ar,mDescriptors,version);
+        ar& const_cast<vector<float>&>(mvuRight);
+        ar& const_cast<vector<float>&>(mvDepth);
+        serializeMatrix<Archive>(ar, mDescriptors, version);
         // BOW
         ar & mBowVec;
         ar & mFeatVec;
         // Pose relative to parent
         serializeSophusSE3<Archive>(ar, mTcp, version);
         // Scale
-        ar & const_cast<int&>(mnScaleLevels);
-        ar & const_cast<float&>(mfScaleFactor);
-        ar & const_cast<float&>(mfLogScaleFactor);
-        ar & const_cast<vector<float>& >(mvScaleFactors);
-        ar & const_cast<vector<float>& >(mvLevelSigma2);
-        ar & const_cast<vector<float>& >(mvInvLevelSigma2);
+        ar& const_cast<int&>(mnScaleLevels);
+        ar& const_cast<float&>(mfScaleFactor);
+        ar& const_cast<float&>(mfLogScaleFactor);
+        ar& const_cast<vector<float>&>(mvScaleFactors);
+        ar& const_cast<vector<float>&>(mvLevelSigma2);
+        ar& const_cast<vector<float>&>(mvInvLevelSigma2);
         // Image bounds and calibration
-        ar & const_cast<int&>(mnMinX);
-        ar & const_cast<int&>(mnMinY);
-        ar & const_cast<int&>(mnMaxX);
-        ar & const_cast<int&>(mnMaxY);
-        ar & boost::serialization::make_array(mK_.data(), mK_.size());
+        ar& const_cast<int&>(mnMinX);
+        ar& const_cast<int&>(mnMinY);
+        ar& const_cast<int&>(mnMaxX);
+        ar& const_cast<int&>(mnMaxY);
+        ar& boost::serialization::make_array(mK_.data(), mK_.size());
         // Pose
         serializeSophusSE3<Archive>(ar, mTcw, version);
         // MapPointsId associated to keypoints
@@ -174,8 +172,8 @@ class KeyFrame
         // Fisheye variables
         ar & mvLeftToRightMatch;
         ar & mvRightToLeftMatch;
-        ar & const_cast<int&>(NLeft);
-        ar & const_cast<int&>(NRight);
+        ar& const_cast<int&>(NLeft);
+        ar& const_cast<int&>(NRight);
         serializeSophusSE3<Archive>(ar, mTlr, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
         ar & mGridRight;
@@ -187,23 +185,24 @@ class KeyFrame
         ar & mBackupPrevKFId;
         ar & mBackupNextKFId;
         ar & bImu;
-        ar & boost::serialization::make_array(mVw.data(), mVw.size());
-        ar & boost::serialization::make_array(mOwb.data(), mOwb.size());
+        ar& boost::serialization::make_array(mVw.data(), mVw.size());
+        ar& boost::serialization::make_array(mOwb.data(), mOwb.size());
         ar & mbHasVelocity;
     }
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     KeyFrame();
-    KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
+    KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Pose functions
-    void SetPose(const Sophus::SE3f &Tcw);
-    void SetVelocity(const Eigen::Vector3f &Vw_);
+    void SetPose(const Sophus::SE3f& Tcw);
+    void SetVelocity(const Eigen::Vector3f& Vw_);
 
     Sophus::SE3f GetPose();
 
     Sophus::SE3f GetPoseInverse();
+
     Eigen::Vector3f GetCameraCenter();
 
     Eigen::Vector3f GetImuPosition();
@@ -218,15 +217,15 @@ public:
     void ComputeBoW();
 
     // Covisibility graph functions
-    void AddConnection(KeyFrame* pKF, const int &weight);
+    void AddConnection(KeyFrame* pKF, const int& weight);
     void EraseConnection(KeyFrame* pKF);
 
-    void UpdateConnections(bool upParent=true);
+    void UpdateConnections(bool upParent = true);
     void UpdateBestCovisibles();
-    std::set<KeyFrame *> GetConnectedKeyFrames();
-    std::vector<KeyFrame* > GetVectorCovisibleKeyFrames();
-    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(const int &N);
-    std::vector<KeyFrame*> GetCovisiblesByWeight(const int &w);
+    std::set<KeyFrame*> GetConnectedKeyFrames();
+    std::vector<KeyFrame*> GetVectorCovisibleKeyFrames();
+    std::vector<KeyFrame*> GetBestCovisibilityKeyFrames(const int& N);
+    std::vector<KeyFrame*> GetCovisiblesByWeight(const int& w);
     int GetWeight(KeyFrame* pKF);
 
     // Spanning tree functions
@@ -248,21 +247,22 @@ public:
 
     // MapPoint observation functions
     int GetNumberMPs();
-    void AddMapPoint(MapPoint* pMP, const size_t &idx);
-    void EraseMapPointMatch(const int &idx);
+    void AddMapPoint(MapPoint* pMP, const size_t& idx);
+    void EraseMapPointMatch(const int& idx);
     void EraseMapPointMatch(MapPoint* pMP);
-    void ReplaceMapPointMatch(const int &idx, MapPoint* pMP);
+    void ReplaceMapPointMatch(const int& idx, MapPoint* pMP);
     std::set<MapPoint*> GetMapPoints();
     std::vector<MapPoint*> GetMapPointMatches();
-    int TrackedMapPoints(const int &minObs);
-    MapPoint* GetMapPoint(const size_t &idx);
+    int TrackedMapPoints(const int& minObs);
+    MapPoint* GetMapPoint(const size_t& idx);
 
     // KeyPoint functions
-    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const bool bRight = false) const;
-    bool UnprojectStereo(int i, Eigen::Vector3f &x3D);
+    std::vector<size_t> GetFeaturesInArea(const float& x, const float& y, const float& r,
+                                          const bool bRight = false) const;
+    bool UnprojectStereo(int i, Eigen::Vector3f& x3D);
 
     // Image
-    bool IsInImage(const float &x, const float &y) const;
+    bool IsInImage(const float& x, const float& y) const;
 
     // Enable/Disable bad flag changes
     void SetNotErase();
@@ -275,30 +275,26 @@ public:
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(const int q);
 
-    static bool weightComp( int a, int b){
-        return a>b;
-    }
+    static bool weightComp(int a, int b) { return a > b; }
 
-    static bool lId(KeyFrame* pKF1, KeyFrame* pKF2){
-        return pKF1->mnId<pKF2->mnId;
-    }
+    static bool lId(KeyFrame* pKF1, KeyFrame* pKF2) { return pKF1->mnId < pKF2->mnId; }
 
     Map* GetMap();
     void UpdateMap(Map* pMap);
 
-    void SetNewBias(const IMU::Bias &b);
+    void SetNewBias(const IMU::Bias& b);
     Eigen::Vector3f GetGyroBias();
 
     Eigen::Vector3f GetAccBias();
 
     IMU::Bias GetImuBias();
 
-    bool ProjectPointDistort(MapPoint* pMP, cv::Point2f &kp, float &u, float &v);
-    bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f &kp, float &u, float &v);
+    bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
+    bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
-    void PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP, set<GeometricCamera*>& spCam);
-    void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid, map<unsigned int, GeometricCamera*>& mpCamId);
-
+    void PreSave(set<KeyFrame*>& spKF, set<MapPoint*>& spMP, set<GeometricCamera*>& spCam);
+    void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid,
+                  map<unsigned int, GeometricCamera*>& mpCamId);
 
     void SetORBVocabulary(ORBVocabulary* pORBVoc);
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
@@ -307,7 +303,6 @@ public:
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
-
     static long unsigned int nNextId;
     long unsigned int mnId;
     const long unsigned int mnFrameId;
@@ -347,7 +342,6 @@ public:
 
     bool mbCurrentPlaceRecognition;
 
-
     // Variables used by loop closing
     Sophus::SE3f mTcwGBA;
     Sophus::SE3f mTcwBefGBA;
@@ -380,8 +374,8 @@ public:
     // KeyPoints, stereo coordinate and descriptors (all associated by an index)
     const std::vector<cv::KeyPoint> mvKeys;
     const std::vector<cv::KeyPoint> mvKeysUn;
-    const std::vector<float> mvuRight; // negative value for monocular points
-    const std::vector<float> mvDepth; // negative value for monocular points
+    const std::vector<float> mvuRight;  // negative value for monocular points
+    const std::vector<float> mvDepth;   // negative value for monocular points
     const cv::Mat mDescriptors;
 
     //BoW
@@ -418,8 +412,8 @@ public:
 
     int mnDataset;
 
-    std::vector <KeyFrame*> mvpLoopCandKFs;
-    std::vector <KeyFrame*> mvpMergeCandKFs;
+    std::vector<KeyFrame*> mvpLoopCandKFs;
+    std::vector<KeyFrame*> mvpMergeCandKFs;
 
     //bool mbHasHessian;
     //cv::Mat mHessianPose;
@@ -455,9 +449,9 @@ protected:
     ORBVocabulary* mpORBvocabulary;
 
     // Grid over the image to speed up feature matching
-    std::vector< std::vector <std::vector<size_t> > > mGrid;
+    std::vector<std::vector<std::vector<size_t>>> mGrid;
 
-    std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
+    std::map<KeyFrame*, int> mConnectedKeyFrameWeights;
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
     std::vector<int> mvOrderedWeights;
     // For save relation without pointer, this is necessary for save/load function
@@ -478,9 +472,9 @@ protected:
     // Bad flags
     bool mbNotErase;
     bool mbToBeErased;
-    bool mbBad;    
+    bool mbBad;
 
-    float mHalfBaseline; // Only for visualization
+    float mHalfBaseline;  // Only for visualization
 
     Map* mpMap;
 
@@ -496,13 +490,13 @@ protected:
     Eigen::Matrix3f mK_;
 
     // Mutex
-    std::mutex mMutexPose; // for pose, velocity and biases
+    std::mutex mMutexPose;  // for pose, velocity and biases
     std::mutex mMutexConnections;
     std::mutex mMutexFeatures;
     std::mutex mMutexMap;
 
 public:
-    GeometricCamera* mpCamera, *mpCamera2;
+    GeometricCamera *mpCamera, *mpCamera2;
 
     //Indexes of stereo observations correspondences
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
@@ -515,30 +509,33 @@ public:
 
     const int NLeft, NRight;
 
-    std::vector< std::vector <std::vector<size_t> > > mGridRight;
+    std::vector<std::vector<std::vector<size_t>>> mGridRight;
 
     Sophus::SE3<float> GetRightPose();
     Sophus::SE3<float> GetRightPoseInverse();
 
     Eigen::Vector3f GetRightCameraCenter();
-    Eigen::Matrix<float,3,3> GetRightRotation();
+    Eigen::Matrix<float, 3, 3> GetRightRotation();
     Eigen::Vector3f GetRightTranslation();
 
-    void PrintPointDistribution(){
+    void PrintPointDistribution()
+    {
         int left = 0, right = 0;
         int Nlim = (NLeft != -1) ? NLeft : N;
-        for(int i = 0; i < N; i++){
-            if(mvpMapPoints[i]){
-                if(i < Nlim) left++;
-                else right++;
+        for (int i = 0; i < N; i++)
+        {
+            if (mvpMapPoints[i])
+            {
+                if (i < Nlim)
+                    left++;
+                else
+                    right++;
             }
         }
         cout << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
     }
-
-
 };
 
-} //namespace ORB_SLAM
+}  // namespace ORB_SLAM3
 
-#endif // KEYFRAME_H
+#endif  // KEYFRAME_H

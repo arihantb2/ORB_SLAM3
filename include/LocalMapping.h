@@ -16,19 +16,17 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef LOCALMAPPING_H
 #define LOCALMAPPING_H
 
-#include "KeyFrame.h"
 #include "Atlas.h"
-#include "LoopClosing.h"
-#include "Tracking.h"
+#include "KeyFrame.h"
 #include "KeyFrameDatabase.h"
+#include "LoopClosing.h"
 #include "Settings.h"
+#include "Tracking.h"
 
 #include <mutex>
-
 
 namespace ORB_SLAM3
 {
@@ -42,7 +40,8 @@ class LocalMapping
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial, const string &_strSeqName=std::string());
+    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
+                 const string& _strSeqName = std::string());
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -71,7 +70,8 @@ public:
     void RequestFinish();
     bool isFinished();
 
-    int KeyframesInQueue(){
+    int KeyframesInQueue()
+    {
         unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
     }
@@ -111,26 +111,7 @@ public:
     bool mbFarPoints;
     float mThFarPoints;
 
-#ifdef REGISTER_TIMES
-    vector<double> vdKFInsert_ms;
-    vector<double> vdMPCulling_ms;
-    vector<double> vdMPCreation_ms;
-    vector<double> vdLBA_ms;
-    vector<double> vdKFCulling_ms;
-    vector<double> vdLMTotal_ms;
-
-
-    vector<double> vdLBASync_ms;
-    vector<double> vdKFCullingSync_ms;
-    vector<int> vnLBA_edges;
-    vector<int> vnLBA_KFopt;
-    vector<int> vnLBA_KFfixed;
-    vector<int> vnLBA_MPs;
-    int nLBA_exec;
-    int nLBA_abort;
-#endif
 protected:
-
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();
@@ -139,7 +120,7 @@ protected:
     void SearchInNeighbors();
     void KeyFrameCulling();
 
-    System *mpSystem;
+    System* mpSystem;
 
     bool mbMonocular;
     bool mbInertial;
@@ -194,9 +175,8 @@ protected:
 
     //DEBUG
     ofstream f_lm;
+};
 
-    };
+}  // namespace ORB_SLAM3
 
-} //namespace ORB_SLAM
-
-#endif // LOCALMAPPING_H
+#endif  // LOCALMAPPING_H

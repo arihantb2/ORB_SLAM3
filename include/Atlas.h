@@ -19,18 +19,17 @@
 #ifndef ATLAS_H
 #define ATLAS_H
 
+#include "CameraModels/GeometricCamera.h"
+#include "CameraModels/KannalaBrandt8.h"
+#include "CameraModels/Pinhole.h"
+#include "KeyFrame.h"
 #include "Map.h"
 #include "MapPoint.h"
-#include "KeyFrame.h"
-#include "CameraModels/GeometricCamera.h"
-#include "CameraModels/Pinhole.h"
-#include "CameraModels/KannalaBrandt8.h"
 
-#include <set>
-#include <mutex>
-#include <boost/serialization/vector.hpp>
 #include <boost/serialization/export.hpp>
-
+#include <boost/serialization/vector.hpp>
+#include <mutex>
+#include <set>
 
 namespace ORB_SLAM3
 {
@@ -50,8 +49,8 @@ class Atlas
 {
     friend class boost::serialization::access;
 
-    template<class Archive>
-    void serialize(Archive &ar, const unsigned int version)
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version)
     {
         ar.template register_type<Pinhole>();
         ar.template register_type<KannalaBrandt8>();
@@ -61,11 +60,11 @@ class Atlas
         ar & mvpBackupMaps;
         ar & mvpCameras;
         // Need to save/load the static Id from Frame, KeyFrame, MapPoint and Map
-        ar & Map::nNextId;
-        ar & Frame::nNextId;
-        ar & KeyFrame::nNextId;
-        ar & MapPoint::nNextId;
-        ar & GeometricCamera::nNextId;
+        ar& Map::nNextId;
+        ar& Frame::nNextId;
+        ar& KeyFrame::nNextId;
+        ar& MapPoint::nNextId;
+        ar& GeometricCamera::nNextId;
         ar & mnLastInitKFidMap;
     }
 
@@ -73,7 +72,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     Atlas();
-    Atlas(int initKFid); // When its initialization the first map is created
+    Atlas(int initKFid);  // When its initialization the first map is created
     ~Atlas();
 
     void CreateNewMap();
@@ -93,7 +92,7 @@ public:
     std::vector<GeometricCamera*> GetAllCameras();
 
     /* All methods without Map pointer work on current map */
-    void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
+    void SetReferenceMapPoints(const std::vector<MapPoint*>& vpMPs);
     void InformNewBigChange();
     int GetLastBigChangeIdx();
 
@@ -140,7 +139,6 @@ public:
     long unsigned int GetNumLivedMP();
 
 protected:
-
     std::set<Map*> mspMaps;
     std::set<Map*> mspBadMaps;
     // Its necessary change the container from set to vector because libboost 1.58 and Ubuntu 16.04 have an error with this cointainer
@@ -162,9 +160,8 @@ protected:
     // Mutex
     std::mutex mMutexAtlas;
 
+};  // class Atlas
 
-}; // class Atlas
+}  // namespace ORB_SLAM3
 
-} // namespace ORB_SLAM3
-
-#endif // ATLAS_H
+#endif  // ATLAS_H
