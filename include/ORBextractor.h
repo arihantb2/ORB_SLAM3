@@ -19,6 +19,8 @@
 #ifndef ORBEXTRACTOR_H
 #define ORBEXTRACTOR_H
 
+#include "Verbose.h"
+
 #include <list>
 #include <opencv2/opencv.hpp>
 #include <vector>

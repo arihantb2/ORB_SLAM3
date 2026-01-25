@@ -19,6 +19,8 @@
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
 
+#include "Verbose.h"
+
 #include "Atlas.h"
 #include "KeyFrame.h"
 #include "LocalMapping.h"

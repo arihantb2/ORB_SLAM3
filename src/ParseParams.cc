@@ -108,14 +108,14 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
     bool b_parse_cam = ParseCamParamFile(fSettings);
     if (!b_parse_cam)
     {
-        std::cout << "*Error with the camera parameters in the config file*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the camera parameters in the config file*" << std::endl;
     }
 
     // Load ORB parameters
     bool b_parse_orb = ParseORBParamFile(fSettings);
     if (!b_parse_orb)
     {
-        std::cout << "*Error with the ORB parameters in the config file*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the ORB parameters in the config file*" << std::endl;
     }
     bool b_parse_imu = true;
     if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
@@ -123,7 +123,7 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
         b_parse_imu = ParseIMUParamFile(fSettings);
         if (!b_parse_imu)
         {
-            std::cout << "*Error with the IMU parameters in the config file*" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the IMU parameters in the config file*" << std::endl;
         }
 
         mnFramesToResetIMU = mMaxFrames;
@@ -145,7 +145,7 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
 bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
 {
     mDistCoef = cv::Mat::zeros(4, 1, CV_32F);
-    cout << endl << "Camera Parameters: " << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Camera Parameters: " << endl;
     bool b_miss_params = false;
 
     string sCameraName = fSettings["Camera.type"];
@@ -277,20 +277,20 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
 
         mpCamera = mpAtlas->AddCamera(mpCamera);
 
-        std::cout << "- Camera: Pinhole" << std::endl;
-        std::cout << "- Image scale: " << mImageScale << std::endl;
-        std::cout << "- fx: " << fx << std::endl;
-        std::cout << "- fy: " << fy << std::endl;
-        std::cout << "- cx: " << cx << std::endl;
-        std::cout << "- cy: " << cy << std::endl;
-        std::cout << "- k1: " << mDistCoef.at<float>(0) << std::endl;
-        std::cout << "- k2: " << mDistCoef.at<float>(1) << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera: Pinhole" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Image scale: " << mImageScale << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fx: " << fx << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fy: " << fy << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cx: " << cx << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cy: " << cy << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k1: " << mDistCoef.at<float>(0) << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k2: " << mDistCoef.at<float>(1) << std::endl;
 
-        std::cout << "- p1: " << mDistCoef.at<float>(2) << std::endl;
-        std::cout << "- p2: " << mDistCoef.at<float>(3) << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- p1: " << mDistCoef.at<float>(2) << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- p2: " << mDistCoef.at<float>(3) << std::endl;
 
         if (mDistCoef.rows == 5)
-            std::cout << "- k3: " << mDistCoef.at<float>(4) << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k3: " << mDistCoef.at<float>(4) << std::endl;
 
         mK = cv::Mat::eye(3, 3, CV_32F);
         mK.at<float>(0, 0) = fx;
@@ -418,16 +418,16 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             vector<float> vCamCalib{fx, fy, cx, cy, k1, k2, k3, k4};
             mpCamera = new KannalaBrandt8(vCamCalib);
             mpCamera = mpAtlas->AddCamera(mpCamera);
-            std::cout << "- Camera: Fisheye" << std::endl;
-            std::cout << "- Image scale: " << mImageScale << std::endl;
-            std::cout << "- fx: " << fx << std::endl;
-            std::cout << "- fy: " << fy << std::endl;
-            std::cout << "- cx: " << cx << std::endl;
-            std::cout << "- cy: " << cy << std::endl;
-            std::cout << "- k1: " << k1 << std::endl;
-            std::cout << "- k2: " << k2 << std::endl;
-            std::cout << "- k3: " << k3 << std::endl;
-            std::cout << "- k4: " << k4 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera: Fisheye" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Image scale: " << mImageScale << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fx: " << fx << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fy: " << fy << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cx: " << cx << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cy: " << cy << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k1: " << k1 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k2: " << k2 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k3: " << k3 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k4: " << k4 << std::endl;
 
             mK = cv::Mat::eye(3, 3, CV_32F);
             mK.at<float>(0, 0) = fx;
@@ -546,7 +546,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                std::cout << "WARNING: Camera.lappingBegin not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera.lappingBegin not correctly defined" << std::endl;
             }
             node = fSettings["Camera.lappingEnd"];
             if (!node.empty() && node.isInt())
@@ -555,7 +555,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                std::cout << "WARNING: Camera.lappingEnd not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera.lappingEnd not correctly defined" << std::endl;
             }
             node = fSettings["Camera2.lappingBegin"];
             if (!node.empty() && node.isInt())
@@ -564,7 +564,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                std::cout << "WARNING: Camera2.lappingBegin not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera2.lappingBegin not correctly defined" << std::endl;
             }
             node = fSettings["Camera2.lappingEnd"];
             if (!node.empty() && node.isInt())
@@ -573,7 +573,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                std::cout << "WARNING: Camera2.lappingEnd not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera2.lappingEnd not correctly defined" << std::endl;
             }
 
             node = fSettings["Tlr"];
@@ -621,23 +621,23 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
                 static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0] = rightLappingBegin;
                 static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1] = rightLappingEnd;
 
-                std::cout << "- Camera1 Lapping: " << leftLappingBegin << ", " << leftLappingEnd << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera1 Lapping: " << leftLappingBegin << ", " << leftLappingEnd << std::endl;
 
-                std::cout << std::endl << "Camera2 Parameters:" << std::endl;
-                std::cout << "- Camera: Fisheye" << std::endl;
-                std::cout << "- Image scale: " << mImageScale << std::endl;
-                std::cout << "- fx: " << fx << std::endl;
-                std::cout << "- fy: " << fy << std::endl;
-                std::cout << "- cx: " << cx << std::endl;
-                std::cout << "- cy: " << cy << std::endl;
-                std::cout << "- k1: " << k1 << std::endl;
-                std::cout << "- k2: " << k2 << std::endl;
-                std::cout << "- k3: " << k3 << std::endl;
-                std::cout << "- k4: " << k4 << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << std::endl << "Camera2 Parameters:" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera: Fisheye" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Image scale: " << mImageScale << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fx: " << fx << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fy: " << fy << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cx: " << cx << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- cy: " << cy << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k1: " << k1 << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k2: " << k2 << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k3: " << k3 << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k4: " << k4 << std::endl;
 
-                std::cout << "- mTlr: \n" << cvTlr << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- mTlr: \n" << cvTlr << std::endl;
 
-                std::cout << "- Camera2 Lapping: " << rightLappingBegin << ", " << rightLappingEnd << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera2 Lapping: " << rightLappingBegin << ", " << rightLappingEnd << std::endl;
             }
         }
 
@@ -679,15 +679,15 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
     mMinFrames = 0;
     mMaxFrames = fps;
 
-    cout << "- fps: " << fps << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- fps: " << fps << endl;
 
     int nRGB = fSettings["Camera.RGB"];
     mbRGB = nRGB;
 
     if (mbRGB)
-        cout << "- color order: RGB (ignored if grayscale)" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- color order: RGB (ignored if grayscale)" << endl;
     else
-        cout << "- color order: BGR (ignored if grayscale)" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- color order: BGR (ignored if grayscale)" << endl;
 
     if (mSensor == System::STEREO || mSensor == System::RGBD || mSensor == System::IMU_STEREO ||
         mSensor == System::IMU_RGBD)
@@ -698,7 +698,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
         {
             mThDepth = node.real();
             mThDepth = mbf * mThDepth / fx;
-            cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
         }
         else
         {
@@ -807,12 +807,12 @@ bool Tracking::ParseORBParamFile(cv::FileStorage& fSettings)
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
         mpIniORBextractor = new ORBextractor(5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
-    cout << endl << "ORB Extractor Parameters: " << endl;
-    cout << "- Number of Features: " << nFeatures << endl;
-    cout << "- Scale Levels: " << nLevels << endl;
-    cout << "- Scale Factor: " << fScaleFactor << endl;
-    cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
-    cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "ORB Extractor Parameters: " << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Number of Features: " << nFeatures << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Scale Levels: " << nLevels << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Scale Factor: " << fScaleFactor << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Initial Fast Threshold: " << fIniThFAST << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Minimum Fast Threshold: " << fMinThFAST << endl;
 
     return true;
 }
@@ -837,8 +837,8 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
         std::cerr << "*Tbc matrix doesn't exist*" << std::endl;
         b_miss_params = true;
     }
-    cout << endl;
-    cout << "Left camera to Imu Transform (Tbc): " << endl << cvTbc << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Left camera to Imu Transform (Tbc): " << endl << cvTbc << endl;
     Eigen::Matrix<float, 4, 4, Eigen::RowMajor> eigTbc(cvTbc.ptr<float>(0));
     Sophus::SE3f Tbc(eigTbc);
 
@@ -850,7 +850,7 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
     }
 
     if (!mInsertKFsLost)
-        cout << "Do not insert keyframes when lost visual tracking " << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Do not insert keyframes when lost visual tracking " << endl;
 
     float Ng, Na, Ngw, Naw;
 
@@ -918,7 +918,7 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
     }
 
     if (mFastInit)
-        cout << "Fast IMU initialization. Acceleration is not checked \n";
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Fast IMU initialization. Acceleration is not checked \n";
 
     if (b_miss_params)
     {
@@ -926,12 +926,12 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
     }
 
     const float sf = sqrt(mImuFreq);
-    cout << endl;
-    cout << "IMU frequency: " << mImuFreq << " Hz" << endl;
-    cout << "IMU gyro noise: " << Ng << " rad/s/sqrt(Hz)" << endl;
-    cout << "IMU gyro walk: " << Ngw << " rad/s^2/sqrt(Hz)" << endl;
-    cout << "IMU accelerometer noise: " << Na << " m/s^2/sqrt(Hz)" << endl;
-    cout << "IMU accelerometer walk: " << Naw << " m/s^3/sqrt(Hz)" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU frequency: " << mImuFreq << " Hz" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU gyro noise: " << Ng << " rad/s/sqrt(Hz)" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU gyro walk: " << Ngw << " rad/s^2/sqrt(Hz)" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU accelerometer noise: " << Na << " m/s^2/sqrt(Hz)" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU accelerometer walk: " << Naw << " m/s^3/sqrt(Hz)" << endl;
 
     mpImuCalib = new IMU::Calib(Tbc, Ng * sf, Na * sf, Ngw / sf, Naw / sf);
 

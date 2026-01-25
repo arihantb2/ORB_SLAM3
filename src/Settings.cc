@@ -167,52 +167,52 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     }
     else
     {
-        cout << "Loading settings from " << configFile << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Loading settings from " << configFile << endl;
     }
 
     //Read first camera
     readCamera1(fSettings);
-    cout << "\t-Loaded camera 1" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded camera 1" << endl;
 
     //Read second camera if stereo (not rectified)
     if (sensor_ == System::STEREO || sensor_ == System::IMU_STEREO)
     {
         readCamera2(fSettings);
-        cout << "\t-Loaded camera 2" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded camera 2" << endl;
     }
 
     //Read image info
     readImageInfo(fSettings);
-    cout << "\t-Loaded image info" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded image info" << endl;
 
     if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_RGBD)
     {
         readIMU(fSettings);
-        cout << "\t-Loaded IMU calibration" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded IMU calibration" << endl;
     }
 
     if (sensor_ == System::RGBD || sensor_ == System::IMU_RGBD)
     {
         readRGBD(fSettings);
-        cout << "\t-Loaded RGB-D calibration" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded RGB-D calibration" << endl;
     }
 
     readORB(fSettings);
-    cout << "\t-Loaded ORB settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded ORB settings" << endl;
     readViewer(fSettings);
-    cout << "\t-Loaded viewer settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded viewer settings" << endl;
     readLoadAndSave(fSettings);
-    cout << "\t-Loaded Atlas settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded Atlas settings" << endl;
     readOtherParameters(fSettings);
-    cout << "\t-Loaded misc parameters" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded misc parameters" << endl;
 
     if (bNeedToRectify_)
     {
         precomputeRectificationMaps();
-        cout << "\t-Computed rectification maps" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Computed rectification maps" << endl;
     }
 
-    cout << "----------------------------------" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "----------------------------------" << endl;
 }
 
 void Settings::readCamera1(cv::FileStorage& fSettings)

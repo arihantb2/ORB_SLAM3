@@ -19,6 +19,8 @@
 #ifndef KEYFRAMEDATABASE_H
 #define KEYFRAMEDATABASE_H
 
+#include "Verbose.h"
+
 #include <list>
 #include <set>
 #include <vector>

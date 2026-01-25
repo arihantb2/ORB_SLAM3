@@ -269,7 +269,6 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
         glColor4f(0.0f, 1.0f, 0.0f, 0.6f);
         glBegin(GL_LINES);
 
-        // cout << "-----------------Draw graph-----------------" << endl;
         for (size_t i = 0; i < vpKFs.size(); i++)
         {
             // Covisibility Graph

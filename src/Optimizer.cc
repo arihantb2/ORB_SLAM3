@@ -506,7 +506,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 {
                     if (!VP1 || !VV1 || !VG1 || !VA1 || !VP2 || !VV2 || !VG2 || !VA2)
                     {
-                        cout << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
+                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
                              << VV2 << ", " << VG2 << ", " << VA2 << endl;
                         continue;
                     }
@@ -515,7 +515,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 {
                     if (!VP1 || !VV1 || !VG1 || !VA1 || !VP2 || !VV2)
                     {
-                        cout << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
+                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
                              << VV2 << endl;
                         continue;
                     }
@@ -555,7 +555,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 }
             }
             else
-                cout << pKFi->mnId << " or " << pKFi->mPrevKF->mnId << " no imu" << endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << pKFi->mnId << " or " << pKFi->mPrevKF->mnId << " no imu" << endl;
         }
     }
 
@@ -2114,7 +2114,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*>& vpFi
         }
         else
         {
-            cout << "ERROR: MapPoint has a reference KF from another map" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "ERROR: MapPoint has a reference KF from another map" << endl;
         }
     }
 }
@@ -2611,7 +2611,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
 
         if (!pKFi->mPrevKF)
         {
-            cout << "NOT INERTIAL LINK TO PREVIOUS FRAME!!!!" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "NOT INERTIAL LINK TO PREVIOUS FRAME!!!!" << endl;
             continue;
         }
         if (pKFi->bImu && pKFi->mPrevKF->bImu && pKFi->mpImuPreintegrated)
@@ -2672,7 +2672,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
             optimizer.addEdge(vear[i]);
         }
         else
-            cout << "ERROR building inertial edge" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "ERROR building inertial edge" << endl;
     }
 
     // Set MapPoint vertices
@@ -2901,7 +2901,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
     // TODO: Some convergence problems have been detected here
     if ((2 * err < err_end || isnan(err) || isnan(err_end)) && !bLarge)  //bGN)
     {
-        cout << "FAIL LOCAL-INERTIAL BA!!!!" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "FAIL LOCAL-INERTIAL BA!!!!" << endl;
         return;
     }
 
@@ -3142,7 +3142,6 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg, double& sc
     vpei.reserve(vpKFs.size());
     vector<pair<KeyFrame*, KeyFrame*>> vppUsedKF;
     vppUsedKF.reserve(vpKFs.size());
-    //std::cout << "build optimization graph" << std::endl;
 
     for (size_t i = 0; i < vpKFs.size(); i++)
     {
@@ -3153,7 +3152,7 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg, double& sc
             if (pKFi->isBad() || pKFi->mPrevKF->mnId > maxKFid)
                 continue;
             if (!pKFi->mpImuPreintegrated)
-                std::cout << "Not preintegrated measurement" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Not preintegrated measurement" << std::endl;
 
             pKFi->mpImuPreintegrated->SetNewBias(pKFi->mPrevKF->GetImuBias());
             g2o::HyperGraph::Vertex* VP1 = optimizer.vertex(pKFi->mPrevKF->mnId);
@@ -3166,7 +3165,7 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg, double& sc
             g2o::HyperGraph::Vertex* VS = optimizer.vertex(maxKFid * 2 + 5);
             if (!VP1 || !VV1 || !VG || !VA || !VP2 || !VV2 || !VGDir || !VS)
             {
-                cout << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
                      << VGDir << ", " << VS << endl;
 
                 continue;
@@ -3333,7 +3332,7 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Vector3d& bg, Eigen::Vect
             g2o::HyperGraph::Vertex* VS = optimizer.vertex(maxKFid * 2 + 5);
             if (!VP1 || !VV1 || !VG || !VA || !VP2 || !VV2 || !VGDir || !VS)
             {
-                cout << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
+                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
                      << VGDir << ", " << VS << endl;
 
                 continue;

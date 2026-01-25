@@ -19,6 +19,8 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include "Verbose.h"
+
 #include "KeyFrame.h"
 #include "MapPoint.h"
 

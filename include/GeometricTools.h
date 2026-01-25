@@ -19,6 +19,8 @@
 #ifndef GEOMETRIC_TOOLS_H
 #define GEOMETRIC_TOOLS_H
 
+#include "Verbose.h"
+
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
@@ -43,10 +45,9 @@ public:
     static bool CheckMatrices(const cv::Mat& cvMat, const Eigen::Matrix<float, rows, cols>& eigMat)
     {
         const float epsilon = 1e-3;
-        // std::cout << cvMat.cols - cols << cvMat.rows - rows << std::endl;
         if (rows != cvMat.rows || cols != cvMat.cols)
         {
-            std::cout << "wrong cvmat size\n";
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "wrong cvmat size\n";
             return false;
         }
         for (int i = 0; i < rows; i++)
@@ -54,8 +55,8 @@ public:
                 if ((cvMat.at<float>(i, j) > (eigMat(i, j) + epsilon)) ||
                     (cvMat.at<float>(i, j) < (eigMat(i, j) - epsilon)))
                 {
-                    std::cout << "cv mat:\n" << cvMat << std::endl;
-                    std::cout << "eig mat:\n" << eigMat << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "cv mat:\n" << cvMat << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat:\n" << eigMat << std::endl;
                     return false;
                 }
         return true;
@@ -69,8 +70,8 @@ public:
             for (int j = 0; j < cols; j++)
                 if ((eigMat1(i, j) > (eigMat2(i, j) + epsilon)) || (eigMat1(i, j) < (eigMat2(i, j) - epsilon)))
                 {
-                    std::cout << "eig mat 1:\n" << eigMat1 << std::endl;
-                    std::cout << "eig mat 2:\n" << eigMat2 << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat 1:\n" << eigMat1 << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat 2:\n" << eigMat2 << std::endl;
                     return false;
                 }
         return true;

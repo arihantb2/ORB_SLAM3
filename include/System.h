@@ -19,7 +19,8 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include <stdio.h>
+#include "Verbose.h"
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <opencv2/core/core.hpp>
@@ -39,30 +40,6 @@
 
 namespace ORB_SLAM3
 {
-
-class Verbose
-{
-public:
-    enum eLevel
-    {
-        VERBOSITY_QUIET = 0,
-        VERBOSITY_NORMAL = 1,
-        VERBOSITY_VERBOSE = 2,
-        VERBOSITY_VERY_VERBOSE = 3,
-        VERBOSITY_DEBUG = 4
-    };
-
-    static eLevel th;
-
-public:
-    static void PrintMess(std::string str, eLevel lev)
-    {
-        if (lev <= th)
-            cout << str << endl;
-    }
-
-    static void SetTh(eLevel _th) { th = _th; }
-};
 
 class Viewer;
 class MapDrawer;
@@ -201,6 +178,9 @@ public:
     void ChangeDataset();
 
     float GetImageScale();
+
+    // Deterministic flag
+    bool mbSingleThreadMode;
 
 private:
     void SaveAtlas(int type);

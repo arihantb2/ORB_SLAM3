@@ -19,6 +19,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "Verbose.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

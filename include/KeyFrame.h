@@ -19,6 +19,8 @@
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
 
+#include "Verbose.h"
+
 #include "DBoW2/BowVector.h"
 #include "DBoW2/FeatureVector.h"
 #include "Frame.h"
@@ -532,7 +534,7 @@ public:
                     right++;
             }
         }
-        cout << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
     }
 };
 

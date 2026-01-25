@@ -19,6 +19,8 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
+#include "Verbose.h"
+
 #include "MapDrawer.h"
 #include "Settings.h"
 #include "System.h"

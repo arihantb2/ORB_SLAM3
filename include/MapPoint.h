@@ -19,6 +19,8 @@
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
 
+#include "Verbose.h"
+
 #include "Converter.h"
 #include "Frame.h"
 #include "KeyFrame.h"

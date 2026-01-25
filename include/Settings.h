@@ -19,6 +19,8 @@
 #ifndef ORB_SLAM3_SETTINGS_H
 #define ORB_SLAM3_SETTINGS_H
 
+#include "Verbose.h"
+
 #include "CameraModels/GeometricCamera.h"
 
 #include <stdio.h>

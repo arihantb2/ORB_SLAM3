@@ -19,6 +19,8 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include "Verbose.h"
+
 #include <vector>
 
 #include "DBoW2/BowVector.h"
@@ -359,7 +361,7 @@ public:
                     right++;
             }
         }
-        cout << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;
     }
 
     Sophus::SE3<double> T_test;

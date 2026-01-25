@@ -19,6 +19,8 @@
 #ifndef IMUTYPES_H
 #define IMUTYPES_H
 
+#include "Verbose.h"
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -206,12 +208,12 @@ public:
 
     void printMeasurements() const
     {
-        std::cout << "pint meas:\n";
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "pint meas:\n";
         for (int i = 0; i < mvMeasurements.size(); i++)
         {
-            std::cout << "meas " << mvMeasurements[i].t << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "meas " << mvMeasurements[i].t << std::endl;
         }
-        std::cout << "end pint meas:\n";
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "end pint meas:\n";
     }
 
 public:

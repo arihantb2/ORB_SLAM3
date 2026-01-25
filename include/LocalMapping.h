@@ -19,6 +19,8 @@
 #ifndef LOCALMAPPING_H
 #define LOCALMAPPING_H
 
+#include "Verbose.h"
+
 #include "Atlas.h"
 #include "KeyFrame.h"
 #include "KeyFrameDatabase.h"
@@ -49,6 +51,9 @@ public:
 
     // Main function
     void Run();
+
+    // Returns true if outer loop needs to break
+    bool RunLoop();
 
     void InsertKeyFrame(KeyFrame* pKF);
     void EmptyQueue();

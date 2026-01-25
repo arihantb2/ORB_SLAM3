@@ -19,6 +19,8 @@
 #ifndef TwoViewReconstruction_H
 #define TwoViewReconstruction_H
 
+#include "Verbose.h"
+
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
 #include <unordered_set>

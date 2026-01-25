@@ -19,6 +19,8 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
+#include "Verbose.h"
+
 #include "Frame.h"
 #include "KeyFrame.h"
 #include "LoopClosing.h"

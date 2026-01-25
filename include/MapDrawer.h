@@ -19,6 +19,8 @@
 #ifndef MAPDRAWER_H
 #define MAPDRAWER_H
 
+#include "Verbose.h"
+
 #include <pangolin/pangolin.h>
 #include "Atlas.h"
 #include "KeyFrame.h"

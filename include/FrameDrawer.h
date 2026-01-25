@@ -19,6 +19,8 @@
 #ifndef FRAMEDRAWER_H
 #define FRAMEDRAWER_H
 
+#include "Verbose.h"
+
 #include "Atlas.h"
 #include "MapPoint.h"
 #include "Tracking.h"
