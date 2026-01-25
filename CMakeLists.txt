@@ -10,8 +10,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 message("Build type: " ${CMAKE_BUILD_TYPE})
-option(BUILD_PYTHON_BINDINGS "Build Python bindings for ORB_SLAM3" ON)
-message(STATUS "Build Python bindings: ${BUILD_PYTHON_BINDINGS}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -208,12 +206,3 @@ export(EXPORT ORB_SLAM3Targets
     FILE ${PROJECT_BINARY_DIR}/ORB_SLAM3Targets.cmake
     NAMESPACE ORB_SLAM3::
 )
-# ----------------------------------------------------------------------------
-# Python Bindings (Optional)
-# ----------------------------------------------------------------------------
-if(BUILD_PYTHON_BINDINGS)
-    message(STATUS "Configuring Python bindings...")    
-    add_subdirectory(python) 
-else()
-    message(STATUS "Skipping Python bindings configuration.")
-endif()

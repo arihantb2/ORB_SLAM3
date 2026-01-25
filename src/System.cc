@@ -46,33 +46,37 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
       mbDeactivateLocalizationMode(false),
       mbShutDown(false)
 {
-    // Output welcome message
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl
-         << "ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and "
-            "Juan D. Tardós, University of Zaragoza."
-         << endl
-         << "ORB-SLAM2 Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós, University of "
-            "Zaragoza."
-         << endl
-         << "This program comes with ABSOLUTELY NO WARRANTY;" << endl
-         << "This is free software, and you are welcome to redistribute it" << endl
-         << "under certain conditions. See LICENSE.txt." << endl
-         << endl;
+    // Fix verbosity
+    Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Input sensor was set to: ";
+    // Output welcome message
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << endl
+        << "ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and "
+           "Juan D. Tardós, University of Zaragoza."
+        << endl
+        << "ORB-SLAM2 Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós, University of "
+           "Zaragoza."
+        << endl
+        << "This program comes with ABSOLUTELY NO WARRANTY;" << endl
+        << "This is free software, and you are welcome to redistribute it" << endl
+        << "under certain conditions. See LICENSE.txt." << endl
+        << endl;
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Input sensor was set to: ";
 
     if (mSensor == MONOCULAR)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Monocular" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular" << endl;
     else if (mSensor == STEREO)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Stereo" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << endl;
     else if (mSensor == RGBD)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "RGB-D" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "RGB-D" << endl;
     else if (mSensor == IMU_MONOCULAR)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Monocular-Inertial" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular-Inertial" << endl;
     else if (mSensor == IMU_STEREO)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Stereo-Inertial" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << endl;
     else if (mSensor == IMU_RGBD)
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "RGB-D-Inertial" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "RGB-D-Inertial" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -90,7 +94,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
         mStrLoadAtlasFromFile = settings_->atlasLoadFile();
         mStrSaveAtlasToFile = settings_->atlasSaveFile();
 
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << (*settings_) << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << endl;
     }
     else
     {
@@ -108,7 +112,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << endl;
 
     node = fsSettings["newMaps"];
     bool newMaps = true;
@@ -116,14 +120,15 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         newMaps = (node.operator int()) == 1;
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << endl;
 
     mStrVocabularyFilePath = strVocFile;
 
     if (mStrLoadAtlasFromFile.empty())
     {
         //Load ORB Vocabulary
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
+                                                  << "Loading ORB Vocabulary. This could take a while..." << endl;
 
         mpVocabulary = new ORBVocabulary();
         bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
@@ -133,19 +138,20 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
             cerr << "Falied to open at: " << strVocFile << endl;
             exit(-1);
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Vocabulary loaded!" << endl << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
 
         //Create KeyFrame Database
         mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
         //Create the Atlas
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Initialization of Atlas from scratch " << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << endl;
         mpAtlas = new Atlas(0);
     }
     else
     {
         //Load ORB Vocabulary
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
+                                                  << "Loading ORB Vocabulary. This could take a while..." << endl;
 
         mpVocabulary = new ORBVocabulary();
         bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
@@ -155,20 +161,22 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
             cerr << "Falied to open at: " << strVocFile << endl;
             exit(-1);
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Vocabulary loaded!" << endl << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
 
         //Create KeyFrame Database
         mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Load File" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Load File" << endl;
 
         // Load the file with an earlier session
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Initialization of Atlas from file: " << mStrLoadAtlasFromFile << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "Initialization of Atlas from file: " << mStrLoadAtlasFromFile << endl;
         bool isRead = LoadAtlas(FileType::BINARY_FILE);
 
         if (!isRead)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error to load the file, please try with other session file or vocabulary file" << endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "Error to load the file, please try with other session file or vocabulary file" << endl;
             exit(-1);
         }
 
@@ -184,8 +192,6 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     mpMapDrawer = new MapDrawer(mpAtlas, strSettingsFile, settings_);
 
     //Initialize the Tracking thread
-    //(it will live in the main thread of execution, the one that called this constructor)
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Seq. Name: " << strSequence << endl;
     mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
                              settings_, newMaps, strSequence);
 
@@ -193,16 +199,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     mpLocalMapper =
         new LocalMapping(this, mpAtlas, mSensor == MONOCULAR || mSensor == IMU_MONOCULAR,
                          mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor == IMU_RGBD, strSequence);
-
-    mbSingleThreadMode = true;
-
-    if (!mbSingleThreadMode)
-    {
-        mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
-    }
-
-    // mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
-    mpLocalMapper->mInitFr = initFr;
+    mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
     if (settings_)
     {
         mpLocalMapper->mThFarPoints = settings_->thFarPoints();
@@ -213,7 +210,8 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     }
     if (mpLocalMapper->mThFarPoints != 0)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << endl;
         mpLocalMapper->mbFarPoints = true;
     }
     else
@@ -224,11 +222,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR,
                                    !bTurnOffLC);  // mSensor!=MONOCULAR);
-
-    if (!mbSingleThreadMode)
-    {
-        mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
-    }
+    mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
 
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
@@ -248,9 +242,6 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
     }
-
-    // Fix verbosity
-    Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 }
 
 Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
@@ -699,11 +690,13 @@ void System::SaveTrajectoryEuRoC(const string& filename)
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
     int numMaxKFs = 0;
     Map* pBiggerMap;
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+        << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
     for (Map* pMap : vpMaps)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "  Map " << std::to_string(pMap->GetId()) << " has "
-                  << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size())
+            << " KFs" << std::endl;
         if (pMap->GetAllKeyFrames().size() > numMaxKFs)
         {
             numMaxKFs = pMap->GetAllKeyFrames().size();
@@ -787,7 +780,9 @@ void System::SaveTrajectoryEuRoC(const string& filename)
 void System::SaveTrajectoryEuRoC(const string& filename, Map* pMap)
 {
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Saving trajectory of map " << pMap->GetId() << " to " << filename << " ..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+        << endl
+        << "Saving trajectory of map " << pMap->GetId() << " to " << filename << " ..." << endl;
 
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
@@ -921,7 +916,9 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string& filename)
 
 void System::SaveKeyFrameTrajectoryEuRoC(const string& filename, Map* pMap)
 {
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Saving keyframe trajectory of map " << pMap->GetId() << " to " << filename << " ..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+        << endl
+        << "Saving keyframe trajectory of map " << pMap->GetId() << " to " << filename << " ..." << endl;
 
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
@@ -1298,7 +1295,8 @@ bool System::LoadAtlas(int type)
 
         if (strInputVocabularyChecksum.compare(strVocChecksum) != 0)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "The vocabulary load isn't the same which the load session was created " << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                << "The vocabulary load isn't the same which the load session was created " << endl;
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "-Vocabulary name: " << strFileVoc << endl;
             return false;  // Both are differents
         }
@@ -1325,7 +1323,8 @@ string System::CalculateCheckSum(string filename, int type)
     ifstream f(filename.c_str(), flags);
     if (!f.is_open())
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "[E] Unable to open the in file " << filename << " for Md5 hash." << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[E] Unable to open the in file " << filename << " for Md5 hash." << endl;
         return checksum;
     }
 

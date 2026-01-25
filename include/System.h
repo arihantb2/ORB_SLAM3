@@ -179,9 +179,6 @@ public:
 
     float GetImageScale();
 
-    // Deterministic flag
-    bool mbSingleThreadMode;
-
 private:
     void SaveAtlas(int type);
     bool LoadAtlas(int type);

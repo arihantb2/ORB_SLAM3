@@ -928,12 +928,6 @@ void Tracking::Track()
             mlbLost.push_back(mState == LOST);
         }
     }
-
-    if (mpSystem->mbSingleThreadMode)
-    {
-        mpLocalMapper->RunLoop();
-
-    }
 }
 
 void Tracking::StereoInitialization()
