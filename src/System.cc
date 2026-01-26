@@ -34,7 +34,8 @@
 namespace ORB_SLAM3
 {
 
-Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
+std::atomic<Verbose::eLevel> Verbose::th{Verbose::VERBOSITY_NORMAL};
+std::mutex Verbose::cout_mutex;
 
 System::System(const string& strVocFile, const string& strSettingsFile, const eSensor sensor, const bool bUseViewer,
                const int initFr, const string& strSequence, const bool bTurnOffLC)
