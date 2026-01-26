@@ -27,9 +27,9 @@
 #include "LoopClosing.h"
 #include "MLPnPsolver.h"
 #include "MapDrawer.h"
+#include "ORBVocabulary.h"
 #include "ORBextractor.h"
 #include "ORBmatcher.h"
-#include "ORBVocabulary.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
@@ -133,8 +133,7 @@ bool Tracking::GetStepByStep()
     return bStepByStep;
 }
 
-Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp,
-                                       string filename)
+Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp)
 {
     mImGray = imRectLeft;
     cv::Mat imGrayRight = imRectRight;
@@ -168,19 +167,26 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat&
     }
 
     if (mSensor == System::STEREO && !mpCamera2)
+    {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera);
+    }
     else if (mSensor == System::STEREO && mpCamera2)
+    {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera, mpCamera2, mTlr);
+    }
     else if (mSensor == System::IMU_STEREO && !mpCamera2)
+    {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
+    }
     else if (mSensor == System::IMU_STEREO && mpCamera2)
+    {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera, mpCamera2, mTlr, &mLastFrame, *mpImuCalib);
+    }
 
-    mCurrentFrame.mNameFile = filename;
     mCurrentFrame.mnDataset = mnNumDataset;
 
     Track();
@@ -188,70 +194,44 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat&
     return mCurrentFrame.GetPose();
 }
 
-Sophus::SE3f Tracking::GrabImageRGBD(const cv::Mat& imRGB, const cv::Mat& imD, const double& timestamp, string filename)
-{
-    mImGray = imRGB;
-    cv::Mat imDepth = imD;
-
-    if (mImGray.channels() == 3)
-    {
-        if (mbRGB)
-            cvtColor(mImGray, mImGray, cv::COLOR_RGB2GRAY);
-        else
-            cvtColor(mImGray, mImGray, cv::COLOR_BGR2GRAY);
-    }
-    else if (mImGray.channels() == 4)
-    {
-        if (mbRGB)
-            cvtColor(mImGray, mImGray, cv::COLOR_RGBA2GRAY);
-        else
-            cvtColor(mImGray, mImGray, cv::COLOR_BGRA2GRAY);
-    }
-
-    if ((fabs(mDepthMapFactor - 1.0f) > 1e-5) || imDepth.type() != CV_32F)
-        imDepth.convertTo(imDepth, CV_32F, mDepthMapFactor);
-
-    if (mSensor == System::RGBD)
-        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
-                              mThDepth, mpCamera);
-    else if (mSensor == System::IMU_RGBD)
-        mCurrentFrame = Frame(mImGray, imDepth, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
-                              mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
-
-    mCurrentFrame.mNameFile = filename;
-    mCurrentFrame.mnDataset = mnNumDataset;
-
-    Track();
-
-    return mCurrentFrame.GetPose();
-}
-
-Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& timestamp, string filename)
+Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& timestamp)
 {
     mImGray = im;
     if (mImGray.channels() == 3)
     {
         if (mbRGB)
+        {
             cvtColor(mImGray, mImGray, cv::COLOR_RGB2GRAY);
+        }
         else
+        {
             cvtColor(mImGray, mImGray, cv::COLOR_BGR2GRAY);
+        }
     }
     else if (mImGray.channels() == 4)
     {
         if (mbRGB)
+        {
             cvtColor(mImGray, mImGray, cv::COLOR_RGBA2GRAY);
+        }
         else
+        {
             cvtColor(mImGray, mImGray, cv::COLOR_BGRA2GRAY);
+        }
     }
 
     if (mSensor == System::MONOCULAR)
     {
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
+        {
             mCurrentFrame =
                 Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+        }
         else
+        {
             mCurrentFrame =
                 Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+        }
     }
     else if (mSensor == System::IMU_MONOCULAR)
     {
@@ -261,14 +241,17 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& times
                                   mThDepth, &mLastFrame, *mpImuCalib);
         }
         else
+        {
             mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf,
                                   mThDepth, &mLastFrame, *mpImuCalib);
+        }
     }
 
     if (mState == NO_IMAGES_YET)
+    {
         t0 = timestamp;
+    }
 
-    mCurrentFrame.mNameFile = filename;
     mCurrentFrame.mnDataset = mnNumDataset;
 
     lastID = mCurrentFrame.mnId;
@@ -333,7 +316,9 @@ void Tracking::PreintegrateIMU()
             }
         }
         if (bSleep)
+        {
             usleep(500);
+        }
     }
 
     const int n = mvImuFromLastFrame.size() - 1;
@@ -388,7 +373,9 @@ void Tracking::PreintegrateIMU()
         }
 
         if (!mpImuPreintegratedFromLastKF)
+        {
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "mpImuPreintegratedFromLastKF does not exist" << endl;
+        }
         mpImuPreintegratedFromLastKF->IntegrateNewMeasurement(acc, angVel, tstep);
         pImuPreintegratedFromLastFrame->IntegrateNewMeasurement(acc, angVel, tstep);
     }
@@ -451,7 +438,9 @@ bool Tracking::PredictStateIMU()
         return true;
     }
     else
+    {
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "not IMU prediction!!" << endl;
+    }
 
     return false;
 }
@@ -2663,19 +2652,6 @@ int Tracking::GetNumberDataset()
 int Tracking::GetMatchesInliers()
 {
     return mnMatchesInliers;
-}
-
-void Tracking::SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, string strFolder)
-{
-    mpSystem->SaveTrajectoryEuRoC(strFolder + strNameFile_frames);
-    //mpSystem->SaveKeyFrameTrajectoryEuRoC(strFolder + strNameFile_kf);
-}
-
-void Tracking::SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, Map* pMap)
-{
-    mpSystem->SaveTrajectoryEuRoC(strNameFile_frames, pMap);
-    if (!strNameFile_kf.empty())
-        mpSystem->SaveKeyFrameTrajectoryEuRoC(strNameFile_kf, pMap);
 }
 
 float Tracking::GetImageScale()

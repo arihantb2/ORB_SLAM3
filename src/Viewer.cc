@@ -18,12 +18,12 @@
 
 #include "Viewer.h"
 
+#include <pangolin/pangolin.h>
 #include "Atlas.h"
 #include "MapDrawer.h"
 #include "Settings.h"
 #include "System.h"
 #include "Tracking.h"
-#include <pangolin/pangolin.h>
 
 #include <mutex>
 
@@ -357,9 +357,6 @@ void Viewer::Run()
             // Stop all threads
             mpSystem->Shutdown();
 
-            // Save camera trajectory
-            mpSystem->SaveTrajectoryEuRoC("CameraTrajectory.txt");
-            mpSystem->SaveKeyFrameTrajectoryEuRoC("KeyFrameTrajectory.txt");
             menuStop = false;
         }
 

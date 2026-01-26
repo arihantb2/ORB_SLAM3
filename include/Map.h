@@ -22,11 +22,11 @@
 #include "Verbose.h"
 
 #include <pangolin/pangolin.h>
-#include <sophus/se3.hpp>
 #include <list>
 #include <map>
 #include <mutex>
 #include <set>
+#include <sophus/se3.hpp>
 #include <string>
 #include <vector>
 

@@ -25,9 +25,9 @@
 #include <Eigen/Dense>
 #include <fstream>
 #include <list>
+#include <mutex>
 #include <string>
 #include <utility>
-#include <mutex>
 
 namespace ORB_SLAM3
 {
