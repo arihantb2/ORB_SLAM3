@@ -44,7 +44,7 @@ void Tracking::newParameterLoader(Settings* settings)
     mK_(0, 2) = mpCamera->getParameter(2);
     mK_(1, 2) = mpCamera->getParameter(3);
 
-    if ((mSensor == System::STEREO || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) &&
+    if ((mSensor == System::STEREO || mSensor == System::IMU_STEREO) &&
         settings->cameraType() == Settings::KannalaBrandt)
     {
         mpCamera2 = settings->camera2();
@@ -53,20 +53,10 @@ void Tracking::newParameterLoader(Settings* settings)
         mTlr = settings->Tlr();
     }
 
-    if (mSensor == System::STEREO || mSensor == System::RGBD || mSensor == System::IMU_STEREO ||
-        mSensor == System::IMU_RGBD)
+    if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
     {
         mbf = settings->bf();
         mThDepth = settings->b() * settings->thDepth();
-    }
-
-    if (mSensor == System::RGBD || mSensor == System::IMU_RGBD)
-    {
-        mDepthMapFactor = settings->depthMapFactor();
-        if (fabs(mDepthMapFactor) < 1e-5)
-            mDepthMapFactor = 1;
-        else
-            mDepthMapFactor = 1.0f / mDepthMapFactor;
     }
 
     mMinFrames = 0;
@@ -122,7 +112,7 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the ORB parameters in the config file*" << std::endl;
     }
     bool b_parse_imu = true;
-    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
     {
         b_parse_imu = ParseIMUParamFile(fSettings);
         if (!b_parse_imu)
@@ -447,7 +437,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             mK_(1, 2) = cy;
         }
 
-        if (mSensor == System::STEREO || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+        if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
         {
             // Right camera
             // Camera calibration parameters
@@ -663,8 +653,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
         std::cerr << "Check an example configuration file with the desired sensor" << std::endl;
     }
 
-    if (mSensor == System::STEREO || mSensor == System::RGBD || mSensor == System::IMU_STEREO ||
-        mSensor == System::IMU_RGBD)
+    if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
     {
         cv::FileNode node = fSettings["Camera.bf"];
         if (!node.empty() && node.isReal())
@@ -700,8 +689,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
     else
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- color order: BGR (ignored if grayscale)" << endl;
 
-    if (mSensor == System::STEREO || mSensor == System::RGBD || mSensor == System::IMU_STEREO ||
-        mSensor == System::IMU_RGBD)
+    if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
     {
         float fx = mpCamera->getParameter(0);
         cv::FileNode node = fSettings["ThDepth"];
@@ -715,24 +703,6 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
         else
         {
             std::cerr << "*ThDepth parameter doesn't exist or is not a real number*" << std::endl;
-            b_miss_params = true;
-        }
-    }
-
-    if (mSensor == System::RGBD || mSensor == System::IMU_RGBD)
-    {
-        cv::FileNode node = fSettings["DepthMapFactor"];
-        if (!node.empty() && node.isReal())
-        {
-            mDepthMapFactor = node.real();
-            if (fabs(mDepthMapFactor) < 1e-5)
-                mDepthMapFactor = 1;
-            else
-                mDepthMapFactor = 1.0f / mDepthMapFactor;
-        }
-        else
-        {
-            std::cerr << "*DepthMapFactor parameter doesn't exist or is not a real number*" << std::endl;
             b_miss_params = true;
         }
     }

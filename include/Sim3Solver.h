@@ -103,7 +103,7 @@ protected:
     Eigen::Vector3f mBestTranslation;
     float mBestScale;
 
-    // Scale is fixed to 1 in the stereo/RGBD case
+    // Scale is fixed to 1 in the stereo case
     bool mbFixScale;
 
     // Indices for random selection

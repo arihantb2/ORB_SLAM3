@@ -163,7 +163,6 @@ private:
     void readCamera2(cv::FileStorage& fSettings);
     void readImageInfo(cv::FileStorage& fSettings);
     void readIMU(cv::FileStorage& fSettings);
-    void readRGBD(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);
     void readLoadAndSave(cv::FileStorage& fSettings);
@@ -208,9 +207,6 @@ private:
     Sophus::SE3f Tbc_;
     bool insertKFsWhenLost_;
 
-    /*
-         * RGBD stuff
-         */
     float depthMapFactor_;
 
     /*

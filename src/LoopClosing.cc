@@ -106,8 +106,7 @@ void LoopClosing::Run()
             {
                 if (mbMergeDetected)
                 {
-                    if ((mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO ||
-                         mpTracker->mSensor == System::IMU_RGBD) &&
+                    if ((mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO) &&
                         (!mpCurrentKF->GetMap()->isImuInitialized()))
                     {
                         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU is not initilized, merge is aborted" << endl;
@@ -140,7 +139,7 @@ void LoopClosing::Run()
                             }
                             // If inertial, force only yaw
                             if ((mpTracker->mSensor == System::IMU_MONOCULAR ||
-                                 mpTracker->mSensor == System::IMU_STEREO || mpTracker->mSensor == System::IMU_RGBD) &&
+                                 mpTracker->mSensor == System::IMU_STEREO) &&
                                 mpCurrentKF->GetMap()->GetIniertialBA1())
                             {
                                 Eigen::Vector3d phi = LogSO3(mSold_new.rotation().toRotationMatrix());
@@ -159,11 +158,14 @@ void LoopClosing::Run()
                         Verbose::PrintMess("*Merge detected", Verbose::VERBOSITY_QUIET);
 
                         // TODO UNCOMMENT
-                        if (mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO ||
-                            mpTracker->mSensor == System::IMU_RGBD)
+                        if (mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO)
+                        {
                             MergeLocal2();
+                        }
                         else
+                        {
                             MergeLocal();
+                        }
 
                         Verbose::PrintMess("Merge finished!", Verbose::VERBOSITY_QUIET);
                     }
@@ -218,8 +220,7 @@ void LoopClosing::Run()
                             {
                                 // If inertial, force only yaw
                                 if ((mpTracker->mSensor == System::IMU_MONOCULAR ||
-                                     mpTracker->mSensor == System::IMU_STEREO ||
-                                     mpTracker->mSensor == System::IMU_RGBD) &&
+                                     mpTracker->mSensor == System::IMU_STEREO) &&
                                     mpCurrentKF->GetMap()->GetIniertialBA2())
                                 {
                                     phi(0) = 0;
@@ -877,7 +878,9 @@ int LoopClosing::FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatche
         for (MapPoint* pMPij : pKFi->GetMapPointMatches())
         {
             if (!pMPij || pMPij->isBad())
+            {
                 continue;
+            }
 
             if (spMapPoints.find(pMPij) == spMapPoints.end())
             {
@@ -995,11 +998,17 @@ void LoopClosing::CorrectLoop()
             {
                 MapPoint* pMPi = vpMPsi[iMP];
                 if (!pMPi)
+                {
                     continue;
+                }
                 if (pMPi->isBad())
+                {
                     continue;
+                }
                 if (pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
+                {
                     continue;
+                }
 
                 // Project with non-corrected pose and project back with corrected pose
                 Eigen::Vector3d P3Dw = pMPi->GetWorldPos().cast<double>();
@@ -1033,7 +1042,9 @@ void LoopClosing::CorrectLoop()
                 MapPoint* pLoopMP = mvpLoopMatchedMPs[i];
                 MapPoint* pCurMP = mpCurrentKF->GetMapPoint(i);
                 if (pCurMP)
+                {
                     pCurMP->Replace(pLoopMP);
+                }
                 else
                 {
                     mpCurrentKF->AddMapPoint(pLoopMP, i);
@@ -1077,7 +1088,9 @@ void LoopClosing::CorrectLoop()
     bool bFixedScale = mbFixScale;
     // TODO CHECK; Solo para el monocular inertial
     if (mpTracker->mSensor == System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+    {
         bFixedScale = false;
+    }
 
     if (pLoopMap->IsInertial() && pLoopMap->isImuInitialized())
     {
@@ -1222,7 +1235,9 @@ void LoopClosing::MergeLocal()
     for (KeyFrame* pKFi : spLocalWindowKFs)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
+        }
 
         set<MapPoint*> spMPs = pKFi->GetMapPoints();
         spLocalWindowMPs.insert(spMPs.begin(), spMPs.end());
@@ -1303,7 +1318,9 @@ void LoopClosing::MergeLocal()
         }
 
         if (pKFi->GetMap() != pCurrentMap)
+        {
             Verbose::PrintMess("Other map KF, this should't happen", Verbose::VERBOSITY_DEBUG);
+        }
 
         g2o::Sim3 g2oCorrectedSiw;
 
@@ -1407,7 +1424,9 @@ void LoopClosing::MergeLocal()
         for (MapPoint* pMPi : spLocalWindowMPs)
         {
             if (!pMPi || pMPi->isBad())
+            {
                 continue;
+            }
 
             pMPi->SetWorldPos(pMPi->mPosMerge);
             pMPi->SetNormalVector(pMPi->mNormalVectorMerge);
@@ -1455,14 +1474,18 @@ void LoopClosing::MergeLocal()
     for (KeyFrame* pKFi : spLocalWindowKFs)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
+        }
 
         pKFi->UpdateConnections();
     }
     for (KeyFrame* pKFi : spMergeConnectedKFs)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
+        }
 
         pKFi->UpdateConnections();
     }
@@ -1472,8 +1495,7 @@ void LoopClosing::MergeLocal()
     vpMergeConnectedKFs.clear();
     std::copy(spLocalWindowKFs.begin(), spLocalWindowKFs.end(), std::back_inserter(vpLocalCurrentWindowKFs));
     std::copy(spMergeConnectedKFs.begin(), spMergeConnectedKFs.end(), std::back_inserter(vpMergeConnectedKFs));
-    if (mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO ||
-        mpTracker->mSensor == System::IMU_RGBD)
+    if (mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO)
     {
         Optimizer::MergeInertialBA(mpCurrentKF, mpMergeMatchedKF, &bStop, pCurrentMap, vCorrectedSim3);
     }
@@ -1540,7 +1562,9 @@ void LoopClosing::MergeLocal()
             for (MapPoint* pMPi : vpCurrentMapMPs)
             {
                 if (!pMPi || pMPi->isBad() || pMPi->GetMap() != pCurrentMap)
+                {
                     continue;
+                }
 
                 KeyFrame* pKFref = pMPi->GetReferenceKeyFrame();
                 g2o::Sim3 g2oCorrectedSwi = vCorrectedSim3[pKFref].inverse();
@@ -1592,7 +1616,9 @@ void LoopClosing::MergeLocal()
             for (MapPoint* pMPi : vpCurrentMapMPs)
             {
                 if (!pMPi || pMPi->isBad())
+                {
                     continue;
+                }
 
                 pMPi->UpdateMap(pMergeMap);
                 pMergeMap->AddMapPoint(pMPi);
@@ -1676,7 +1702,9 @@ void LoopClosing::MergeLocal2()
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         bool bScaleVel = false;
         if (s_on != 1)
+        {
             bScaleVel = true;
+        }
         mpAtlas->GetCurrentMap()->ApplyScaledRotation(T_on, s_on, bScaleVel);
         mpTracker->UpdateFrameIMU(s_on, mpCurrentKF->GetImuBias(), mpTracker->GetLastKeyFrame());
 
@@ -1685,8 +1713,7 @@ void LoopClosing::MergeLocal2()
 
     const int numKFnew = pCurrentMap->KeyFramesInMap();
 
-    if ((mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO ||
-         mpTracker->mSensor == System::IMU_RGBD) &&
+    if ((mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO) &&
         !pCurrentMap->GetIniertialBA2())
     {
         // Map is not completly initialized
@@ -1731,7 +1758,9 @@ void LoopClosing::MergeLocal2()
         for (MapPoint* pMPi : vpMergeMapMPs)
         {
             if (!pMPi || pMPi->isBad() || pMPi->GetMap() != pMergeMap)
+            {
                 continue;
+            }
 
             pMPi->UpdateMap(pCurrentMap);
             pCurrentMap->AddMapPoint(pMPi);
@@ -1770,14 +1799,18 @@ void LoopClosing::MergeLocal2()
     vector<KeyFrame*> aux = mpMergeMatchedKF->GetVectorCovisibleKeyFrames();
     mvpMergeConnectedKFs.insert(mvpMergeConnectedKFs.end(), aux.begin(), aux.end());
     if (mvpMergeConnectedKFs.size() > 6)
+    {
         mvpMergeConnectedKFs.erase(mvpMergeConnectedKFs.begin() + 6, mvpMergeConnectedKFs.end());
+    }
 
     mpCurrentKF->UpdateConnections();
     vpCurrentConnectedKFs.push_back(mpCurrentKF);
     aux = mpCurrentKF->GetVectorCovisibleKeyFrames();
     vpCurrentConnectedKFs.insert(vpCurrentConnectedKFs.end(), aux.begin(), aux.end());
     if (vpCurrentConnectedKFs.size() > 6)
+    {
         vpCurrentConnectedKFs.erase(vpCurrentConnectedKFs.begin() + 6, vpCurrentConnectedKFs.end());
+    }
 
     set<MapPoint*> spMapPointMerge;
     for (KeyFrame* pKFi : mvpMergeConnectedKFs)
@@ -1785,7 +1818,9 @@ void LoopClosing::MergeLocal2()
         set<MapPoint*> vpMPs = pKFi->GetMapPoints();
         spMapPointMerge.insert(vpMPs.begin(), vpMPs.end());
         if (spMapPointMerge.size() > 1000)
+        {
             break;
+        }
     }
 
     vpCheckFuseMapPoint.reserve(spMapPointMerge.size());
@@ -1796,14 +1831,18 @@ void LoopClosing::MergeLocal2()
     for (KeyFrame* pKFi : vpCurrentConnectedKFs)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
+        }
 
         pKFi->UpdateConnections();
     }
     for (KeyFrame* pKFi : mvpMergeConnectedKFs)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
+        }
 
         pKFi->UpdateConnections();
     }

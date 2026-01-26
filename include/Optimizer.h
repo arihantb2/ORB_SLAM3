@@ -63,7 +63,7 @@ public:
     int static PoseInertialOptimizationLastKeyFrame(Frame* pFrame, bool bRecInit = false);
     int static PoseInertialOptimizationLastFrame(Frame* pFrame, bool bRecInit = false);
 
-    // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
+    // if bFixScale is true, 6DoF optimization (stereo), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
                                        const LoopClosing::KeyFrameAndPose& NonCorrectedSim3,
                                        const LoopClosing::KeyFrameAndPose& CorrectedSim3,
@@ -78,7 +78,7 @@ public:
                                            const LoopClosing::KeyFrameAndPose& CorrectedSim3,
                                            const map<KeyFrame*, set<KeyFrame*>>& LoopConnections);
 
-    // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono) (NEW)
+    // if bFixScale is true, optimize SE3 (stereo), Sim3 otherwise (mono) (NEW)
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches1, g2o::Sim3& g2oS12,
                             const float th2, const bool bFixScale, Eigen::Matrix<double, 7, 7>& mAcumHessian,
                             const bool bAllPoints = false);

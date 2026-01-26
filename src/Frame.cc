@@ -119,6 +119,7 @@ Frame::Frame(const Frame& frame)
       mbHasVelocity(false)
 {
     for (int i = 0; i < FRAME_GRID_COLS; i++)
+    {
         for (int j = 0; j < FRAME_GRID_ROWS; j++)
         {
             mGrid[i][j] = frame.mGrid[i][j];
@@ -127,9 +128,12 @@ Frame::Frame(const Frame& frame)
                 mGridRight[i][j] = frame.mGridRight[i][j];
             }
         }
+    }
 
     if (frame.mbHasPose)
+    {
         SetPose(frame.GetPose());
+    }
 
     if (frame.HasVelocity())
     {
@@ -185,7 +189,9 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
 
     N = mvKeys.size();
     if (mvKeys.empty())
+    {
         return;
+    }
 
     UndistortKeyPoints();
 
@@ -219,7 +225,9 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     if (pPrevF)
     {
         if (pPrevF->HasVelocity())
+        {
             SetVelocity(pPrevF->GetVelocity());
+        }
     }
     else
     {
@@ -283,11 +291,11 @@ Frame::Frame(const cv::Mat& imGray, const cv::Mat& imDepth, const double& timeSt
     N = mvKeys.size();
 
     if (mvKeys.empty())
+    {
         return;
+    }
 
     UndistortKeyPoints();
-
-    ComputeStereoFromRGBD(imDepth);
 
     mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
 
@@ -319,7 +327,9 @@ Frame::Frame(const cv::Mat& imGray, const cv::Mat& imDepth, const double& timeSt
     if (pPrevF)
     {
         if (pPrevF->HasVelocity())
+        {
             SetVelocity(pPrevF->GetVelocity());
+        }
     }
     else
     {
@@ -383,7 +393,9 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extra
     N = mvKeys.size();
 
     if (mvKeys.empty())
+    {
         return;
+    }
 
     UndistortKeyPoints();
 
@@ -453,6 +465,7 @@ void Frame::AssignFeaturesToGrid()
     int nReserve = 0.5f * N / (nCells);
 
     for (unsigned int i = 0; i < FRAME_GRID_COLS; i++)
+    {
         for (unsigned int j = 0; j < FRAME_GRID_ROWS; j++)
         {
             mGrid[i][j].reserve(nReserve);
@@ -461,6 +474,7 @@ void Frame::AssignFeaturesToGrid()
                 mGridRight[i][j].reserve(nReserve);
             }
         }
+    }
 
     for (int i = 0; i < N; i++)
     {
@@ -470,9 +484,13 @@ void Frame::AssignFeaturesToGrid()
         if (PosInGrid(kp, nGridPosX, nGridPosY))
         {
             if (Nleft == -1 || i < Nleft)
+            {
                 mGrid[nGridPosX][nGridPosY].push_back(i);
+            }
             else
+            {
                 mGridRight[nGridPosX][nGridPosY].push_back(i - Nleft);
+            }
         }
     }
 }
@@ -481,9 +499,13 @@ void Frame::ExtractORB(int flag, const cv::Mat& im, const int x0, const int x1)
 {
     vector<int> vLapping = {x0, x1};
     if (flag == 0)
+    {
         monoLeft = (*mpORBextractorLeft)(im, cv::Mat(), mvKeys, mDescriptors, vLapping);
+    }
     else
+    {
         monoRight = (*mpORBextractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight, vLapping);
+    }
 }
 
 bool Frame::isSet() const
@@ -504,7 +526,9 @@ void Frame::SetNewBias(const IMU::Bias& b)
 {
     mImuBias = b;
     if (mpImuPreintegrated)
+    {
         mpImuPreintegrated->SetNewBias(b);
+    }
 }
 
 void Frame::SetVelocity(Eigen::Vector3f Vwb)
@@ -596,14 +620,20 @@ bool Frame::isInFrustum(MapPoint* pMP, float viewingCosLimit)
         const float& PcZ = Pc(2);
         const float invz = 1.0f / PcZ;
         if (PcZ < 0.0f)
+        {
             return false;
+        }
 
         const Eigen::Vector2f uv = mpCamera->project(Pc);
 
         if (uv(0) < mnMinX || uv(0) > mnMaxX)
+        {
             return false;
+        }
         if (uv(1) < mnMinY || uv(1) > mnMaxY)
+        {
             return false;
+        }
 
         pMP->mTrackProjX = uv(0);
         pMP->mTrackProjY = uv(1);
@@ -615,7 +645,9 @@ bool Frame::isInFrustum(MapPoint* pMP, float viewingCosLimit)
         const float dist = PO.norm();
 
         if (dist < minDistance || dist > maxDistance)
+        {
             return false;
+        }
 
         // Check viewing angle
         Eigen::Vector3f Pn = pMP->GetNormal();
@@ -623,7 +655,9 @@ bool Frame::isInFrustum(MapPoint* pMP, float viewingCosLimit)
         const float viewCos = PO.dot(Pn) / dist;
 
         if (viewCos < viewingCosLimit)
+        {
             return false;
+        }
 
         // Predict scale in the image
         const int nPredictedLevel = pMP->PredictScale(dist, this);
@@ -680,9 +714,13 @@ bool Frame::ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float&
     v = fy * PcY * invz + cy;
 
     if (u < mnMinX || u > mnMaxX)
+    {
         return false;
+    }
     if (v < mnMinY || v > mnMaxY)
+    {
         return false;
+    }
 
     float u_distort, v_distort;
 
@@ -718,7 +756,7 @@ bool Frame::ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float&
     return true;
 }
 
-Eigen::Vector3f Frame::inRefCoordinates(Eigen::Vector3f pCw)
+Eigen::Vector3f Frame::inRefCoordinates(const Eigen::Vector3f& pCw)
 {
     return mRcw * pCw + mtcw;
 }
@@ -764,7 +802,9 @@ vector<size_t> Frame::GetFeaturesInArea(const float& x, const float& y, const fl
         {
             const vector<size_t> vCell = (!bRight) ? mGrid[ix][iy] : mGridRight[ix][iy];
             if (vCell.empty())
+            {
                 continue;
+            }
 
             for (size_t j = 0, jend = vCell.size(); j < jend; j++)
             {
@@ -774,17 +814,25 @@ vector<size_t> Frame::GetFeaturesInArea(const float& x, const float& y, const fl
                 if (bCheckLevels)
                 {
                     if (kpUn.octave < minLevel)
+                    {
                         continue;
+                    }
                     if (maxLevel >= 0)
+                    {
                         if (kpUn.octave > maxLevel)
+                        {
                             continue;
+                        }
+                    }
                 }
 
                 const float distx = kpUn.pt.x - x;
                 const float disty = kpUn.pt.y - y;
 
                 if (fabs(distx) < factorX && fabs(disty) < factorY)
+                {
                     vIndices.push_back(vCell[j]);
+                }
             }
         }
     }
@@ -799,7 +847,9 @@ bool Frame::PosInGrid(const cv::KeyPoint& kp, int& posX, int& posY)
 
     //Keypoint's coordinates are undistorted, which could cause to go out of the image
     if (posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 || posY >= FRAME_GRID_ROWS)
+    {
         return false;
+    }
 
     return true;
 }
@@ -892,7 +942,9 @@ void Frame::ComputeStereoMatches()
     vector<vector<size_t>> vRowIndices(nRows, vector<size_t>());
 
     for (int i = 0; i < nRows; i++)
+    {
         vRowIndices[i].reserve(200);
+    }
 
     const int Nr = mvKeysRight.size();
 
@@ -905,7 +957,9 @@ void Frame::ComputeStereoMatches()
         const int minr = floor(kpY - r);
 
         for (int yi = minr; yi <= maxr; yi++)
+        {
             vRowIndices[yi].push_back(iR);
+        }
     }
 
     // Set limits for search
@@ -927,13 +981,17 @@ void Frame::ComputeStereoMatches()
         const vector<size_t>& vCandidates = vRowIndices[vL];
 
         if (vCandidates.empty())
+        {
             continue;
+        }
 
         const float minU = uL - maxD;
         const float maxU = uL - minD;
 
         if (maxU < 0)
+        {
             continue;
+        }
 
         int bestDist = ORBmatcher::TH_HIGH;
         size_t bestIdxR = 0;
@@ -947,7 +1005,9 @@ void Frame::ComputeStereoMatches()
             const cv::KeyPoint& kpR = mvKeysRight[iR];
 
             if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)
+            {
                 continue;
+            }
 
             const float& uR = kpR.pt.x;
 
@@ -989,7 +1049,9 @@ void Frame::ComputeStereoMatches()
             const float iniu = scaleduR0 + L - w;
             const float endu = scaleduR0 + L + w + 1;
             if (iniu < 0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+            {
                 continue;
+            }
 
             for (int incR = -L; incR <= +L; incR++)
             {
@@ -1008,7 +1070,9 @@ void Frame::ComputeStereoMatches()
             }
 
             if (bestincR == -L || bestincR == L)
+            {
                 continue;
+            }
 
             // Sub-pixel match (Parabola fitting)
             const float dist1 = vDists[L + bestincR - 1];
@@ -1018,7 +1082,9 @@ void Frame::ComputeStereoMatches()
             const float deltaR = (dist1 - dist3) / (2.0f * (dist1 + dist3 - 2.0f * dist2));
 
             if (deltaR < -1 || deltaR > 1)
+            {
                 continue;
+            }
 
             // Re-scaled coordinate
             float bestuR = mvScaleFactors[kpL.octave] * ((float)scaleduR0 + (float)bestincR + deltaR);
@@ -1046,34 +1112,13 @@ void Frame::ComputeStereoMatches()
     for (int i = vDistIdx.size() - 1; i >= 0; i--)
     {
         if (vDistIdx[i].first < thDist)
+        {
             break;
+        }
         else
         {
             mvuRight[vDistIdx[i].second] = -1;
             mvDepth[vDistIdx[i].second] = -1;
-        }
-    }
-}
-
-void Frame::ComputeStereoFromRGBD(const cv::Mat& imDepth)
-{
-    mvuRight = vector<float>(N, -1);
-    mvDepth = vector<float>(N, -1);
-
-    for (int i = 0; i < N; i++)
-    {
-        const cv::KeyPoint& kp = mvKeys[i];
-        const cv::KeyPoint& kpU = mvKeysUn[i];
-
-        const float& v = kp.pt.y;
-        const float& u = kp.pt.x;
-
-        const float d = imDepth.at<float>(v, u);
-
-        if (d > 0)
-        {
-            mvDepth[i] = d;
-            mvuRight[i] = kpU.pt.x - mbf / d;
         }
     }
 }
@@ -1092,7 +1137,9 @@ bool Frame::UnprojectStereo(const int& i, Eigen::Vector3f& x3D)
         return true;
     }
     else
+    {
         return false;
+    }
 }
 
 bool Frame::imuIsPreintegrated()
@@ -1161,7 +1208,9 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     N = Nleft + Nright;
 
     if (N == 0)
+    {
         return;
+    }
 
     // This is done only for the first Frame (or after a change in the calibration)
     if (mbInitialComputations)
@@ -1282,19 +1331,29 @@ bool Frame::isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight)
 
     // Check positive depth
     if (PcZ < 0.0f)
+    {
         return false;
+    }
 
     // Project in image and check it is not outside
     Eigen::Vector2f uv;
     if (bRight)
+    {
         uv = mpCamera2->project(Pc);
+    }
     else
+    {
         uv = mpCamera->project(Pc);
+    }
 
     if (uv(0) < mnMinX || uv(0) > mnMaxX)
+    {
         return false;
+    }
     if (uv(1) < mnMinY || uv(1) > mnMaxY)
+    {
         return false;
+    }
 
     // Check distance is in the scale invariance region of the MapPoint
     const float maxDistance = pMP->GetMaxDistanceInvariance();
@@ -1303,7 +1362,9 @@ bool Frame::isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight)
     const float dist = PO.norm();
 
     if (dist < minDistance || dist > maxDistance)
+    {
         return false;
+    }
 
     // Check viewing angle
     Eigen::Vector3f Pn = pMP->GetNormal();
@@ -1311,7 +1372,9 @@ bool Frame::isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight)
     const float viewCos = PO.dot(Pn) / dist;
 
     if (viewCos < viewingCosLimit)
+    {
         return false;
+    }
 
     // Predict scale in the image
     const int nPredictedLevel = pMP->PredictScale(dist, this);

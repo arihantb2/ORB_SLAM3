@@ -113,7 +113,7 @@ public:
 
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
-    Eigen::Vector3f inRefCoordinates(Eigen::Vector3f pCw);
+    Eigen::Vector3f inRefCoordinates(const Eigen::Vector3f& pCw);
 
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(const cv::KeyPoint& kp, int& posX, int& posY);
@@ -124,9 +124,6 @@ public:
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
     void ComputeStereoMatches();
-
-    // Associate a "right" coordinate to a keypoint if there is valid depth in the depthmap.
-    void ComputeStereoFromRGBD(const cv::Mat& imDepth);
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     bool UnprojectStereo(const int& i, Eigen::Vector3f& x3D);

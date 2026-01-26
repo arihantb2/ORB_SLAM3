@@ -83,10 +83,6 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << endl;
     }
-    else if (mSensor == RGBD)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "RGB-D" << endl;
-    }
     else if (mSensor == IMU_MONOCULAR)
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular-Inertial" << endl;
@@ -94,10 +90,6 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     else if (mSensor == IMU_STEREO)
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << endl;
-    }
-    else if (mSensor == IMU_RGBD)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "RGB-D-Inertial" << endl;
     }
 
     //Check settings file
@@ -205,7 +197,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
         mpAtlas->CreateNewMap();
     }
 
-    if (mSensor == IMU_STEREO || mSensor == IMU_MONOCULAR || mSensor == IMU_RGBD)
+    if (mSensor == IMU_STEREO || mSensor == IMU_MONOCULAR)
     {
         mpAtlas->SetInertialSensor();
     }
@@ -217,9 +209,11 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
                              settings_, newMaps);
 
+    const bool monocular = mSensor == MONOCULAR || mSensor == IMU_MONOCULAR;
+    const bool inertial = mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO;
+
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor == MONOCULAR || mSensor == IMU_MONOCULAR,
-                                     mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor == IMU_RGBD);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
     if (settings_)
     {

@@ -59,10 +59,8 @@ public:
     {
         MONOCULAR = 0,
         STEREO = 1,
-        RGBD = 2,
         IMU_MONOCULAR = 3,
         IMU_STEREO = 4,
-        IMU_RGBD = 5,
     };
 
     // File type
@@ -110,7 +108,7 @@ public:
     bool isShutDown();
 
     // Information from most recent processed frame
-    // You can call this right after TrackMonocular (or stereo or RGBD)
+    // You can call this right after TrackMonocular (or stereo)
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();

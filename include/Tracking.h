@@ -62,8 +62,7 @@ class Tracking
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
-             const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps,
-             const string& _nameSeq = std::string());
+             const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
 
     ~Tracking();
 
@@ -278,7 +277,7 @@ protected:
     int mnFramesToResetIMU;
 
     // Threshold close/far points
-    // Points seen as close by the stereo/RGBD sensor are considered reliable
+    // Points seen as close by the stereo sensor are considered reliable
     // and inserted from just one frame. Far points requiere a match in two keyframes.
     float mThDepth;
 

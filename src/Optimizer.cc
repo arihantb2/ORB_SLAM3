@@ -3696,7 +3696,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, vector<KeyFrame*> vpAdj
 
                 mpObsKFs[pKF]++;
             }
-            else  // RGBD or Stereo
+            else  // Stereo
             {
                 mpObsMPs[pMPi] += 2;
                 Eigen::Matrix<double, 3, 1> obs;
@@ -3874,7 +3874,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, vector<KeyFrame*> vpAdj
             {
                 mpObsFinalKFs[pKF]++;
             }
-            else  // RGBD or Stereo
+            else  // Stereo
             {
                 mpObsFinalKFs[pKF]++;
             }

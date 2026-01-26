@@ -187,16 +187,10 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     readImageInfo(fSettings);
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded image info" << endl;
 
-    if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_RGBD)
+    if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO)
     {
         readIMU(fSettings);
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded IMU calibration" << endl;
-    }
-
-    if (sensor_ == System::RGBD || sensor_ == System::IMU_RGBD)
-    {
-        readRGBD(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded RGB-D calibration" << endl;
     }
 
     readORB(fSettings);
@@ -491,16 +485,6 @@ void Settings::readIMU(cv::FileStorage& fSettings)
     }
 }
 
-void Settings::readRGBD(cv::FileStorage& fSettings)
-{
-    bool found;
-
-    depthMapFactor_ = readParameter<float>(fSettings, "RGBD.DepthMapFactor", found);
-    thDepth_ = readParameter<float>(fSettings, "Stereo.ThDepth", found);
-    b_ = readParameter<float>(fSettings, "Stereo.b", found);
-    bf_ = b_ * calibration1_->getParameter(0);
-}
-
 void Settings::readORB(cv::FileStorage& fSettings)
 {
     bool found;
@@ -704,19 +688,13 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         }
     }
 
-    if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO ||
-        settings.sensor_ == System::IMU_RGBD)
+    if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO)
     {
         output << "\t-Gyro noise: " << settings.noiseGyro_ << endl;
         output << "\t-Accelerometer noise: " << settings.noiseAcc_ << endl;
         output << "\t-Gyro walk: " << settings.gyroWalk_ << endl;
         output << "\t-Accelerometer walk: " << settings.accWalk_ << endl;
         output << "\t-IMU frequency: " << settings.imuFrequency_ << endl;
-    }
-
-    if (settings.sensor_ == System::RGBD || settings.sensor_ == System::IMU_RGBD)
-    {
-        output << "\t-RGB-D depth map factor: " << settings.depthMapFactor_ << endl;
     }
 
     output << "\t-Features per image: " << settings.nFeatures_ << endl;
