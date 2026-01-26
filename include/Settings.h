@@ -21,17 +21,21 @@
 
 #include "Verbose.h"
 
-#include "CameraModels/GeometricCamera.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ostream>
 #include <string>
+#include <vector>
+
+#include <opencv2/core/core.hpp>
+#include <sophus/se3.hpp>
 
 namespace ORB_SLAM3
 {
 
 class System;
+class GeometricCamera;
 
 //TODO: change to double instead of float
 

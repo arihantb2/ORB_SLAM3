@@ -17,6 +17,9 @@
 */
 
 #include "FrameDrawer.h"
+
+#include "Atlas.h"
+#include "MapPoint.h"
 #include "Tracking.h"
 
 #include <opencv2/core/core.hpp>

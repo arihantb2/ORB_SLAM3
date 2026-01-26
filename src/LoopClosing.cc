@@ -18,11 +18,20 @@
 
 #include "LoopClosing.h"
 
+#include "Atlas.h"
 #include "Converter.h"
 #include "G2oTypes.h"
+#include "KeyFrame.h"
+#include "KeyFrameDatabase.h"
+#include "LocalMapping.h"
+#include "Map.h"
+#include "MapPoint.h"
 #include "ORBmatcher.h"
+#include "ORBVocabulary.h"
 #include "Optimizer.h"
 #include "Sim3Solver.h"
+#include "System.h"
+#include "Tracking.h"
 
 #include <mutex>
 #include <thread>

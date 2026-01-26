@@ -21,11 +21,9 @@
 
 #include "Verbose.h"
 
-#include "MapDrawer.h"
-#include "Settings.h"
-#include "System.h"
-#include "Tracking.h"
-
+#include <Eigen/Core>
+#include <opencv2/core/core.hpp>
+#include <string>
 #include <mutex>
 
 namespace ORB_SLAM3
@@ -35,6 +33,8 @@ class Tracking;
 class MapDrawer;
 class System;
 class Settings;
+
+using std::string;
 
 class Viewer
 {

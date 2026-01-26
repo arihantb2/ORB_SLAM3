@@ -21,25 +21,18 @@
 
 #include "Verbose.h"
 
+#include <fstream>
+#include <list>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <string>
+#include <utility>
+#include <vector>
+#include <mutex>
 
-#include "Atlas.h"
 #include "Frame.h"
 #include "ImuTypes.h"
-#include "KeyFrameDatabase.h"
-#include "LocalMapping.h"
-#include "LoopClosing.h"
-#include "MapDrawer.h"
 #include "ORBVocabulary.h"
-#include "ORBextractor.h"
-#include "Settings.h"
-#include "System.h"
-#include "Viewer.h"
-
-#include "CameraModels/GeometricCamera.h"
-
-#include <mutex>
 
 namespace ORB_SLAM3
 {
@@ -50,6 +43,18 @@ class LocalMapping;
 class LoopClosing;
 class System;
 class Settings;
+class KeyFrame;
+class KeyFrameDatabase;
+class Map;
+class MapDrawer;
+class MapPoint;
+class ORBextractor;
+class GeometricCamera;
+
+using std::list;
+using std::ofstream;
+using std::string;
+using std::vector;
 
 class Tracking
 {

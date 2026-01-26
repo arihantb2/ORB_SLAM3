@@ -17,11 +17,19 @@
 */
 
 #include "LocalMapping.h"
+
+#include "Atlas.h"
 #include "Converter.h"
 #include "GeometricTools.h"
+#include "KeyFrame.h"
+#include "KeyFrameDatabase.h"
 #include "LoopClosing.h"
+#include "Map.h"
+#include "MapPoint.h"
 #include "ORBmatcher.h"
 #include "Optimizer.h"
+#include "Settings.h"
+#include "Tracking.h"
 
 #include <chrono>
 #include <mutex>

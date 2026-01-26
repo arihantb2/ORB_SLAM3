@@ -21,18 +21,18 @@
 
 #include "Verbose.h"
 
-#include "Atlas.h"
-#include "KeyFrame.h"
-#include "LocalMapping.h"
-#include "ORBVocabulary.h"
-#include "Tracking.h"
-
-#include "KeyFrameDatabase.h"
-
 #include <boost/algorithm/string.hpp>
+#include <map>
 #include <mutex>
+#include <opencv2/core/core.hpp>
+#include <set>
+#include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 #include "g2o/types/sim3/types_seven_dof_expmap.h"
+
+#include "ORBVocabulary.h"
 
 namespace ORB_SLAM3
 {
@@ -41,6 +41,17 @@ class Tracking;
 class LocalMapping;
 class KeyFrameDatabase;
 class Map;
+class Atlas;
+class KeyFrame;
+class MapPoint;
+class Viewer;
+
+using std::map;
+using std::pair;
+using std::set;
+using std::string;
+using std::unique_lock;
+using std::vector;
 
 class LoopClosing
 {

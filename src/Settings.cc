@@ -18,8 +18,10 @@
 
 #include "Settings.h"
 
+#include "CameraModels/GeometricCamera.h"
 #include "CameraModels/KannalaBrandt8.h"
 #include "CameraModels/Pinhole.h"
+#include "Converter.h"
 
 #include "System.h"
 

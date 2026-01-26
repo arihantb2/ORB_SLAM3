@@ -18,6 +18,10 @@
 
 #include "ORBmatcher.h"
 
+#include "Frame.h"
+#include "KeyFrame.h"
+#include "MapPoint.h"
+
 #include <limits.h>
 
 #include <opencv2/core/core.hpp>

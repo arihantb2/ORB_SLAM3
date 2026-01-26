@@ -18,11 +18,22 @@
 
 #include "Tracking.h"
 
+#include "Atlas.h"
+#include "CameraModels/GeometricCamera.h"
 #include "G2oTypes.h"
 #include "GeometricTools.h"
+#include "KeyFrameDatabase.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
 #include "MLPnPsolver.h"
+#include "MapDrawer.h"
+#include "ORBextractor.h"
 #include "ORBmatcher.h"
+#include "ORBVocabulary.h"
 #include "Optimizer.h"
+#include "Settings.h"
+#include "System.h"
+#include "Viewer.h"
 
 #include <iostream>
 

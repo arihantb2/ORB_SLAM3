@@ -18,11 +18,13 @@
 
 #include "Sim3Solver.h"
 
+#include "KeyFrame.h"
+#include "MapPoint.h"
+
 #include <cmath>
 #include <opencv2/core/core.hpp>
 #include <vector>
 
-#include "KeyFrame.h"
 #include "ORBmatcher.h"
 
 #include "DUtils/Random.h"
