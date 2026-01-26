@@ -27,9 +27,9 @@
 #include "LoopClosing.h"
 #include "MLPnPsolver.h"
 #include "MapDrawer.h"
+#include "ORBVocabulary.h"
 #include "ORBextractor.h"
 #include "ORBmatcher.h"
-#include "ORBVocabulary.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
@@ -46,7 +46,7 @@ namespace ORB_SLAM3
 
 Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
                    const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps,
-                   const string& _nameSeq)
+                   const string& _nameSeq, const bool bSingleThreaded)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
       mTrackedFr(0),
@@ -54,6 +54,7 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
       mbOnlyTracking(false),
       mbMapUpdated(false),
       mbVO(false),
+      mbSingleThreaded(bSingleThreaded),
       mpORBVocabulary(pVoc),
       mpKeyFrameDB(pKFDB),
       mbReadyToInitializate(false),
@@ -272,7 +273,16 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& times
     mCurrentFrame.mnDataset = mnNumDataset;
 
     lastID = mCurrentFrame.mnId;
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[Tracking::GrabImageMonocular]: Created new frame with timestamp: " << std::fixed << timestamp << endl;
+
     Track();
+
+    if (mbSingleThreaded)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Tracking: request mapping step" << endl;
+        mpLocalMapper->RequestMappingStep();
+    }
 
     return mCurrentFrame.GetPose();
 }
@@ -463,6 +473,12 @@ void Tracking::ResetFrameIMU()
 
 void Tracking::Track()
 {
+    if (mbSingleThreaded && mpLocalMapper->IsMappingStepPending())
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Tracking: wait mapping step" << endl;
+        mpLocalMapper->WaitMappingStepCompletion();
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Tracking: mapping step done" << endl;
+    }
 
     if (bStepByStep)
     {

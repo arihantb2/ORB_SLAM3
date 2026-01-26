@@ -23,12 +23,12 @@
 
 #include <fstream>
 #include <list>
+#include <mutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-#include <mutex>
 
 #include "Frame.h"
 #include "ImuTypes.h"
@@ -63,7 +63,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
              const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps,
-             const string& _nameSeq = std::string());
+             const string& _nameSeq = std::string(), const bool bSingleThreaded = false);
 
     ~Tracking();
 
@@ -228,6 +228,7 @@ protected:
     // In that case we are doing visual odometry. The system will try to do relocalization to recover
     // "zero-drift" localization to the map.
     bool mbVO;
+    bool mbSingleThreaded;
 
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;

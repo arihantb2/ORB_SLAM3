@@ -127,6 +127,7 @@ public:
     std::string atlasSaveFile() { return sSaveto_; }
 
     float thFarPoints() { return thFarPoints_; }
+    bool singleThreaded() { return singleThreaded_; }
 
     cv::Mat M1l() { return M1l_; }
     cv::Mat M2l() { return M2l_; }
@@ -242,6 +243,7 @@ private:
          * Other stuff
          */
     float thFarPoints_;
+    bool singleThreaded_;
 };
 };  // namespace ORB_SLAM3
 

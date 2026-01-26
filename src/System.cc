@@ -18,15 +18,6 @@
 
 #include "System.h"
 
-#include "Atlas.h"
-#include "KeyFrameDatabase.h"
-#include "LocalMapping.h"
-#include "LoopClosing.h"
-#include "MapDrawer.h"
-#include "ORBVocabulary.h"
-#include "Settings.h"
-#include "Tracking.h"
-#include "Viewer.h"
 #include <openssl/md5.h>
 #include <pangolin/pangolin.h>
 #include <boost/archive/binary_iarchive.hpp>
@@ -40,6 +31,15 @@
 #include <chrono>
 #include <iomanip>
 #include <thread>
+#include "Atlas.h"
+#include "KeyFrameDatabase.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "MapDrawer.h"
+#include "ORBVocabulary.h"
+#include "Settings.h"
+#include "Tracking.h"
+#include "Viewer.h"
 
 namespace ORB_SLAM3
 {
@@ -48,14 +48,15 @@ std::atomic<Verbose::eLevel> Verbose::th{Verbose::VERBOSITY_NORMAL};
 std::mutex Verbose::cout_mutex;
 
 System::System(const string& strVocFile, const string& strSettingsFile, const eSensor sensor, const bool bUseViewer,
-               const int initFr, const string& strSequence, const bool bTurnOffLC)
+               const int initFr, const string& strSequence, const bool bTurnOffLC, const bool bSingleThreaded)
     : mSensor(sensor),
       mpViewer(static_cast<Viewer*>(NULL)),
       mbReset(false),
       mbResetActiveMap(false),
       mbActivateLocalizationMode(false),
       mbDeactivateLocalizationMode(false),
-      mbShutDown(false)
+      mbShutDown(false),
+      mbSingleThreaded(false)
 {
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
@@ -123,7 +124,24 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
         }
     }
 
+    bool singleThreadedFromSettings = false;
+    if (settings_)
+    {
+        singleThreadedFromSettings = settings_->singleThreaded();
+    }
+    else
+    {
+        node = fsSettings["System.SingleThreaded"];
+        if (!node.empty())
+        {
+            singleThreadedFromSettings = (node.operator int()) != 0;
+        }
+    }
+    mbSingleThreaded = bSingleThreaded || singleThreadedFromSettings;
+
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "Single-threaded mapping: " << (mbSingleThreaded ? "ON" : "OFF") << endl;
 
     node = fsSettings["newMaps"];
     bool newMaps = true;
@@ -204,12 +222,12 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
 
     //Initialize the Tracking thread
     mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
-                             settings_, newMaps, strSequence);
+                             settings_, newMaps, strSequence, mbSingleThreaded);
 
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper =
-        new LocalMapping(this, mpAtlas, mSensor == MONOCULAR || mSensor == IMU_MONOCULAR,
-                         mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor == IMU_RGBD, strSequence);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor == MONOCULAR || mSensor == IMU_MONOCULAR,
+                                     mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO || mSensor == IMU_RGBD,
+                                     strSequence, mbSingleThreaded);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
     if (settings_)
     {

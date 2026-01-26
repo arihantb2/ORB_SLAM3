@@ -22,8 +22,8 @@
 #include "Verbose.h"
 
 #include <pangolin/pangolin.h>
-#include <sophus/se3.hpp>
 #include <opencv2/core/core.hpp>
+#include <sophus/se3.hpp>
 #include <string>
 
 #include <mutex>

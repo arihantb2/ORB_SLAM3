@@ -545,6 +545,8 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     bool found;
 
     thFarPoints_ = readParameter<float>(fSettings, "System.thFarPoints", found, false);
+    int singleThreadedValue = readParameter<int>(fSettings, "System.SingleThreaded", found, false);
+    singleThreaded_ = found ? (singleThreadedValue != 0) : false;
 }
 
 void Settings::precomputeRectificationMaps()

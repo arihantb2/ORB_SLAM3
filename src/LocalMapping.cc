@@ -38,7 +38,7 @@ namespace ORB_SLAM3
 {
 
 LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
-                           const string& _strSeqName)
+                           const string& _strSeqName, const bool bSingleThreaded)
     : mpSystem(pSys),
       mbMonocular(bMonocular),
       mbInertial(bInertial),
@@ -46,6 +46,10 @@ LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, 
       mbResetRequestedActiveMap(false),
       mbFinishRequested(false),
       mbFinished(true),
+      mbSingleThreaded(bSingleThreaded),
+      mbMappingStepRequested(false),
+      mbMappingStepCompleted(true),
+      mbFirstMappingStep(true),
       mpAtlas(pAtlas),
       bInitializing(false),
       mbAbortBA(false),
@@ -85,9 +89,41 @@ void LocalMapping::Run()
 {
     mbFinished = false;
 
-    while (!RunLoop())
+    if (mbSingleThreaded)
     {
-        usleep(3000);
+        while (true)
+        {
+            unique_lock<mutex> lock(mMutexNewKFs);
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "LocalMapping: waiting for step" << endl;
+            mCondNewKF.wait(lock, [this] { return mbMappingStepRequested || CheckFinish(); });
+            if (CheckFinish())
+            {
+                break;
+            }
+            mbMappingStepRequested = false;
+            lock.unlock();
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "LocalMapping: start step" << endl;
+            bool shouldFinish = RunLoop();
+
+            lock.lock();
+            mbMappingStepCompleted = true;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "LocalMapping: step done" << endl;
+            mCondMappingDone.notify_one();
+            lock.unlock();
+
+            if (shouldFinish)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        while (!RunLoop())
+        {
+            usleep(3000);
+        }
     }
 
     SetFinish();
@@ -252,6 +288,46 @@ void LocalMapping::InsertKeyFrame(KeyFrame* pKF)
     unique_lock<mutex> lock(mMutexNewKFs);
     mlNewKeyFrames.push_back(pKF);
     mbAbortBA = true;
+}
+
+void LocalMapping::RequestMappingStep()
+{
+    if (!mbSingleThreaded)
+    {
+        return;
+    }
+
+    unique_lock<mutex> lock(mMutexNewKFs);
+    if (mbFirstMappingStep)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "LocalMapping: first mapping step requested" << endl;
+        mbFirstMappingStep = false;
+    }
+    mbMappingStepCompleted = false;
+    mbMappingStepRequested = true;
+    mCondNewKF.notify_one();
+}
+
+void LocalMapping::WaitMappingStepCompletion()
+{
+    if (!mbSingleThreaded)
+    {
+        return;
+    }
+
+    unique_lock<mutex> lock(mMutexNewKFs);
+    mCondMappingDone.wait(lock, [this] { return mbMappingStepCompleted || CheckFinish(); });
+}
+
+bool LocalMapping::IsMappingStepPending()
+{
+    if (!mbSingleThreaded)
+    {
+        return false;
+    }
+
+    unique_lock<mutex> lock(mMutexNewKFs);
+    return mbMappingStepRequested || !mbMappingStepCompleted;
 }
 
 bool LocalMapping::CheckNewKeyFrames()
@@ -1039,6 +1115,13 @@ void LocalMapping::RequestReset()
     }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Map reset, waiting..." << endl;
 
+    if (mbSingleThreaded)
+    {
+        RequestMappingStep();
+        WaitMappingStepCompletion();
+        return;
+    }
+
     while (1)
     {
         {
@@ -1060,6 +1143,13 @@ void LocalMapping::RequestResetActiveMap(Map* pMap)
         mpMapToReset = pMap;
     }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Active map reset, waiting..." << endl;
+
+    if (mbSingleThreaded)
+    {
+        RequestMappingStep();
+        WaitMappingStepCompletion();
+        return;
+    }
 
     while (1)
     {
@@ -1123,8 +1213,12 @@ void LocalMapping::ResetIfRequested()
 
 void LocalMapping::RequestFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
-    mbFinishRequested = true;
+    {
+        unique_lock<mutex> lock(mMutexFinish);
+        mbFinishRequested = true;
+    }
+    mCondNewKF.notify_one();
+    mCondMappingDone.notify_all();
 }
 
 bool LocalMapping::CheckFinish()

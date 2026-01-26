@@ -22,9 +22,9 @@
 #include "Verbose.h"
 
 #include <Eigen/Core>
+#include <mutex>
 #include <opencv2/core/core.hpp>
 #include <string>
-#include <mutex>
 
 namespace ORB_SLAM3
 {

@@ -23,11 +23,12 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <condition_variable>
 #include <fstream>
 #include <list>
+#include <mutex>
 #include <string>
 #include <utility>
-#include <mutex>
 
 namespace ORB_SLAM3
 {
@@ -50,7 +51,7 @@ class LocalMapping
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
-                 const string& _strSeqName = std::string());
+                 const string& _strSeqName = std::string(), const bool bSingleThreaded = false);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -64,6 +65,9 @@ public:
 
     void InsertKeyFrame(KeyFrame* pKF);
     void EmptyQueue();
+    void RequestMappingStep();
+    void WaitMappingStepCompletion();
+    bool IsMappingStepPending();
 
     // Thread Synch
     void RequestStop();
@@ -171,6 +175,13 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+    bool mbSingleThreaded;
+    bool mbMappingStepRequested;
+    bool mbMappingStepCompleted;
+    bool mbFirstMappingStep;
+    std::condition_variable mCondNewKF;
+    std::condition_variable mCondMappingDone;
 
     void InitializeIMU(float priorG = 1e2, float priorA = 1e6, bool bFirst = false);
     void ScaleRefinement();
