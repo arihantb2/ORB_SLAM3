@@ -108,7 +108,8 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
     bool b_parse_cam = ParseCamParamFile(fSettings);
     if (!b_parse_cam)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the camera parameters in the config file*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Error with the camera parameters in the config file*" << std::endl;
     }
 
     // Load ORB parameters
@@ -123,7 +124,8 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
         b_parse_imu = ParseIMUParamFile(fSettings);
         if (!b_parse_imu)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "*Error with the IMU parameters in the config file*" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                << "*Error with the IMU parameters in the config file*" << std::endl;
         }
 
         mnFramesToResetIMU = mMaxFrames;
@@ -546,7 +548,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera.lappingBegin not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "WARNING: Camera.lappingBegin not correctly defined" << std::endl;
             }
             node = fSettings["Camera.lappingEnd"];
             if (!node.empty() && node.isInt())
@@ -555,7 +558,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera.lappingEnd not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "WARNING: Camera.lappingEnd not correctly defined" << std::endl;
             }
             node = fSettings["Camera2.lappingBegin"];
             if (!node.empty() && node.isInt())
@@ -564,7 +568,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera2.lappingBegin not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "WARNING: Camera2.lappingBegin not correctly defined" << std::endl;
             }
             node = fSettings["Camera2.lappingEnd"];
             if (!node.empty() && node.isInt())
@@ -573,7 +578,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "WARNING: Camera2.lappingEnd not correctly defined" << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "WARNING: Camera2.lappingEnd not correctly defined" << std::endl;
             }
 
             node = fSettings["Tlr"];
@@ -621,7 +627,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
                 static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0] = rightLappingBegin;
                 static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1] = rightLappingEnd;
 
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera1 Lapping: " << leftLappingBegin << ", " << leftLappingEnd << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "- Camera1 Lapping: " << leftLappingBegin << ", " << leftLappingEnd << std::endl;
 
                 Verbose::Print(Verbose::VERBOSITY_NORMAL) << std::endl << "Camera2 Parameters:" << std::endl;
                 Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera: Fisheye" << std::endl;
@@ -637,7 +644,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
 
                 Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- mTlr: \n" << cvTlr << std::endl;
 
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Camera2 Lapping: " << rightLappingBegin << ", " << rightLappingEnd << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "- Camera2 Lapping: " << rightLappingBegin << ", " << rightLappingEnd << std::endl;
             }
         }
 
@@ -698,7 +706,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
         {
             mThDepth = node.real();
             mThDepth = mbf * mThDepth / fx;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl
+                                                      << "Depth Threshold (Close/Far Points): " << mThDepth << endl;
         }
         else
         {

@@ -534,7 +534,8 @@ public:
                     right++;
             }
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
     }
 };
 

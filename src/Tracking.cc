@@ -463,7 +463,8 @@ void Tracking::Track()
 
     if (mpLocalMapper->mbBadImu)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "TRACK: Reset map because local mapper set the bad imu flag " << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "TRACK: Reset map because local mapper set the bad imu flag " << endl;
         mpSystem->ResetActiveMap();
         return;
     }
@@ -491,7 +492,8 @@ void Tracking::Track()
 
                 if (mpAtlas->isImuInitialized())
                 {
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Timestamp jump detected. State set to LOST. Reseting IMU integration..." << endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                        << "Timestamp jump detected. State set to LOST. Reseting IMU integration..." << endl;
                     if (!pCurrentMap->GetIniertialBA2())
                     {
                         mpSystem->ResetActiveMap();
@@ -503,7 +505,8 @@ void Tracking::Track()
                 }
                 else
                 {
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Timestamp jump detected, before IMU initialization. Reseting..." << endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                        << "Timestamp jump detected, before IMU initialization. Reseting..." << endl;
                     mpSystem->ResetActiveMap();
                 }
                 return;
@@ -775,7 +778,8 @@ void Tracking::Track()
                 Verbose::PrintMess("Track lost for less than one second...", Verbose::VERBOSITY_NORMAL);
                 if (!pCurrentMap->isImuInitialized() || !pCurrentMap->GetIniertialBA2())
                 {
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU is not or recently initialized. Reseting active map..." << endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                        << "IMU is not or recently initialized. Reseting active map..." << endl;
                     mpSystem->ResetActiveMap();
                 }
 

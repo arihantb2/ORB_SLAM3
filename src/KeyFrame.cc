@@ -540,7 +540,8 @@ void KeyFrame::UpdateConnections(bool upParent)
     for (map<KeyFrame*, int>::iterator mit = KFcounter.begin(), mend = KFcounter.end(); mit != mend; mit++)
     {
         if (!upParent)
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "  UPDATE_CONN: KF " << mit->first->mnId << " ; num matches: " << mit->second << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                << "  UPDATE_CONN: KF " << mit->first->mnId << " ; num matches: " << mit->second << endl;
         if (mit->second > nmax)
         {
             nmax = mit->second;
@@ -601,7 +602,8 @@ void KeyFrame::ChangeParent(KeyFrame* pKF)
     unique_lock<mutex> lockCon(mMutexConnections);
     if (pKF == this)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "ERROR: Change parent KF, the parent and child are the same KF" << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "ERROR: Change parent KF, the parent and child are the same KF" << endl;
         throw std::invalid_argument("The parent and child can not be the same");
     }
 

@@ -77,7 +77,7 @@ void LocalMapping::Run()
 {
     mbFinished = false;
 
-    while(!RunLoop())
+    while (!RunLoop())
     {
         usleep(3000);
     }
@@ -124,10 +124,9 @@ bool LocalMapping::RunLoop()
                 if (mbInertial && mpCurrentKeyFrame->GetMap()->isImuInitialized())
                 {
                     float dist =
-                        (mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter())
-                            .norm() +
+                        (mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter()).norm() +
                         (mpCurrentKeyFrame->mPrevKF->mPrevKF->GetCameraCenter() -
-                            mpCurrentKeyFrame->mPrevKF->GetCameraCenter())
+                         mpCurrentKeyFrame->mPrevKF->GetCameraCenter())
                             .norm();
 
                     if (dist > 0.05)
@@ -136,7 +135,8 @@ bool LocalMapping::RunLoop()
                     {
                         if ((mTinit < 10.f) && (dist < 0.02))
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Not enough motion for initializing. Reseting..." << endl;
+                            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                                << "Not enough motion for initializing. Reseting..." << endl;
                             unique_lock<mutex> lock(mMutexReset);
                             mbResetRequestedActiveMap = true;
                             mpMapToReset = mpCurrentKeyFrame->GetMap();
@@ -145,16 +145,16 @@ bool LocalMapping::RunLoop()
                     }
 
                     bool bLarge = ((mpTracker->GetMatchesInliers() > 75) && mbMonocular) ||
-                                    ((mpTracker->GetMatchesInliers() > 100) && !mbMonocular);
+                                  ((mpTracker->GetMatchesInliers() > 100) && !mbMonocular);
                     Optimizer::LocalInertialBA(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
-                                                num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA, bLarge,
-                                                !mpCurrentKeyFrame->GetMap()->GetIniertialBA2());
+                                               num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA, bLarge,
+                                               !mpCurrentKeyFrame->GetMap()->GetIniertialBA2());
                     b_doneLBA = true;
                 }
                 else
                 {
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
-                                                        num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
+                                                     num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
                     b_doneLBA = true;
                 }
             }
@@ -208,8 +208,8 @@ bool LocalMapping::RunLoop()
                     // scale refinement
                     if (((mpAtlas->KeyFramesInMap()) <= 200) &&
                         ((mTinit > 25.0f && mTinit < 25.5f) || (mTinit > 35.0f && mTinit < 35.5f) ||
-                            (mTinit > 45.0f && mTinit < 45.5f) || (mTinit > 55.0f && mTinit < 55.5f) ||
-                            (mTinit > 65.0f && mTinit < 65.5f) || (mTinit > 75.0f && mTinit < 75.5f)))
+                         (mTinit > 45.0f && mTinit < 45.5f) || (mTinit > 55.0f && mTinit < 55.5f) ||
+                         (mTinit > 65.0f && mTinit < 65.5f) || (mTinit > 75.0f && mTinit < 75.5f)))
                     {
                         if (mbMonocular)
                             ScaleRefinement();

@@ -1851,15 +1851,17 @@ void LoopClosing::CheckObservations(set<KeyFrame*>& spKFsMap1, set<KeyFrame*>& s
 
         if (mMatchedMP.size() == 0)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "CHECK-OBS: KF " << pKFi1->mnId << " has not any matched MP with the other map" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                << "CHECK-OBS: KF " << pKFi1->mnId << " has not any matched MP with the other map" << endl;
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "CHECK-OBS: KF " << pKFi1->mnId << " has matched MP with " << mMatchedMP.size()
-                 << " KF from the other map" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "CHECK-OBS: KF " << pKFi1->mnId << " has matched MP with "
+                                                      << mMatchedMP.size() << " KF from the other map" << endl;
             for (pair<KeyFrame*, int> matchedKF : mMatchedMP)
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "   -KF: " << matchedKF.first->mnId << ", Number of matches: " << matchedKF.second << endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "   -KF: " << matchedKF.first->mnId << ", Number of matches: " << matchedKF.second << endl;
             }
         }
     }

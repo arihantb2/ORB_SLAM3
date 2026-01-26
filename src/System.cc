@@ -129,7 +129,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         //Load ORB Vocabulary
         Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
-                                                  << "Loading ORB Vocabulary. This could take a while..." << endl;
+                                                 << "Loading ORB Vocabulary. This could take a while..." << endl;
 
         mpVocabulary = new ORBVocabulary();
         bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
@@ -152,7 +152,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         //Load ORB Vocabulary
         Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
-                                                  << "Loading ORB Vocabulary. This could take a while..." << endl;
+                                                 << "Loading ORB Vocabulary. This could take a while..." << endl;
 
         mpVocabulary = new ORBVocabulary();
         bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);

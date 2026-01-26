@@ -506,8 +506,9 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 {
                     if (!VP1 || !VV1 || !VG1 || !VA1 || !VP2 || !VV2 || !VG2 || !VA2)
                     {
-                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
-                             << VV2 << ", " << VG2 << ", " << VA2 << endl;
+                        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                            << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", " << VV2
+                            << ", " << VG2 << ", " << VA2 << endl;
                         continue;
                     }
                 }
@@ -515,8 +516,8 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 {
                     if (!VP1 || !VV1 || !VG1 || !VA1 || !VP2 || !VV2)
                     {
-                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG1 << ", " << VA1 << ", " << VP2 << ", "
-                             << VV2 << endl;
+                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG1
+                                                                  << ", " << VA1 << ", " << VP2 << ", " << VV2 << endl;
                         continue;
                     }
                 }
@@ -555,7 +556,8 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 }
             }
             else
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << pKFi->mnId << " or " << pKFi->mPrevKF->mnId << " no imu" << endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << pKFi->mnId << " or " << pKFi->mPrevKF->mnId << " no imu" << endl;
         }
     }
 
@@ -3165,8 +3167,9 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg, double& sc
             g2o::HyperGraph::Vertex* VS = optimizer.vertex(maxKFid * 2 + 5);
             if (!VP1 || !VV1 || !VG || !VA || !VP2 || !VV2 || !VGDir || !VS)
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
-                     << VGDir << ", " << VS << endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
+                    << VGDir << ", " << VS << endl;
 
                 continue;
             }
@@ -3332,8 +3335,9 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Vector3d& bg, Eigen::Vect
             g2o::HyperGraph::Vertex* VS = optimizer.vertex(maxKFid * 2 + 5);
             if (!VP1 || !VV1 || !VG || !VA || !VP2 || !VV2 || !VGDir || !VS)
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
-                     << VGDir << ", " << VS << endl;
+                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                    << "Error" << VP1 << ", " << VV1 << ", " << VG << ", " << VA << ", " << VP2 << ", " << VV2 << ", "
+                    << VGDir << ", " << VS << endl;
 
                 continue;
             }

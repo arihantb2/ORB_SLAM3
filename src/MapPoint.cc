@@ -634,7 +634,8 @@ void MapPoint::PrintObservations()
         KeyFrame* pKFi = mit->first;
         tuple<int, int> indexes = mit->second;
         int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "--OBS in KF " << pKFi->mnId << " in map " << pKFi->GetMap()->GetId() << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "--OBS in KF " << pKFi->mnId << " in map " << pKFi->GetMap()->GetId() << endl;
     }
 }
 
@@ -687,7 +688,8 @@ void MapPoint::PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsi
     mpRefKF = mpKFid[mBackupRefKFId];
     if (!mpRefKF)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "ERROR: MP without KF reference " << mBackupRefKFId << "; Num obs: " << nObs << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "ERROR: MP without KF reference " << mBackupRefKFId << "; Num obs: " << nObs << endl;
     }
     mpReplaced = static_cast<MapPoint*>(NULL);
     if (mBackupReplacedId >= 0)

@@ -361,7 +361,8 @@ public:
                     right++;
             }
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;
     }
 
     Sophus::SE3<double> T_test;

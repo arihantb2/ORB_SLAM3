@@ -91,4 +91,4 @@ public:
     static void SetTh(eLevel _th) { th.store(_th, std::memory_order_relaxed); }
 };
 
-}
+}  // namespace ORB_SLAM3
