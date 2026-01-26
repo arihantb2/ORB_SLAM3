@@ -1,5 +1,8 @@
 #include "Tracking.h"
 
+#include "Atlas.h"
+#include "System.h"
+
 #include "CameraModels/KannalaBrandt8.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"

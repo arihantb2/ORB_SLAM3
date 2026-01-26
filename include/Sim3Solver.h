@@ -21,13 +21,19 @@
 
 #include "Verbose.h"
 
+#include <Eigen/Core>
 #include <opencv2/opencv.hpp>
+#include <utility>
 #include <vector>
-
-#include "KeyFrame.h"
 
 namespace ORB_SLAM3
 {
+
+class GeometricCamera;
+class KeyFrame;
+class MapPoint;
+
+using std::vector;
 
 class Sim3Solver
 {

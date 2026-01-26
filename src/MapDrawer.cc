@@ -17,10 +17,14 @@
 */
 
 #include "MapDrawer.h"
-#include <pangolin/pangolin.h>
-#include <mutex>
+
+#include "Atlas.h"
 #include "KeyFrame.h"
 #include "MapPoint.h"
+#include "Settings.h"
+
+#include <pangolin/pangolin.h>
+#include <mutex>
 
 namespace ORB_SLAM3
 {

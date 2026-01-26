@@ -21,13 +21,12 @@
 
 #include "Verbose.h"
 
+#include <Eigen/Core>
 #include <list>
+#include <map>
 #include <set>
 #include <vector>
 
-#include "Frame.h"
-#include "KeyFrame.h"
-#include "Map.h"
 #include "ORBVocabulary.h"
 
 #include <boost/serialization/base_object.hpp>
@@ -42,6 +41,10 @@ namespace ORB_SLAM3
 class KeyFrame;
 class Frame;
 class Map;
+
+using std::list;
+using std::map;
+using std::vector;
 
 class KeyFrameDatabase
 {

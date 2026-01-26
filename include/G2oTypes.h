@@ -32,12 +32,11 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-
-#include <Frame.h>
-#include <KeyFrame.h>
+#include <vector>
 
 #include <math.h>
-#include "Converter.h"
+
+#include "ImuTypes.h"
 
 namespace ORB_SLAM3
 {

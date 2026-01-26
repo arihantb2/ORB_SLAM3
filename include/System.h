@@ -23,20 +23,15 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <mutex>
 #include <opencv2/core/core.hpp>
 #include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
-#include "Atlas.h"
 #include "ImuTypes.h"
-#include "KeyFrameDatabase.h"
-#include "LocalMapping.h"
-#include "LoopClosing.h"
-#include "MapDrawer.h"
 #include "ORBVocabulary.h"
-#include "Settings.h"
-#include "Tracking.h"
-#include "Viewer.h"
 
 namespace ORB_SLAM3
 {
@@ -48,6 +43,13 @@ class Tracking;
 class LocalMapping;
 class LoopClosing;
 class Settings;
+class KeyFrame;
+class Map;
+class MapPoint;
+class KeyFrameDatabase;
+
+using std::string;
+using std::vector;
 
 class System
 {

@@ -21,12 +21,16 @@
 
 #include "Verbose.h"
 
-#include "KeyFrame.h"
-#include "MapPoint.h"
-
 #include <pangolin/pangolin.h>
+#include <sophus/se3.hpp>
+#include <list>
+#include <map>
 #include <mutex>
 #include <set>
+#include <string>
+#include <vector>
+
+#include "ORBVocabulary.h"
 
 #include <boost/serialization/base_object.hpp>
 
@@ -37,6 +41,12 @@ class MapPoint;
 class KeyFrame;
 class Atlas;
 class KeyFrameDatabase;
+class GeometricCamera;
+
+using std::list;
+using std::map;
+using std::string;
+using std::vector;
 
 class Map
 {

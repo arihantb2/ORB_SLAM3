@@ -23,15 +23,21 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <set>
+#include <utility>
 #include <vector>
 #include "sophus/sim3.hpp"
 
-#include "Frame.h"
-#include "KeyFrame.h"
-#include "MapPoint.h"
-
 namespace ORB_SLAM3
 {
+
+class Frame;
+class KeyFrame;
+class MapPoint;
+
+using std::pair;
+using std::set;
+using std::vector;
 
 class ORBmatcher
 {

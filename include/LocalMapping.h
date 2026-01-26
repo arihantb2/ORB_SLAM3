@@ -21,13 +21,12 @@
 
 #include "Verbose.h"
 
-#include "Atlas.h"
-#include "KeyFrame.h"
-#include "KeyFrameDatabase.h"
-#include "LoopClosing.h"
-#include "Settings.h"
-#include "Tracking.h"
-
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <fstream>
+#include <list>
+#include <string>
+#include <utility>
 #include <mutex>
 
 namespace ORB_SLAM3
@@ -37,6 +36,14 @@ class System;
 class Tracking;
 class LoopClosing;
 class Atlas;
+class KeyFrame;
+class Map;
+class MapPoint;
+
+using std::list;
+using std::ofstream;
+using std::string;
+using std::unique_lock;
 
 class LocalMapping
 {

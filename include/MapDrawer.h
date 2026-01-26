@@ -22,10 +22,9 @@
 #include "Verbose.h"
 
 #include <pangolin/pangolin.h>
-#include "Atlas.h"
-#include "KeyFrame.h"
-#include "MapPoint.h"
-#include "Settings.h"
+#include <sophus/se3.hpp>
+#include <opencv2/core/core.hpp>
+#include <string>
 
 #include <mutex>
 
@@ -33,6 +32,11 @@ namespace ORB_SLAM3
 {
 
 class Settings;
+class Atlas;
+class KeyFrame;
+class MapPoint;
+
+using std::string;
 
 class MapDrawer
 {

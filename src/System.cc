@@ -17,6 +17,16 @@
 */
 
 #include "System.h"
+
+#include "Atlas.h"
+#include "KeyFrameDatabase.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "MapDrawer.h"
+#include "ORBVocabulary.h"
+#include "Settings.h"
+#include "Tracking.h"
+#include "Viewer.h"
 #include <openssl/md5.h>
 #include <pangolin/pangolin.h>
 #include <boost/archive/binary_iarchive.hpp>

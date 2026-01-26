@@ -17,6 +17,12 @@
 */
 
 #include "Viewer.h"
+
+#include "Atlas.h"
+#include "MapDrawer.h"
+#include "Settings.h"
+#include "System.h"
+#include "Tracking.h"
 #include <pangolin/pangolin.h>
 
 #include <mutex>
