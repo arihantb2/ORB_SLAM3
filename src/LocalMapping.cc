@@ -335,26 +335,28 @@ void LocalMapping::MapPointCulling()
         if (pMP->isBad())
         {
             lit = mlpRecentAddedMapPoints.erase(lit);
+            continue;
         }
-        else if (pMP->GetFoundRatio() < 0.25f)
+
+        const bool tooFewObservations = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2
+            && pMP->Observations() <= cnThObs;
+        const bool tooOld = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3;
+        const bool lowFoundRatio = pMP->GetFoundRatio() < 0.25f;
+        const bool shouldErase = lowFoundRatio || tooFewObservations || tooOld;
+        const bool shouldSetBad = lowFoundRatio || tooFewObservations;
+
+        if (shouldErase)
         {
-            pMP->SetBadFlag();
+            if (shouldSetBad)
+            {
+                pMP->SetBadFlag();
+            }
             lit = mlpRecentAddedMapPoints.erase(lit);
+            continue;
         }
-        else if (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs)
-        {
-            pMP->SetBadFlag();
-            lit = mlpRecentAddedMapPoints.erase(lit);
-        }
-        else if (((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3)
-        {
-            lit = mlpRecentAddedMapPoints.erase(lit);
-        }
-        else
-        {
-            lit++;
-            borrar--;
-        }
+
+        lit++;
+        borrar--;
     }
 }
 
@@ -942,19 +944,7 @@ void LocalMapping::KeyFrameCulling()
     mpCurrentKeyFrame->UpdateBestCovisibles();
     vector<KeyFrame*> vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
 
-    float redundant_th;
-    if (!mbInertial)
-    {
-        redundant_th = 0.9;
-    }
-    else if (mbMonocular)
-    {
-        redundant_th = 0.9;
-    }
-    else
-    {
-        redundant_th = 0.5;
-    }
+    const float redundant_th = (mbInertial && !mbMonocular) ? 0.5f : 0.9f;
     const bool bInitImu = mpAtlas->isImuInitialized();
     int count = 0;
 
@@ -1074,17 +1064,14 @@ void LocalMapping::KeyFrameCulling()
                 {
                     const float t = pKF->mNextKF->mTimeStamp - pKF->mPrevKF->mTimeStamp;
 
-                    if ((bInitImu && (pKF->mnId < last_ID) && t < 3.) || (t < 0.5))
-                    {
-                        pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
-                        pKF->mNextKF->mPrevKF = pKF->mPrevKF;
-                        pKF->mPrevKF->mNextKF = pKF->mNextKF;
-                        pKF->mNextKF = NULL;
-                        pKF->mPrevKF = NULL;
-                        pKF->SetBadFlag();
-                    }
-                    else if (!mpCurrentKeyFrame->GetMap()->GetIniertialBA2() &&
-                             ((pKF->GetImuPosition() - pKF->mPrevKF->GetImuPosition()).norm() < 0.02) && (t < 3))
+                    const bool imuWindow = bInitImu && (pKF->mnId < last_ID) && t < 3.0f;
+                    const bool shortInterval = t < 0.5f;
+                    const bool smallMotionNoBA2 =
+                        !mpCurrentKeyFrame->GetMap()->GetIniertialBA2()
+                        && ((pKF->GetImuPosition() - pKF->mPrevKF->GetImuPosition()).norm() < 0.02f)
+                        && (t < 3.0f);
+
+                    if (imuWindow || shortInterval || smallMotionNoBA2)
                     {
                         pKF->mNextKF->mpImuPreintegrated->MergePrevious(pKF->mpImuPreintegrated);
                         pKF->mNextKF->mPrevKF = pKF->mPrevKF;

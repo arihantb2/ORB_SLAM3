@@ -73,11 +73,13 @@ void Tracking::newParameterLoader(Settings* settings)
     mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
+    {
         mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
-
+    }
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
+    {
         mpIniORBextractor = new ORBextractor(5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
-
+    }
     //IMU parameters
     Sophus::SE3f Tbc = settings->Tbc();
     mInsertKFsLost = settings->insertKFsWhenLost();
@@ -285,8 +287,9 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- p2: " << mDistCoef.at<float>(3) << std::endl;
 
         if (mDistCoef.rows == 5)
+        {
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- k3: " << mDistCoef.at<float>(4) << std::endl;
-
+        }
         mK = cv::Mat::eye(3, 3, CV_32F);
         mK.at<float>(0, 0) = fx;
         mK.at<float>(1, 1) = fy;
@@ -672,9 +675,10 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
     }
 
     float fps = fSettings["Camera.fps"];
-    if (fps == 0)
+    if (fps <= 1)
+    {
         fps = 30;
-
+    }
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
     mMaxFrames = fps;
@@ -685,10 +689,13 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
     mbRGB = nRGB;
 
     if (mbRGB)
+    {
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- color order: RGB (ignored if grayscale)" << endl;
+    }
     else
+    {
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- color order: BGR (ignored if grayscale)" << endl;
-
+    }
     if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
     {
         float fx = mpCamera->getParameter(0);
@@ -784,11 +791,13 @@ bool Tracking::ParseORBParamFile(cv::FileStorage& fSettings)
     mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
+    {
         mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
-
+    }
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
+    {
         mpIniORBextractor = new ORBextractor(5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
-
+    }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "ORB Extractor Parameters: " << endl;
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Number of Features: " << nFeatures << endl;
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Scale Levels: " << nLevels << endl;
@@ -832,8 +841,9 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
     }
 
     if (!mInsertKFsLost)
+    {
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Do not insert keyframes when lost visual tracking " << endl;
-
+    }
     float Ng, Na, Ngw, Naw;
 
     node = fSettings["IMU.Frequency"];
@@ -900,8 +910,9 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage& fSettings)
     }
 
     if (mFastInit)
+    {
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Fast IMU initialization. Acceleration is not checked \n";
-
+    }
     if (b_miss_params)
     {
         return false;

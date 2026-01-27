@@ -1554,11 +1554,7 @@ bool Tracking::NeedNewKeyFrame()
     }
 
     // Tracked MapPoints in the reference keyframe
-    int nMinObs = 3;
-    if (nKFs <= 2)
-    {
-        nMinObs = 2;
-    }
+    const int nMinObs = (nKFs <= 2) ? 2 : 3;
     int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
 
     // Local Mapping accept keyframes?
@@ -1587,33 +1583,25 @@ bool Tracking::NeedNewKeyFrame()
         }
     }
 
-    bool bNeedToInsertClose;
-    bNeedToInsertClose = (nTrackedClose < 100) && (nNonTrackedClose > 70);
+    const bool bNeedToInsertClose = (nTrackedClose < 100) && (nNonTrackedClose > 70);
 
     // Thresholds
-    float thRefRatio = 0.75f;
-    if (nKFs < 2)
+    float thRefRatio;
+    if (mSensor == System::IMU_MONOCULAR)
     {
-        thRefRatio = 0.4f;
+        thRefRatio = (mnMatchesInliers > 350) ? 0.75f : 0.90f;  // Points tracked from the local map
     }
-    if (mSensor == System::MONOCULAR)
-    {
-        thRefRatio = 0.9f;
-    }
-    if (mpCamera2)
+    else if (mpCamera2)
     {
         thRefRatio = 0.75f;
     }
-    if (mSensor == System::IMU_MONOCULAR)
+    else if (mSensor == System::MONOCULAR)
     {
-        if (mnMatchesInliers > 350)  // Points tracked from the local map
-        {
-            thRefRatio = 0.75f;
-        }
-        else
-        {
-            thRefRatio = 0.90f;
-        }
+        thRefRatio = 0.9f;
+    }
+    else
+    {
+        thRefRatio = (nKFs < 2) ? 0.4f : 0.75f;
     }
 
     // More than "MaxFrames" have passed from last keyframe insertion
@@ -1635,38 +1623,25 @@ bool Tracking::NeedNewKeyFrame()
 
     const bool c4 = (((mnMatchesInliers < 75) && (mnMatchesInliers > 15))) && (mSensor == System::IMU_MONOCULAR);
 
-    if (((c1a || c1b || c1c) && c2) || c3 || c4)
-    {
-        // If the mapping accepts keyframes, insert keyframe.
-        // Otherwise send a signal to interrupt BA
-        if (bLocalMappingIdle || mpLocalMapper->IsInitializing())
-        {
-            return true;
-        }
-        else
-        {
-            mpLocalMapper->InterruptBA();
-            if (mSensor != System::MONOCULAR && mSensor != System::IMU_MONOCULAR)
-            {
-                if (mpLocalMapper->KeyframesInQueue() < 3)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
-    else
+    const bool needKeyFrame = (((c1a || c1b || c1c) && c2) || c3 || c4);
+    if (!needKeyFrame)
     {
         return false;
     }
+
+    // If the mapping accepts keyframes, insert keyframe.
+    // Otherwise send a signal to interrupt BA
+    if (bLocalMappingIdle || mpLocalMapper->IsInitializing())
+    {
+        return true;
+    }
+
+    mpLocalMapper->InterruptBA();
+    if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
+    {
+        return false;
+    }
+    return (mpLocalMapper->KeyframesInQueue() < 3);
 }
 
 void Tracking::CreateNewKeyFrame()
