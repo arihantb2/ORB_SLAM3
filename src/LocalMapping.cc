@@ -1121,8 +1121,10 @@ void LocalMapping::RequestReset()
         {
             unique_lock<mutex> lock2(mMutexReset);
             if (!mbResetRequested)
-{                break;
-}        }
+            {
+                break;
+            }
+        }
         usleep(3000);
     }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Map reset, Done!!!" << endl;
@@ -1143,8 +1145,10 @@ void LocalMapping::RequestResetActiveMap(Map* pMap)
         {
             unique_lock<mutex> lock2(mMutexReset);
             if (!mbResetRequestedActiveMap)
-{                break;
-}        }
+            {
+                break;
+            }
+        }
         usleep(3000);
     }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Active map reset, Done!!!" << endl;
@@ -1195,8 +1199,10 @@ void LocalMapping::ResetIfRequested()
         }
     }
     if (executed_reset)
-{        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Reset free the mutex" << endl;
-}}
+    {
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Reset free the mutex" << endl;
+    }
+}
 
 void LocalMapping::RequestFinish()
 {
@@ -1227,8 +1233,9 @@ bool LocalMapping::isFinished()
 void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
 {
     if (mbResetRequested)
-{        return;
-}
+    {
+        return;
+    }
     float minTime;
     int nMinKF;
     if (mbMonocular)
@@ -1243,8 +1250,9 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     }
 
     if (mpAtlas->KeyFramesInMap() < nMinKF)
-{        return;
-}
+    {
+        return;
+    }
     // Retrieve all keyframe in temporal order
     list<KeyFrame*> lpKF;
     KeyFrame* pKF = mpCurrentKeyFrame;
@@ -1257,12 +1265,14 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     vector<KeyFrame*> vpKF(lpKF.begin(), lpKF.end());
 
     if (vpKF.size() < nMinKF)
-{        return;
-}
+    {
+        return;
+    }
     mFirstTs = vpKF.front()->mTimeStamp;
     if (mpCurrentKeyFrame->mTimeStamp - mFirstTs < minTime)
-{        return;
-}
+    {
+        return;
+    }
     bInitializing = true;
 
     while (CheckNewKeyFrames())
@@ -1284,10 +1294,13 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         for (vector<KeyFrame*>::iterator itKF = vpKF.begin(); itKF != vpKF.end(); itKF++)
         {
             if (!(*itKF)->mpImuPreintegrated)
-{                continue;
-}            if (!(*itKF)->mPrevKF)
-{                continue;
-}
+            {
+                continue;
+            }
+            if (!(*itKF)->mPrevKF)
+            {
+                continue;
+            }
             dirG -= (*itKF)->mPrevKF->GetImuRotation() * (*itKF)->mpImuPreintegrated->GetUpdatedDeltaVelocity();
             Eigen::Vector3f _vel =
                 ((*itKF)->GetImuPosition() - (*itKF)->mPrevKF->GetImuPosition()) / (*itKF)->mpImuPreintegrated->dT;
@@ -1342,12 +1355,14 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
 
         // Check if initialization OK
         if (!mpAtlas->isImuInitialized())
-{            for (int i = 0; i < N; i++)
+        {
+            for (int i = 0; i < N; i++)
             {
                 KeyFrame* pKF2 = vpKF[i];
                 pKF2->bImu = true;
             }
-}    }
+        }
+    }
 
     mpTracker->UpdateFrameIMU(1.0, vpKF[0]->GetImuBias(), mpCurrentKeyFrame);
     if (!mpAtlas->isImuInitialized())
@@ -1361,11 +1376,15 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     if (bFIBA)
     {
         if (priorA != 0.f)
-{            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId, NULL, true, priorG,
+        {
+            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId, NULL, true, priorG,
                                       priorA);
-}        else
-{            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId, NULL, false);
-}    }
+        }
+        else
+        {
+            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId, NULL, false);
+        }
+    }
 
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
 
@@ -1397,8 +1416,9 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         {
             KeyFrame* pChild = *sit;
             if (!pChild || pChild->isBad())
-{                continue;
-}
+            {
+                continue;
+            }
             if (pChild->mnBAGlobalForKF != GBAid)
             {
                 Sophus::SE3f Tchildc = pChild->GetPose() * Twc;
@@ -1445,8 +1465,9 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         MapPoint* pMP = vpMPs[i];
 
         if (pMP->isBad())
-{            continue;
-}
+        {
+            continue;
+        }
         if (pMP->mnBAGlobalForKF == GBAid)
         {
             // If optimized by Global BA, just update
@@ -1458,8 +1479,9 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
             if (pRefKF->mnBAGlobalForKF != GBAid)
-{                continue;
-}
+            {
+                continue;
+            }
             // Map to non-corrected camera
             Eigen::Vector3f Xc = pRefKF->mTcwBefGBA * pMP->GetWorldPos();
 
@@ -1494,8 +1516,9 @@ void LocalMapping::ScaleRefinement()
     // Minimum time (seconds) between first and last keyframe to compute a solution. Make the difference between monocular and stereo
     // unique_lock<mutex> lock0(mMutexImuInit);
     if (mbResetRequested)
-{        return;
-}
+    {
+        return;
+    }
     // Retrieve all keyframes in temporal order
     list<KeyFrame*> lpKF;
     KeyFrame* pKF = mpCurrentKeyFrame;
@@ -1570,8 +1593,10 @@ double LocalMapping::GetCurrKFTime()
         return mpCurrentKeyFrame->mTimeStamp;
     }
     else
-{        return 0.0;
-}}
+    {
+        return 0.0;
+    }
+}
 
 KeyFrame* LocalMapping::GetCurrKF()
 {
