@@ -197,8 +197,6 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded ORB settings" << endl;
     readViewer(fSettings);
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded viewer settings" << endl;
-    readLoadAndSave(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded Atlas settings" << endl;
     readOtherParameters(fSettings);
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded misc parameters" << endl;
 
@@ -514,14 +512,6 @@ void Settings::readViewer(cv::FileStorage& fSettings)
 
     if (!found)
         imageViewerScale_ = 1.0f;
-}
-
-void Settings::readLoadAndSave(cv::FileStorage& fSettings)
-{
-    bool found;
-
-    sLoadFrom_ = readParameter<string>(fSettings, "System.LoadAtlasFromFile", found, false);
-    sSaveto_ = readParameter<string>(fSettings, "System.SaveAtlasToFile", found, false);
 }
 
 void Settings::readOtherParameters(cv::FileStorage& fSettings)

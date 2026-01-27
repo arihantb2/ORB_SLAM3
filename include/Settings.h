@@ -123,9 +123,6 @@ public:
     float viewPointF() { return viewPointF_; }
     float imageViewerScale() { return imageViewerScale_; }
 
-    std::string atlasLoadFile() { return sLoadFrom_; }
-    std::string atlasSaveFile() { return sSaveto_; }
-
     float thFarPoints() { return thFarPoints_; }
 
     cv::Mat M1l() { return M1l_; }
@@ -165,7 +162,6 @@ private:
     void readIMU(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);
-    void readLoadAndSave(cv::FileStorage& fSettings);
     void readOtherParameters(cv::FileStorage& fSettings);
 
     void precomputeRectificationMaps();

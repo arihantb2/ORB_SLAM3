@@ -137,11 +137,6 @@ public:
     float GetImageScale();
 
 private:
-    void SaveAtlas(int type);
-    bool LoadAtlas(int type);
-
-    string CalculateCheckSum(string filename, int type);
-
     // Input sensor
     eSensor mSensor;
 
@@ -196,10 +191,6 @@ private:
     // Outlier flags aligned with mDetectedKeyPoints / mTrackedMapPoints
     std::vector<bool> mTrackedOutliers;
     std::mutex mMutexState;
-
-    //
-    string mStrLoadAtlasFromFile;
-    string mStrSaveAtlasToFile;
 
     string mStrVocabularyFilePath;
 

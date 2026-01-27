@@ -1618,11 +1618,10 @@ bool Tracking::NeedNewKeyFrame()
 
     // More than "MaxFrames" have passed from last keyframe insertion
     const bool c1a = mCurrentFrame.mnId >= mnLastKeyFrameId + mMaxFrames;
- 
+
     // More than "MinFrames" have passed and Local Mapping is idle
-    const bool c1b = ((mCurrentFrame.mnId >= mnLastKeyFrameId + mMinFrames) &&
-                      bLocalMappingIdle);
- 
+    const bool c1b = ((mCurrentFrame.mnId >= mnLastKeyFrameId + mMinFrames) && bLocalMappingIdle);
+
     // Tracking is weak
     const bool c1c = mSensor != System::MONOCULAR && mSensor != System::IMU_MONOCULAR &&
                      mSensor != System::IMU_STEREO && (mnMatchesInliers < nRefMatches * 0.25 || bNeedToInsertClose);
@@ -1631,7 +1630,8 @@ bool Tracking::NeedNewKeyFrame()
     const bool c2 = (((mnMatchesInliers < nRefMatches * thRefRatio || bNeedToInsertClose)) && mnMatchesInliers > 15);
 
     // Temporal condition for Inertial cases
-    const bool c3 = (mpLastKeyFrame) && (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) && (mCurrentFrame.mTimeStamp - mpLastKeyFrame->mTimeStamp >= 0.5);
+    const bool c3 = (mpLastKeyFrame) && (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) &&
+                    (mCurrentFrame.mTimeStamp - mpLastKeyFrame->mTimeStamp >= 0.5);
 
     const bool c4 = (((mnMatchesInliers < 75) && (mnMatchesInliers > 15))) && (mSensor == System::IMU_MONOCULAR);
 
@@ -2020,8 +2020,9 @@ void Tracking::UpdateLocalKeyFrames()
     {
         // Limit the number of keyframes
         if (mvpLocalKeyFrames.size() > 80)  // 80
-{            break;
-}
+        {
+            break;
+        }
         KeyFrame* pKF = *itKF;
 
         const vector<KeyFrame*> vNeighs = pKF->GetBestCovisibilityKeyFrames(10);

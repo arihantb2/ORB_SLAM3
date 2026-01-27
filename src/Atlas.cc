@@ -47,7 +47,9 @@ Atlas::~Atlas()
             it = mspMaps.erase(it);
         }
         else
+        {
             ++it;
+        }
     }
 }
 
@@ -58,14 +60,13 @@ void Atlas::CreateNewMap()
     if (mpCurrentMap)
     {
         if (!mspMaps.empty() && mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
+        {
             mnLastInitKFidMap = mpCurrentMap->GetMaxKFid() + 1;  //The init KF is the next of current maximum
-
+        }
         mpCurrentMap->SetStoredMap();
         Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Stored map with ID: " << mpCurrentMap->GetId() << endl;
-
-        //if(mHasViewer)
-        //    mpViewer->AddMapToCreateThumbnail(mpCurrentMap);
     }
+
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Creation of new map with last KF id: " << mnLastInitKFidMap << endl;
 
     mpCurrentMap = new Map(mnLastInitKFidMap);
@@ -119,12 +120,17 @@ GeometricCamera* Atlas::AddCamera(GeometricCamera* pCam)
     {
         GeometricCamera* pCam_i = mvpCameras[i];
         if (!pCam)
+        {
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Not pCam" << std::endl;
+        }
         if (!pCam_i)
+        {
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Not pCam_i" << std::endl;
+        }
         if (pCam->GetType() != pCam_i->GetType())
+        {
             continue;
-
+        }
         if (pCam->GetType() == GeometricCamera::CAM_PINHOLE)
         {
             if (((Pinhole*)pCam_i)->IsEqual(pCam))
@@ -248,10 +254,13 @@ Map* Atlas::GetCurrentMap()
 {
     unique_lock<mutex> lock(mMutexAtlas);
     if (!mpCurrentMap)
+    {
         CreateNewMap();
+    }
     while (mpCurrentMap->IsBad())
+    {
         usleep(3000);
-
+    }
     return mpCurrentMap;
 }
 
@@ -302,7 +311,9 @@ void Atlas::PreSave()
     if (mpCurrentMap)
     {
         if (!mspMaps.empty() && mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
+        {
             mnLastInitKFidMap = mpCurrentMap->GetMaxKFid() + 1;  //The init KF is the next of current maximum
+        }
     }
 
     struct compFunctor
@@ -316,8 +327,9 @@ void Atlas::PreSave()
     for (Map* pMi : mvpBackupMaps)
     {
         if (!pMi || pMi->IsBad())
+        {
             continue;
-
+        }
         if (pMi->GetAllKeyFrames().size() == 0)
         {
             // Empty map, erase before of save it.

@@ -100,25 +100,11 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         settings_ = new Settings(strSettingsFile, mSensor);
 
-        mStrLoadAtlasFromFile = settings_->atlasLoadFile();
-        mStrSaveAtlasToFile = settings_->atlasSaveFile();
-
         Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << endl;
     }
     else
     {
-        settings_ = nullptr;
-        cv::FileNode node = fsSettings["System.LoadAtlasFromFile"];
-        if (!node.empty() && node.isString())
-        {
-            mStrLoadAtlasFromFile = (string)node;
-        }
-
-        node = fsSettings["System.SaveAtlasToFile"];
-        if (!node.empty() && node.isString())
-        {
-            mStrSaveAtlasToFile = (string)node;
-        }
+        throw std::runtime_error("Settings file version is not supported");
     }
 
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << endl;
@@ -133,66 +119,30 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
 
     mStrVocabularyFilePath = strVocFile;
 
-    if (mStrLoadAtlasFromFile.empty())
+    //Load ORB Vocabulary
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
+
+    mpVocabulary = new ORBVocabulary();
+    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    if (!bVocLoad)
     {
-        //Load ORB Vocabulary
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
-                                                 << "Loading ORB Vocabulary. This could take a while..." << endl;
-
-        mpVocabulary = new ORBVocabulary();
-        bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
-        if (!bVocLoad)
-        {
-            cerr << "Wrong path to vocabulary. " << endl;
-            cerr << "Falied to open at: " << strVocFile << endl;
-            exit(-1);
-        }
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
-
-        //Create KeyFrame Database
-        mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
-
-        //Create the Atlas
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << endl;
-        mpAtlas = new Atlas(0);
+        cerr << "Wrong path to vocabulary. " << endl;
+        cerr << "Falied to open at: " << strVocFile << endl;
+        exit(-1);
     }
-    else
-    {
-        //Load ORB Vocabulary
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << endl
-                                                 << "Loading ORB Vocabulary. This could take a while..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
 
-        mpVocabulary = new ORBVocabulary();
-        bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
-        if (!bVocLoad)
-        {
-            cerr << "Wrong path to vocabulary. " << endl;
-            cerr << "Falied to open at: " << strVocFile << endl;
-            exit(-1);
-        }
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
+    //Create KeyFrame Database
+    mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
-        //Create KeyFrame Database
-        mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
+    //Create the Atlas
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << endl;
+    mpAtlas = new Atlas(0);
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Load File" << endl;
+    const bool monocular = mSensor == MONOCULAR || mSensor == IMU_MONOCULAR;
+    const bool inertial = mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO;
 
-        // Load the file with an earlier session
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "Initialization of Atlas from file: " << mStrLoadAtlasFromFile << endl;
-        bool isRead = LoadAtlas(FileType::BINARY_FILE);
-
-        if (!isRead)
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "Error to load the file, please try with other session file or vocabulary file" << endl;
-            exit(-1);
-        }
-
-        mpAtlas->CreateNewMap();
-    }
-
-    if (mSensor == IMU_STEREO || mSensor == IMU_MONOCULAR)
+    if (inertial)
     {
         mpAtlas->SetInertialSensor();
     }
@@ -203,9 +153,6 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     //Initialize the Tracking thread
     mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
                              settings_, newMaps);
-
-    const bool monocular = mSensor == MONOCULAR || mSensor == IMU_MONOCULAR;
-    const bool inertial = mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO;
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial);
@@ -461,12 +408,6 @@ void System::Shutdown()
     {
         mptViewer->join();
     }
-
-    if (!mStrSaveAtlasToFile.empty())
-    {
-        Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
-        SaveAtlas(FileType::BINARY_FILE);
-    }
 }
 
 bool System::isShutDown()
@@ -624,152 +565,6 @@ void System::ChangeDataset()
 float System::GetImageScale()
 {
     return mpTracker->GetImageScale();
-}
-
-void System::SaveAtlas(int type)
-{
-    if (!mStrSaveAtlasToFile.empty())
-    {
-        // Save the current session
-        mpAtlas->PreSave();
-
-        string pathSaveFileName = "./";
-        pathSaveFileName = pathSaveFileName.append(mStrSaveAtlasToFile);
-        pathSaveFileName = pathSaveFileName.append(".osa");
-
-        string strVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath, TEXT_FILE);
-        std::size_t found = mStrVocabularyFilePath.find_last_of("/\\");
-        string strVocabularyName = mStrVocabularyFilePath.substr(found + 1);
-
-        if (type == TEXT_FILE)  // File text
-        {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Starting to write the save text file " << endl;
-            std::remove(pathSaveFileName.c_str());
-            std::ofstream ofs(pathSaveFileName, std::ios::binary);
-            boost::archive::text_oarchive oa(ofs);
-
-            oa << strVocabularyName;
-            oa << strVocabularyChecksum;
-            oa << mpAtlas;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "End to write the save text file" << endl;
-        }
-        else if (type == BINARY_FILE)  // File binary
-        {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Starting to write the save binary file" << endl;
-            std::remove(pathSaveFileName.c_str());
-            std::ofstream ofs(pathSaveFileName, std::ios::binary);
-            boost::archive::binary_oarchive oa(ofs);
-            oa << strVocabularyName;
-            oa << strVocabularyChecksum;
-            oa << mpAtlas;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "End to write save binary file" << endl;
-        }
-    }
-}
-
-bool System::LoadAtlas(int type)
-{
-    string strFileVoc, strVocChecksum;
-    bool isRead = false;
-
-    string pathLoadFileName = "./";
-    pathLoadFileName = pathLoadFileName.append(mStrLoadAtlasFromFile);
-    pathLoadFileName = pathLoadFileName.append(".osa");
-
-    if (type == TEXT_FILE)  // File text
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Starting to read the save text file " << endl;
-        std::ifstream ifs(pathLoadFileName, std::ios::binary);
-        if (!ifs.good())
-        {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Load file not found" << endl;
-            return false;
-        }
-        boost::archive::text_iarchive ia(ifs);
-        ia >> strFileVoc;
-        ia >> strVocChecksum;
-        ia >> mpAtlas;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "End to load the save text file " << endl;
-        isRead = true;
-    }
-    else if (type == BINARY_FILE)  // File binary
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Starting to read the save binary file" << endl;
-        std::ifstream ifs(pathLoadFileName, std::ios::binary);
-        if (!ifs.good())
-        {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Load file not found" << endl;
-            return false;
-        }
-        boost::archive::binary_iarchive ia(ifs);
-        ia >> strFileVoc;
-        ia >> strVocChecksum;
-        ia >> mpAtlas;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "End to load the save binary file" << endl;
-        isRead = true;
-    }
-
-    if (isRead)
-    {
-        //Check if the vocabulary is the same
-        string strInputVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath, TEXT_FILE);
-
-        if (strInputVocabularyChecksum.compare(strVocChecksum) != 0)
-        {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL)
-                << "The vocabulary load isn't the same which the load session was created " << endl;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "-Vocabulary name: " << strFileVoc << endl;
-            return false;  // Both are differents
-        }
-
-        mpAtlas->SetKeyFrameDababase(mpKeyFrameDatabase);
-        mpAtlas->SetORBVocabulary(mpVocabulary);
-        mpAtlas->PostLoad();
-
-        return true;
-    }
-    return false;
-}
-
-string System::CalculateCheckSum(string filename, int type)
-{
-    string checksum = "";
-
-    unsigned char c[MD5_DIGEST_LENGTH];
-
-    std::ios_base::openmode flags = std::ios::in;
-    if (type == BINARY_FILE)  // Binary file
-        flags = std::ios::in | std::ios::binary;
-
-    ifstream f(filename.c_str(), flags);
-    if (!f.is_open())
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "[E] Unable to open the in file " << filename << " for Md5 hash." << endl;
-        return checksum;
-    }
-
-    MD5_CTX md5Context;
-    char buffer[1024];
-
-    MD5_Init(&md5Context);
-    while (int count = f.readsome(buffer, sizeof(buffer)))
-    {
-        MD5_Update(&md5Context, buffer, count);
-    }
-
-    f.close();
-
-    MD5_Final(c, &md5Context);
-
-    for (int i = 0; i < MD5_DIGEST_LENGTH; i++)
-    {
-        char aux[10];
-        sprintf(aux, "%02x", c[i]);
-        checksum = checksum + aux;
-    }
-
-    return checksum;
 }
 
 }  // namespace ORB_SLAM3
