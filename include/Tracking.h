@@ -87,13 +87,10 @@ public:
     // Tracking states
     enum eTrackingState
     {
-        SYSTEM_NOT_READY = -1,
         NO_IMAGES_YET = 0,
         NOT_INITIALIZED = 1,
         OK = 2,
-        RECENTLY_LOST = 3,
-        LOST = 4,
-        OK_KLT = 5
+        LOST = 3
     };
 
     eTrackingState mState;
@@ -260,7 +257,6 @@ protected:
     unsigned int mnLastKeyFrameId;
     unsigned int mnLastRelocFrameId;
     double mTimeStampLost;
-    double time_recently_lost;
 
     unsigned int mnFirstFrameId;
     unsigned int mnInitialFrameId;
