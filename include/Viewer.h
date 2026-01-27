@@ -19,8 +19,6 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <mutex>
 #include <opencv2/core/core.hpp>
@@ -48,27 +46,21 @@ public:
     // Main thread function. Draw points, keyframes, the current camera pose and the last processed
     // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
     void Run();
-
     void RequestFinish();
-
     void RequestStop();
-
     bool isFinished();
-
     bool isStopped();
-
     bool isStepByStep();
-
     void Release();
-
-    //void SetTrackingPause();
 
     bool both;
 
 private:
     bool ParseViewerParamFile(cv::FileStorage& fSettings);
-
     bool Stop();
+
+    bool CheckFinish();
+    void SetFinish();
 
     System* mpSystem;
     MapDrawer* mpMapDrawer;
@@ -81,8 +73,6 @@ private:
 
     float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
 
-    bool CheckFinish();
-    void SetFinish();
     bool mbFinishRequested;
     bool mbFinished;
     std::mutex mMutexFinish;

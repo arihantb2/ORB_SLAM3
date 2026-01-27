@@ -17,6 +17,7 @@
 */
 
 #include "System.h"
+#include "Verbose.h"
 
 #include <openssl/md5.h>
 #include <pangolin/pangolin.h>
@@ -48,13 +49,7 @@ std::mutex Verbose::cout_mutex;
 
 System::System(const string& strVocFile, const string& strSettingsFile, const eSensor sensor, const bool bUseViewer,
                const bool bTurnOffLC)
-    : mSensor(sensor),
-      mpViewer(static_cast<Viewer*>(NULL)),
-      mbReset(false),
-      mbResetActiveMap(false),
-      mbActivateLocalizationMode(false),
-      mbDeactivateLocalizationMode(false),
-      mbShutDown(false)
+    : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
@@ -290,30 +285,6 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
         imRightToFeed = imRight.clone();
     }
 
-    // Check mode change
-    {
-        unique_lock<mutex> lock(mMutexMode);
-        if (mbActivateLocalizationMode)
-        {
-            mpLocalMapper->RequestStop();
-
-            // Wait until Local Mapping has effectively stopped
-            while (!mpLocalMapper->isStopped())
-            {
-                usleep(1000);
-            }
-
-            mpTracker->InformOnlyTracking(true);
-            mbActivateLocalizationMode = false;
-        }
-        if (mbDeactivateLocalizationMode)
-        {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
-        }
-    }
-
     // Check reset
     {
         unique_lock<mutex> lock(mMutexReset);
@@ -376,30 +347,6 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
         imToFeed = resizedIm;
     }
 
-    // Check mode change
-    {
-        unique_lock<mutex> lock(mMutexMode);
-        if (mbActivateLocalizationMode)
-        {
-            mpLocalMapper->RequestStop();
-
-            // Wait until Local Mapping has effectively stopped
-            while (!mpLocalMapper->isStopped())
-            {
-                usleep(1000);
-            }
-
-            mpTracker->InformOnlyTracking(true);
-            mbActivateLocalizationMode = false;
-        }
-        if (mbDeactivateLocalizationMode)
-        {
-            mpTracker->InformOnlyTracking(false);
-            mpLocalMapper->Release();
-            mbDeactivateLocalizationMode = false;
-        }
-    }
-
     // Check reset
     {
         unique_lock<mutex> lock(mMutexReset);
@@ -435,18 +382,6 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
     mTrackedOutliers = mpTracker->mCurrentFrame.mvbOutlier;
 
     return Tcw;
-}
-
-void System::ActivateLocalizationMode()
-{
-    unique_lock<mutex> lock(mMutexMode);
-    mbActivateLocalizationMode = true;
-}
-
-void System::DeactivateLocalizationMode()
-{
-    unique_lock<mutex> lock(mMutexMode);
-    mbDeactivateLocalizationMode = true;
 }
 
 bool System::MapChanged()
@@ -570,13 +505,16 @@ vector<cv::KeyPoint> System::GetInlierKeyPoints()
     vector<cv::KeyPoint> out;
     const size_t n = mDetectedKeyPoints.size();
     if (mTrackedMapPoints.size() != n || mTrackedOutliers.size() != n)
+    {
         return out;
-
+    }
     out.reserve(n);
     for (size_t i = 0; i < n; ++i)
     {
         if (mTrackedMapPoints[i] && !mTrackedOutliers[i])
+        {
             out.push_back(mDetectedKeyPoints[i]);
+        }
     }
     return out;
 }
@@ -587,13 +525,16 @@ vector<cv::KeyPoint> System::GetOutlierKeyPoints()
     vector<cv::KeyPoint> out;
     const size_t n = mDetectedKeyPoints.size();
     if (mTrackedMapPoints.size() != n || mTrackedOutliers.size() != n)
+    {
         return out;
-
+    }
     out.reserve(n);
     for (size_t i = 0; i < n; ++i)
     {
         if (mTrackedMapPoints[i] && mTrackedOutliers[i])
+        {
             out.push_back(mDetectedKeyPoints[i]);
+        }
     }
     return out;
 }
@@ -607,7 +548,9 @@ vector<Sophus::SE3f> System::GetKeyframeTrajectory()
     for (KeyFrame* pKF : keyframes)
     {
         if (!pKF || pKF->isBad())
+        {
             continue;
+        }
         trajectory.push_back(pKF->GetPoseInverse());
     }
     return trajectory;
@@ -633,21 +576,31 @@ double System::GetTimeFromIMUInit()
 {
     double aux = mpLocalMapper->GetCurrKFTime() - mpLocalMapper->mFirstTs;
     if ((aux > 0.) && mpAtlas->isImuInitialized())
+    {
         return mpLocalMapper->GetCurrKFTime() - mpLocalMapper->mFirstTs;
+    }
     else
+    {
         return 0.f;
+    }
 }
 
 bool System::isLost()
 {
     if (!mpAtlas->isImuInitialized())
+    {
         return false;
+    }
     else
     {
         if (mpTracker->mState == Tracking::LOST)
+        {
             return true;
+        }
         else
+        {
             return false;
+        }
     }
 }
 
@@ -666,8 +619,6 @@ void System::ChangeDataset()
     {
         mpTracker->CreateMapInAtlas();
     }
-
-    mpTracker->NewDataset();
 }
 
 float System::GetImageScale()

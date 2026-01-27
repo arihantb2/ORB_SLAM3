@@ -19,15 +19,12 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include "Verbose.h"
-
 #include <fstream>
 #include <list>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "Frame.h"
@@ -75,15 +72,6 @@ public:
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
-    void SetStepByStep(bool bSet);
-    bool GetStepByStep();
-
-    // Load new settings
-    // The focal lenght should be similar or scale prediction will fail when projecting points
-    void ChangeCalibration(const string& strSettingPath);
-
-    // Use this function if you have deactivated local mapping and you only want to localize the camera.
-    void InformOnlyTracking(const bool& flag);
 
     bool isLastFrameKeyframe();
 
@@ -91,20 +79,11 @@ public:
     KeyFrame* GetLastKeyFrame() { return mpLastKeyFrame; }
 
     void CreateMapInAtlas();
-    //std::mutex mMutexTracks;
 
-    //--
-    void NewDataset();
-    int GetNumberDataset();
     int GetMatchesInliers();
-
-    //DEBUG
-    void SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, string strFolder = "");
-    void SaveSubTrajectory(string strNameFile_frames, string strNameFile_kf, Map* pMap);
 
     float GetImageScale();
 
-public:
     // Tracking states
     enum eTrackingState
     {
@@ -128,6 +107,7 @@ public:
     Frame mLastFrame;
 
     cv::Mat mImGray;
+    cv::Mat mImRight;
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -145,10 +125,6 @@ public:
 
     // frames with estimated pose
     int mTrackedFr;
-    bool mbStep;
-
-    // True if local mapping is deactivated and we are performing only localization
-    bool mbOnlyTracking;
 
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
@@ -168,12 +144,11 @@ protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
 
-    // Map initialization for stereo and RGB-D
+    // Stereo Initialization
     void StereoInitialization();
 
-    // Map initialization for monocular
+    // Monocular Initialization
     void MonocularInitialization();
-    //void CreateNewMapPoints();
     void CreateInitialMapMonocular();
 
     void CheckReplacedInLastFrame();
@@ -220,21 +195,15 @@ protected:
     // Last Bias Estimation (at keyframe creation)
     IMU::Bias mLastBias;
 
-    // In case of performing only localization, this flag is true when there are no matches to
-    // points in the map. Still tracking will continue if there are enough matches with temporal points.
-    // In that case we are doing visual odometry. The system will try to do relocalization to recover
-    // "zero-drift" localization to the map.
-    bool mbVO;
-
-    //Other Thread Pointers
+    // Other Thread Pointers
     LocalMapping* mpLocalMapper;
     LoopClosing* mpLoopClosing;
 
-    //ORB
+    // ORB
     ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
     ORBextractor* mpIniORBextractor;
 
-    //BoW
+    // BoW
     ORBVocabulary* mpORBVocabulary;
     KeyFrameDatabase* mpKeyFrameDB;
 
@@ -242,7 +211,7 @@ protected:
     bool mbReadyToInitializate;
     bool mbSetInit;
 
-    //Local Map
+    // Local Map
     KeyFrame* mpReferenceKF;
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
@@ -250,15 +219,14 @@ protected:
     // System
     System* mpSystem;
 
-    //Drawers
+    // Drawers
     Viewer* mpViewer;
     MapDrawer* mpMapDrawer;
-    bool bStepByStep;
 
-    //Atlas
+    // Atlas
     Atlas* mpAtlas;
 
-    //Calibration matrix
+    // Calibration matrix
     cv::Mat mK;
     Eigen::Matrix3f mK_;
     cv::Mat mDistCoef;
@@ -269,7 +237,7 @@ protected:
     double mImuPer;
     bool mInsertKFsLost;
 
-    //New KeyFrame rules (according to fps)
+    // New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
 
@@ -284,10 +252,10 @@ protected:
     // For RGB-D inputs only. For some datasets (e.g. TUM) the depthmap values are scaled.
     float mDepthMapFactor;
 
-    //Current matches in frame
+    // Current matches in frame
     int mnMatchesInliers;
 
-    //Last Frame, KeyFrame and Relocalisation Info
+    // Last Frame, KeyFrame and Relocalisation Info
     KeyFrame* mpLastKeyFrame;
     unsigned int mnLastKeyFrameId;
     unsigned int mnLastRelocFrameId;
@@ -300,26 +268,14 @@ protected:
 
     bool mbCreatedMap;
 
-    //Motion Model
+    // Motion Model
     bool mbVelocity{false};
     Sophus::SE3f mVelocity;
 
-    //Color order (true RGB, false BGR, ignored if grayscale)
+    // Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
-
-    //int nMapChangeIndex;
-
-    int mnNumDataset;
-
-    ofstream f_track_stats;
-
-    ofstream f_track_times;
-    double mTime_PreIntIMU;
-    double mTime_PosePred;
-    double mTime_LocalMapTrack;
-    double mTime_NewKF_Dec;
 
     GeometricCamera *mpCamera, *mpCamera2;
 
@@ -332,9 +288,6 @@ protected:
     bool ParseCamParamFile(cv::FileStorage& fSettings);
     bool ParseORBParamFile(cv::FileStorage& fSettings);
     bool ParseIMUParamFile(cv::FileStorage& fSettings);
-
-public:
-    cv::Mat mImRight;
 };
 
 }  // namespace ORB_SLAM3

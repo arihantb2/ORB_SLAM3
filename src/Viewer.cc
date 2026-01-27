@@ -17,6 +17,7 @@
 */
 
 #include "Viewer.h"
+#include "Verbose.h"
 
 #include <pangolin/pangolin.h>
 #include "Atlas.h"
@@ -74,7 +75,9 @@ void Viewer::newParameterLoader(Settings* settings)
 
     float fps = settings->fps();
     if (fps < 1)
+    {
         fps = 30;
+    }
     mT = 1e3 / fps;
 
     cv::Size imSize = settings->newImSize();
@@ -95,7 +98,9 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
 
     float fps = fSettings["Camera.fps"];
     if (fps < 1)
+    {
         fps = 30;
+    }
     mT = 1e3 / fps;
 
     cv::FileNode node = fSettings["Camera.width"];
@@ -191,18 +196,12 @@ void Viewer::Run()
     pangolin::Var<bool> menuFollowCamera("menu.Follow Camera", false, true);
     pangolin::Var<bool> menuCamView("menu.Camera View", false, false);
     pangolin::Var<bool> menuTopView("menu.Top View", false, false);
-    // pangolin::Var<bool> menuSideView("menu.Side View",false,false);
     pangolin::Var<bool> menuShowPoints("menu.Show Points", true, true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames", true, true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph", false, true);
     pangolin::Var<bool> menuShowInertialGraph("menu.Show Inertial Graph", true, true);
-    pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode", false, true);
-    pangolin::Var<bool> menuReset("menu.Reset", false, false);
-    pangolin::Var<bool> menuStop("menu.Stop", false, false);
-    pangolin::Var<bool> menuStepByStep("menu.Step By Step", false, true);  // false, true
-    pangolin::Var<bool> menuStep("menu.Step", false, false);
-
     pangolin::Var<bool> menuShowOptLba("menu.Show LBA opt", false, true);
+
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
         pangolin::ProjectionMatrix(1024, 768, mViewpointF, mViewpointF, 512, 389, 0.1, 1000),
@@ -220,8 +219,6 @@ void Viewer::Run()
     // cv::namedWindow("ORB-SLAM3: Current Frame");
 
     bool bFollow = true;
-    bool bLocalizationMode = false;
-    bool bStepByStep = false;
     bool bCameraView = true;
 
     if (mpTracker->mSensor == mpSystem->MONOCULAR || mpTracker->mSensor == mpSystem->STEREO)
@@ -240,16 +237,19 @@ void Viewer::Run()
 
         if (mbStopTrack)
         {
-            menuStepByStep = true;
             mbStopTrack = false;
         }
 
         if (menuFollowCamera && bFollow)
         {
             if (bCameraView)
+            {
                 s_cam.Follow(Twc);
+            }
             else
+            {
                 s_cam.Follow(Ow);
+            }
         }
         else if (menuFollowCamera && !bFollow)
         {
@@ -294,71 +294,18 @@ void Viewer::Run()
             s_cam.Follow(Ow);
         }
 
-        if (menuLocalizationMode && !bLocalizationMode)
-        {
-            mpSystem->ActivateLocalizationMode();
-            bLocalizationMode = true;
-        }
-        else if (!menuLocalizationMode && bLocalizationMode)
-        {
-            mpSystem->DeactivateLocalizationMode();
-            bLocalizationMode = false;
-        }
-
-        if (menuStepByStep && !bStepByStep)
-        {
-            mpTracker->SetStepByStep(true);
-            bStepByStep = true;
-        }
-        else if (!menuStepByStep && bStepByStep)
-        {
-            mpTracker->SetStepByStep(false);
-            bStepByStep = false;
-        }
-
-        if (menuStep)
-        {
-            mpTracker->mbStep = true;
-            menuStep = false;
-        }
-
         d_cam.Activate(s_cam);
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
         if (menuShowKeyFrames || menuShowGraph || menuShowInertialGraph || menuShowOptLba)
+        {
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames, menuShowGraph, menuShowInertialGraph, menuShowOptLba);
+        }
         if (menuShowPoints)
+        {
             mpMapDrawer->DrawMapPoints();
-
+        }
         pangolin::FinishFrame();
-
-        if (menuReset)
-        {
-            menuShowGraph = true;
-            menuShowInertialGraph = true;
-            menuShowKeyFrames = true;
-            menuShowPoints = true;
-            menuLocalizationMode = false;
-            if (bLocalizationMode)
-                mpSystem->DeactivateLocalizationMode();
-            bLocalizationMode = false;
-            bFollow = true;
-            menuFollowCamera = true;
-            mpSystem->ResetActiveMap();
-            menuReset = false;
-        }
-
-        if (menuStop)
-        {
-            if (bLocalizationMode)
-                mpSystem->DeactivateLocalizationMode();
-
-            // Stop all threads
-            mpSystem->Shutdown();
-
-            menuStop = false;
-        }
-
         if (Stop())
         {
             while (isStopped())
@@ -366,9 +313,10 @@ void Viewer::Run()
                 usleep(3000);
             }
         }
-
         if (CheckFinish())
+        {
             break;
+        }
     }
 
     SetFinish();
@@ -401,8 +349,7 @@ bool Viewer::isFinished()
 void Viewer::RequestStop()
 {
     unique_lock<mutex> lock(mMutexStop);
-    if (!mbStopped)
-        mbStopRequested = true;
+    mbStopRequested = !mbStopped;
 }
 
 bool Viewer::isStopped()
@@ -417,7 +364,9 @@ bool Viewer::Stop()
     unique_lock<mutex> lock2(mMutexFinish);
 
     if (mbFinishRequested)
+    {
         return false;
+    }
     else if (mbStopRequested)
     {
         mbStopped = true;
@@ -433,10 +382,5 @@ void Viewer::Release()
     unique_lock<mutex> lock(mMutexStop);
     mbStopped = false;
 }
-
-/*void Viewer::SetTrackingPause()
-{
-    mbStopTrack = true;
-}*/
 
 }  // namespace ORB_SLAM3
