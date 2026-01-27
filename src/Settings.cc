@@ -22,6 +22,7 @@
 #include "CameraModels/KannalaBrandt8.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"
+#include "Verbose.h"
 
 #include "System.h"
 
@@ -511,7 +512,9 @@ void Settings::readViewer(cv::FileStorage& fSettings)
     imageViewerScale_ = readParameter<float>(fSettings, "Viewer.imageViewScale", found, false);
 
     if (!found)
+    {
         imageViewerScale_ = 1.0f;
+    }
 }
 
 void Settings::readOtherParameters(cv::FileStorage& fSettings)

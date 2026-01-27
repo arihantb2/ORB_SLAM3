@@ -78,7 +78,9 @@ Map::~Map()
     mspKeyFrames.clear();
 
     if (mThumbnail)
+    {
         delete mThumbnail;
+    }
     mThumbnail = static_cast<GLubyte*>(NULL);
 
     mvpReferenceMapPoints.clear();
@@ -296,9 +298,13 @@ void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool b
         pKF->SetPose(Tcy);
         Eigen::Vector3f Vw = pKF->GetVelocity();
         if (!bScaledVel)
+        {
             pKF->SetVelocity(Ryw * Vw);
+        }
         else
+        {
             pKF->SetVelocity(Ryw * Vw * s);
+        }
     }
     for (set<MapPoint*>::iterator sit = mspMapPoints.begin(); sit != mspMapPoints.end(); sit++)
     {
@@ -390,8 +396,9 @@ void Map::PreSave(std::set<GeometricCamera*>& spCams)
     for (MapPoint* pMPi : mspMapPoints)
     {
         if (!pMPi || pMPi->isBad())
+        {
             continue;
-
+        }
         if (pMPi->GetObservations().size() == 0)
         {
             nMPWithoutObs++;
@@ -419,8 +426,9 @@ void Map::PreSave(std::set<GeometricCamera*>& spCams)
     for (MapPoint* pMPi : mspMapPoints)
     {
         if (!pMPi || pMPi->isBad())
+        {
             continue;
-
+        }
         mvpBackupMapPoints.push_back(pMPi);
         pMPi->PreSave(mspKeyFrames, mspMapPoints);
     }
@@ -430,8 +438,9 @@ void Map::PreSave(std::set<GeometricCamera*>& spCams)
     for (KeyFrame* pKFi : mspKeyFrames)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
-
+        }
         mvpBackupKeyFrames.push_back(pKFi);
         pKFi->PreSave(mspKeyFrames, mspMapPoints, spCams);
     }
@@ -460,8 +469,9 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB,
     for (MapPoint* pMPi : mspMapPoints)
     {
         if (!pMPi || pMPi->isBad())
+        {
             continue;
-
+        }
         pMPi->UpdateMap(this);
         mpMapPointId[pMPi->mnId] = pMPi;
     }
@@ -470,8 +480,9 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB,
     for (KeyFrame* pKFi : mspKeyFrames)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
-
+        }
         pKFi->UpdateMap(this);
         pKFi->SetORBVocabulary(pORBVoc);
         pKFi->SetKeyFrameDatabase(pKFDB);
@@ -482,16 +493,18 @@ void Map::PostLoad(KeyFrameDatabase* pKFDB,
     for (MapPoint* pMPi : mspMapPoints)
     {
         if (!pMPi || pMPi->isBad())
+        {
             continue;
-
+        }
         pMPi->PostLoad(mpKeyFrameId, mpMapPointId);
     }
 
     for (KeyFrame* pKFi : mspKeyFrames)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
-
+        }
         pKFi->PostLoad(mpKeyFrameId, mpMapPointId, mpCams);
         pKFDB->add(pKFi);
     }

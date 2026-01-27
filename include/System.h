@@ -19,15 +19,12 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include "Verbose.h"
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <string>
 #include <thread>
-#include <utility>
 #include <vector>
 
 #include "ImuTypes.h"

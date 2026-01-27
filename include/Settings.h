@@ -19,9 +19,6 @@
 #ifndef ORB_SLAM3_SETTINGS_H
 #define ORB_SLAM3_SETTINGS_H
 
-#include "Verbose.h"
-
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ostream>
