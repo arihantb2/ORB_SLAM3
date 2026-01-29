@@ -144,7 +144,6 @@ private:
     KeyFrameDatabase* mpKeyFrameDatabase;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
-    //Map* mpMap;
     Atlas* mpAtlas;
 
     // Tracker. It receives a frame and computes the associated camera pose.

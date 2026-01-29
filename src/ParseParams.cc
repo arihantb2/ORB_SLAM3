@@ -78,7 +78,7 @@ void Tracking::newParameterLoader(Settings* settings)
     }
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
     {
-        mpIniORBextractor = new ORBextractor(5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        mpIniORBextractor = new ORBextractor(2.5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
     }
     //IMU parameters
     Sophus::SE3f Tbc = settings->Tbc();
@@ -796,7 +796,7 @@ bool Tracking::ParseORBParamFile(cv::FileStorage& fSettings)
     }
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
     {
-        mpIniORBextractor = new ORBextractor(5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        mpIniORBextractor = new ORBextractor(2.5 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
     }
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << endl << "ORB Extractor Parameters: " << endl;
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "- Number of Features: " << nFeatures << endl;

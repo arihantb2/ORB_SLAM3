@@ -278,7 +278,9 @@ void LoopClosing::InsertKeyFrame(KeyFrame* pKF)
 {
     unique_lock<mutex> lock(mMutexLoopQueue);
     if (pKF->mnId != 0)
+    {
         mlpLoopKeyFrameQueue.push_back(pKF);
+    }
 }
 
 bool LoopClosing::CheckNewKeyFrames()
@@ -291,8 +293,9 @@ bool LoopClosing::NewDetectCommonRegions()
 {
     // To deactivate placerecognition. No loopclosing nor merging will be performed
     if (!mbActiveLC)
+    {
         return false;
-
+    }
     {
         unique_lock<mutex> lock(mMutexLoopQueue);
         mpCurrentKF = mlpLoopKeyFrameQueue.front();
@@ -485,7 +488,9 @@ bool LoopClosing::DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame*
 
         bool bFixedScale = mbFixScale;  // TODO CHECK; Solo para el monocular inertial
         if (mpTracker->mSensor == System::IMU_MONOCULAR && !pCurrentKF->GetMap()->GetIniertialBA2())
+        {
             bFixedScale = false;
+        }
         int numOptMatches =
             Optimizer::OptimizeSim3(mpCurrentKF, pMatchedKF, vpMatchedMPs, gScm, 10, bFixedScale, mHessian7x7, true);
 
@@ -541,8 +546,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
     for (KeyFrame* pKFi : vpBowCand)
     {
         if (!pKFi || pKFi->isBad())
+        {
             continue;
-
+        }
         // Current KF against KF with covisibles version
         std::vector<KeyFrame*> vpCovKFi = pKFi->GetBestCovisibilityKeyFrames(nNumCovisibles);
         if (vpCovKFi.empty())
@@ -587,8 +593,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
         for (int j = 0; j < vpCovKFi.size(); ++j)
         {
             if (!vpCovKFi[j] || vpCovKFi[j]->isBad())
+            {
                 continue;
-
+            }
             int num = matcherBoW.SearchByBoW(mpCurrentKF, vpCovKFi[j], vvpMatchedMPs[j]);
             if (num > nMostBoWNumMatches)
             {
@@ -603,8 +610,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
             {
                 MapPoint* pMPi_j = vvpMatchedMPs[j][k];
                 if (!pMPi_j || pMPi_j->isBad())
+                {
                     continue;
-
+                }
                 if (spMatchedMPi.find(pMPi_j) == spMatchedMPi.end())
                 {
                     spMatchedMPi.insert(pMPi_j);
@@ -623,8 +631,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
             // Geometric validation
             bool bFixedScale = mbFixScale;
             if (mpTracker->mSensor == System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+            {
                 bFixedScale = false;
-
+            }
             Sim3Solver solver =
                 Sim3Solver(mpCurrentKF, pMostBoWMatchesKF, vpMatchedPoints, bFixedScale, vpKeyFrameMatchedMP);
             solver.SetRansacParameters(0.99, nBoWInliers, 300);  // at least 15 inliers
@@ -655,8 +664,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
                     for (MapPoint* pCovMPij : pCovKFi->GetMapPointMatches())
                     {
                         if (!pCovMPij || pCovMPij->isBad())
+                        {
                             continue;
-
+                        }
                         if (spMapPoints.find(pCovMPij) == spMapPoints.end())
                         {
                             spMapPoints.insert(pCovMPij);
@@ -686,8 +696,9 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
 
                     bool bFixedScale = mbFixScale;
                     if (mpTracker->mSensor == System::IMU_MONOCULAR && !mpCurrentKF->GetMap()->GetIniertialBA2())
+                    {
                         bFixedScale = false;
-
+                    }
                     int numOptMatches = Optimizer::OptimizeSim3(mpCurrentKF, pKFi, vpMatchedMP, gScm, 10, mbFixScale,
                                                                 mHessian7x7, true);
 
@@ -788,10 +799,6 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
                     }
                 }
             }
-            /*else
-            {
-                Verbose::PrintMess("BoW candidate: it don't match with the current one", Verbose::VERBOSITY_DEBUG);
-            }*/
         }
         index++;
     }
@@ -1313,13 +1320,7 @@ void LoopClosing::MergeLocal()
     {
         if (!pKFi || pKFi->isBad())
         {
-            Verbose::PrintMess("Bad KF in correction", Verbose::VERBOSITY_DEBUG);
             continue;
-        }
-
-        if (pKFi->GetMap() != pCurrentMap)
-        {
-            Verbose::PrintMess("Other map KF, this should't happen", Verbose::VERBOSITY_DEBUG);
         }
 
         g2o::Sim3 g2oCorrectedSiw;
@@ -1997,7 +1998,9 @@ void LoopClosing::RequestReset()
         {
             unique_lock<mutex> lock2(mMutexReset);
             if (!mbResetRequested)
+            {
                 break;
+            }
         }
         usleep(5000);
     }
@@ -2016,7 +2019,9 @@ void LoopClosing::RequestResetActiveMap(Map* pMap)
         {
             unique_lock<mutex> lock2(mMutexReset);
             if (!mbResetActiveMapRequested)
+            {
                 break;
+            }
         }
         usleep(3000);
     }
@@ -2044,7 +2049,9 @@ void LoopClosing::ResetIfRequested()
                 it = mlpLoopKeyFrameQueue.erase(it);
             }
             else
+            {
                 ++it;
+            }
         }
 
         mLastLoopKFid = mpAtlas->GetLastInitKFid();  //TODO old variable, it is not use in the new algorithm
@@ -2059,10 +2066,13 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     const bool bImuInit = pActiveMap->isImuInitialized();
 
     if (!bImuInit)
+    {
         Optimizer::GlobalBundleAdjustemnt(pActiveMap, 10, &mbStopGBA, nLoopKF, false);
+    }
     else
+    {
         Optimizer::FullInertialBA(pActiveMap, 7, false, nLoopKF, &mbStopGBA);
-
+    }
     int idx = mnFullBAIdx;
 
     // Update all MapPoints and KeyFrames
@@ -2072,11 +2082,13 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     {
         unique_lock<mutex> lock(mMutexGBA);
         if (idx != mnFullBAIdx)
+        {
             return;
-
+        }
         if (!bImuInit && pActiveMap->isImuInitialized())
+        {
             return;
-
+        }
         if (!mbStopGBA)
         {
             Verbose::PrintMess("Global Bundle Adjustment finished", Verbose::VERBOSITY_NORMAL);
@@ -2105,8 +2117,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                 {
                     KeyFrame* pChild = *sit;
                     if (!pChild || pChild->isBad())
+                    {
                         continue;
-
+                    }
                     if (pChild->mnBAGlobalForKF != nLoopKF)
                     {
                         Sophus::SE3f Tchildc = pChild->GetPose() * Twc;
@@ -2118,8 +2131,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                             pChild->mVwbGBA = Rcor * pChild->GetVelocity();
                         }
                         else
+                        {
                             Verbose::PrintMess("Child velocity empty!! ", Verbose::VERBOSITY_NORMAL);
-
+                        }
                         pChild->mBiasGBA = pChild->GetImuBias();
 
                         pChild->mnBAGlobalForKF = nLoopKF;
@@ -2148,8 +2162,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                 MapPoint* pMP = vpMPs[i];
 
                 if (pMP->isBad())
+                {
                     continue;
-
+                }
                 if (pMP->mnBAGlobalForKF == nLoopKF)
                 {
                     // If optimized by Global BA, just update
@@ -2161,8 +2176,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
                     if (pRefKF->mnBAGlobalForKF != nLoopKF)
+                    {
                         continue;
-
+                    }
                     Eigen::Vector3f Xc = pRefKF->mTcwBefGBA * pMP->GetWorldPos();
 
                     // Backproject using corrected camera

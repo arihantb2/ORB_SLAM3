@@ -555,16 +555,26 @@ void Tracking::Track()
 
             if ((!mbVelocity && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId < mnLastRelocFrameId + 2)
             {
-                Verbose::PrintMess("TRACK: Track with respect to the reference KF ", Verbose::VERBOSITY_DEBUG);
                 bOK = TrackReferenceKeyFrame();
+                if (!bOK)
+                {
+                    Verbose::Print(Verbose::VERBOSITY_QUIET)
+                        << "[" << mCurrentFrame.mnId << "] TRACK: Reference keyframe tracking failed." << endl;
+                }
             }
             else
             {
-                Verbose::PrintMess("TRACK: Track with motion model", Verbose::VERBOSITY_DEBUG);
                 bOK = TrackWithMotionModel();
                 if (!bOK)
                 {
+                    Verbose::Print(Verbose::VERBOSITY_QUIET)
+                        << "[" << mCurrentFrame.mnId << "] TRACK: Motion model tracking failed." << endl;
                     bOK = TrackReferenceKeyFrame();
+                    if (!bOK)
+                    {
+                        Verbose::Print(Verbose::VERBOSITY_QUIET)
+                            << "[" << mCurrentFrame.mnId << "] TRACK: Reference keyframe tracking failed after motion model." << endl;
+                    }
                 }
             }
 
@@ -606,7 +616,7 @@ void Tracking::Track()
         }
         if (!bOK)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Fail to track local map!" << endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "TRACK: Local map tracking failed." << endl;
         }
 
         if (bOK)
@@ -874,7 +884,6 @@ void Tracking::StereoInitialization()
         mLastFrame = Frame(mCurrentFrame);
         mnLastKeyFrameId = mCurrentFrame.mnId;
         mpLastKeyFrame = pKFini;
-        //mnLastRelocFrameId = mCurrentFrame.mnId;
 
         mvpLocalKeyFrames.push_back(pKFini);
         mvpLocalMapPoints = mpAtlas->GetAllMapPoints();
@@ -930,7 +939,7 @@ void Tracking::MonocularInitialization()
             ((mSensor == System::IMU_MONOCULAR) && (mLastFrame.mTimeStamp - mInitialFrame.mTimeStamp > 1.0)))
         {
             mbReadyToInitializate = false;
-
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough detected features [" << mCurrentFrame.mvKeys.size() << "] to initialize." << endl;
             return;
         }
 
@@ -942,6 +951,7 @@ void Tracking::MonocularInitialization()
         if (nmatches < 100)
         {
             mbReadyToInitializate = false;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough correspondences [" << nmatches << "] to initialize." << endl;
             return;
         }
 
@@ -1038,9 +1048,12 @@ void Tracking::CreateInitialMapMonocular()
     {
         invMedianDepth = 1.0f / medianDepth;
     }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Median depth [" << medianDepth << "]." << endl;
+
     if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 50)  // TODO Check, originally 100 tracks
     {
-        Verbose::PrintMess("Wrong initialization, reseting...", Verbose::VERBOSITY_QUIET);
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Wrong initialization, reseting..." << endl;
         mpSystem->ResetActiveMap();
         return;
     }
@@ -1079,7 +1092,6 @@ void Tracking::CreateInitialMapMonocular()
     mCurrentFrame.SetPose(pKFcur->GetPose());
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKFcur;
-    //mnLastRelocFrameId = mInitialFrame.mnId;
 
     mvpLocalKeyFrames.push_back(pKFcur);
     mvpLocalKeyFrames.push_back(pKFini);
@@ -1356,23 +1368,22 @@ bool Tracking::TrackWithMotionModel()
     // If few matches, uses a wider window search
     if (nmatches < 20)
     {
-        Verbose::PrintMess("Not enough matches, wider window search!!", Verbose::VERBOSITY_NORMAL);
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches [" << nmatches << "]." << endl;
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
         nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th,
                                               mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR);
-        Verbose::PrintMess("Matches with wider search: " + to_string(nmatches), Verbose::VERBOSITY_NORMAL);
     }
 
     if (nmatches < 20)
     {
-        Verbose::PrintMess("Not enough matches!!", Verbose::VERBOSITY_NORMAL);
         if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
         {
             return true;
         }
         else
         {
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches [" << nmatches << "] with wider search." << endl;
             return false;
         }
     }
@@ -1416,7 +1427,12 @@ bool Tracking::TrackWithMotionModel()
     }
     else
     {
-        return nmatchesMap >= 10;
+        if (nmatchesMap < 10)
+        {
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches after pose optimization [" << nmatchesMap << "]." << endl;
+            return false;
+        }
+        return true;
     }
 }
 
@@ -1439,7 +1455,6 @@ bool Tracking::TrackLocalMap()
     {
         if (mCurrentFrame.mnId <= mnLastRelocFrameId + mnFramesToResetIMU)
         {
-            Verbose::PrintMess("TLM: PoseOptimization ", Verbose::VERBOSITY_DEBUG);
             Optimizer::PoseOptimization(&mCurrentFrame);
         }
         else
@@ -1447,13 +1462,11 @@ bool Tracking::TrackLocalMap()
             // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
             if (!mbMapUpdated)  //  && (mnMatchesInliers>30))
             {
-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
                 inliers = Optimizer::PoseInertialOptimizationLastFrame(
                     &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
             }
             else
             {
-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
                 inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(
                     &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
             }
@@ -1776,6 +1789,8 @@ void Tracking::CreateNewKeyFrame()
 
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mCurrentFrame.mnId << "] Tracking: Created new keyframe" << endl;
 }
 
 void Tracking::SearchLocalPoints()
