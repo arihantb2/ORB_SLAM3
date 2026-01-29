@@ -60,8 +60,6 @@ endif()
 # Main project configuration
 # ==============================================================================
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
-
 # Set output directories for the main project
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -88,8 +86,6 @@ foreach(TARGET_NAME stuff core types_slam3d types_sba types_sim3 solver_dense so
     endif()
 endforeach()
 
-find_package(realsense2)
-
 # Build the main library
 add_subdirectory(src)
 
@@ -97,6 +93,7 @@ add_subdirectory(src)
 # Examples and Examples_old directories have their own CMakeLists.txt files
 # that collect their respective subdirectories
 
+# find_package(realsense2)
 # add_subdirectory(Examples)
 
 # ---------------
@@ -170,9 +167,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
 install(FILES ${CMAKE_BINARY_DIR}/Thirdparty/g2o/g2o/config.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/g2o/g2o
     COMPONENT library)
-
-install(FILES ${PROJECT_SOURCE_DIR}/cmake_modules/FindORB_SLAM3.cmake
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/cmake/${PROJECT_NAME})
 
 install(FILES ${PROJECT_SOURCE_DIR}/package.xml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/orb_slam3)

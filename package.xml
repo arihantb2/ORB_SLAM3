@@ -9,6 +9,9 @@
 
   <buildtool_depend>cmake</buildtool_depend>
 
+  <depend>eigen3</depend>
+  <depend>opencv4</depend>
+
   <export>
     <build_type>cmake</build_type>
   </export>
