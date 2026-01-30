@@ -18,6 +18,8 @@
 
 #include "ORBmatcher.h"
 
+#include "Verbose.h"
+
 #include "Frame.h"
 #include "KeyFrame.h"
 #include "MapPoint.h"

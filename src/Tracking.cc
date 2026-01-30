@@ -902,7 +902,6 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
-
     if (!mbReadyToInitializate)
     {
         // Set Reference Frame
@@ -1359,7 +1358,7 @@ bool Tracking::TrackWithMotionModel()
     }
     else
     {
-        th = 15;
+        th = 30; // changed from 15 to 30 to increase the number of matches
     }
 
     int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th,
