@@ -65,11 +65,10 @@ public:
           const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL),
           const IMU::Calib& ImuCalib = IMU::Calib());
 
-    // Constructor for RGB-D cameras.
-    Frame(const cv::Mat& imGray, const cv::Mat& imDepth, const double& timeStamp, ORBextractor* extractor,
-          ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf, const float& thDepth,
-          GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL),
-          const IMU::Calib& ImuCalib = IMU::Calib());
+    Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
+          ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
+          const float& thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,
+          Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib& ImuCalib = IMU::Calib());
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
@@ -79,8 +78,8 @@ public:
     // Destructor
     // ~Frame();
 
-    // Extract ORB on the image. 0 for left image and 1 for right image.
-    void ExtractORB(int flag, const cv::Mat& im, const int x0, const int x1);
+    // Extract ORB on the image.
+    void ExtractORB(bool left, const cv::Mat& im, const int x0, const int x1);
 
     // Compute Bag of Words representation.
     void ComputeBoW();
@@ -330,11 +329,6 @@ public:
     //Grid for the right image
     std::vector<std::size_t> mGridRight[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
-          ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
-          const float& thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,
-          Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib& ImuCalib = IMU::Calib());
-
     //Stereo fisheye
     void ComputeStereoFishEyeMatches();
 
@@ -353,10 +347,10 @@ public:
             if (mvpMapPoints[i] && !mvbOutlier[i])
             {
                 if (i < Nlim)
-                    left++;
-                else
-                    right++;
-            }
+{                    left++;
+}                else
+{                    right++;
+}            }
         }
         Verbose::Print(Verbose::VERBOSITY_NORMAL)
             << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;

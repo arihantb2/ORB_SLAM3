@@ -440,6 +440,12 @@ vector<cv::KeyPoint> System::GetDetectedKeyPoints()
     return mDetectedKeyPoints;
 }
 
+vector<cv::KeyPoint> System::GetDetectedKeyPointsRight()
+{
+    unique_lock<mutex> lock(mMutexState);
+    return {};
+}
+
 vector<cv::KeyPoint> System::GetInlierKeyPoints()
 {
     unique_lock<mutex> lock(mMutexState);
@@ -460,6 +466,12 @@ vector<cv::KeyPoint> System::GetInlierKeyPoints()
     return out;
 }
 
+vector<cv::KeyPoint> System::GetInlierKeyPointsRight()
+{
+    unique_lock<mutex> lock(mMutexState);
+    return {};
+}
+
 vector<cv::KeyPoint> System::GetOutlierKeyPoints()
 {
     unique_lock<mutex> lock(mMutexState);
@@ -478,6 +490,12 @@ vector<cv::KeyPoint> System::GetOutlierKeyPoints()
         }
     }
     return out;
+}
+
+vector<cv::KeyPoint> System::GetOutlierKeyPointsRight()
+{
+    unique_lock<mutex> lock(mMutexState);
+    return {};
 }
 
 vector<Sophus::SE3f> System::GetKeyframeTrajectory()
