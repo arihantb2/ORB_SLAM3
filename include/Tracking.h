@@ -111,6 +111,10 @@ public:
     std::vector<cv::Point2f> mvbPrevMatched;
     std::vector<cv::Point3f> mvIniP3D;
     Frame mInitialFrame;
+    int mMonocularInitMinKeypoints = 100;
+    float mMonocularInitNNRatio = 0.9f;
+    int mMonocularInitSearchWindowSize = 100;
+    int mMonocularInitMinMatches = 100;
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation

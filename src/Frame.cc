@@ -698,7 +698,7 @@ bool Frame::ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float&
     // Check positive depth
     if (PcZ < 0.0f)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Negative depth: " << PcZ << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Negative depth: " << PcZ << endl;
         return false;
     }
 

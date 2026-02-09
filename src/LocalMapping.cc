@@ -144,7 +144,7 @@ bool LocalMapping::RunLoop()
                     {
                         if ((mTinit < 10.f) && (dist < 0.02))
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                                 << "Not enough motion for initializing. Reseting..." << endl;
                             unique_lock<mutex> lock(mMutexReset);
                             mbResetRequestedActiveMap = true;
@@ -193,20 +193,20 @@ bool LocalMapping::RunLoop()
                     {
                         if (mTinit > 5.0f)
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "start VIBA 1" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "start VIBA 1" << endl;
                             mpCurrentKeyFrame->GetMap()->SetIniertialBA1();
                             InitializeIMU(1.f, 1e5, true);
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "end VIBA 1" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "end VIBA 1" << endl;
                         }
                     }
                     else if (!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
                     {
                         if (mTinit > 15.0f)
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "start VIBA 2" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "start VIBA 2" << endl;
                             mpCurrentKeyFrame->GetMap()->SetIniertialBA2();
                             InitializeIMU(0.f, 0.f, true);
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "end VIBA 2" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "end VIBA 2" << endl;
                         }
                     }
 
@@ -338,8 +338,8 @@ void LocalMapping::MapPointCulling()
             continue;
         }
 
-        const bool tooFewObservations = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2
-            && pMP->Observations() <= cnThObs;
+        const bool tooFewObservations =
+            ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs;
         const bool tooOld = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3;
         const bool lowFoundRatio = pMP->GetFoundRatio() < 0.25f;
         const bool shouldErase = lowFoundRatio || tooFewObservations || tooOld;
@@ -866,7 +866,7 @@ bool LocalMapping::Stop()
     if (mbStopRequested && !mbNotStop)
     {
         mbStopped = true;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Local Mapping STOP" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Local Mapping STOP" << endl;
         return true;
     }
 
@@ -901,7 +901,7 @@ void LocalMapping::Release()
     }
     mlNewKeyFrames.clear();
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Local Mapping RELEASE" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Local Mapping RELEASE" << endl;
 }
 
 bool LocalMapping::AcceptKeyFrames()
@@ -1067,9 +1067,8 @@ void LocalMapping::KeyFrameCulling()
                     const bool imuWindow = bInitImu && (pKF->mnId < last_ID) && t < 3.0f;
                     const bool shortInterval = t < 0.5f;
                     const bool smallMotionNoBA2 =
-                        !mpCurrentKeyFrame->GetMap()->GetIniertialBA2()
-                        && ((pKF->GetImuPosition() - pKF->mPrevKF->GetImuPosition()).norm() < 0.02f)
-                        && (t < 3.0f);
+                        !mpCurrentKeyFrame->GetMap()->GetIniertialBA2() &&
+                        ((pKF->GetImuPosition() - pKF->mPrevKF->GetImuPosition()).norm() < 0.02f) && (t < 3.0f);
 
                     if (imuWindow || shortInterval || smallMotionNoBA2)
                     {
@@ -1098,10 +1097,10 @@ void LocalMapping::RequestReset()
 {
     {
         unique_lock<mutex> lock(mMutexReset);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Map reset recieved" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Map reset recieved" << endl;
         mbResetRequested = true;
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Map reset, waiting..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Map reset, waiting..." << endl;
 
     while (1)
     {
@@ -1114,18 +1113,18 @@ void LocalMapping::RequestReset()
         }
         usleep(3000);
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Map reset, Done!!!" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Map reset, Done!!!" << endl;
 }
 
 void LocalMapping::RequestResetActiveMap(Map* pMap)
 {
     {
         unique_lock<mutex> lock(mMutexReset);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Active map reset recieved" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Active map reset recieved" << endl;
         mbResetRequestedActiveMap = true;
         mpMapToReset = pMap;
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Active map reset, waiting..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Active map reset, waiting..." << endl;
 
     while (1)
     {
@@ -1138,7 +1137,7 @@ void LocalMapping::RequestResetActiveMap(Map* pMap)
         }
         usleep(3000);
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Active map reset, Done!!!" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Active map reset, Done!!!" << endl;
 }
 
 void LocalMapping::ResetIfRequested()
@@ -1150,7 +1149,7 @@ void LocalMapping::ResetIfRequested()
         {
             executed_reset = true;
 
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Reseting Atlas in Local Mapping..." << endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Reseting Atlas in Local Mapping..." << endl;
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
             mbResetRequested = false;
@@ -1164,13 +1163,13 @@ void LocalMapping::ResetIfRequested()
 
             mIdxInit = 0;
 
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: End reseting Local Mapping..." << endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: End reseting Local Mapping..." << endl;
         }
 
         if (mbResetRequestedActiveMap)
         {
             executed_reset = true;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Reseting current map in Local Mapping..." << endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Reseting current map in Local Mapping..." << endl;
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
 
@@ -1182,12 +1181,12 @@ void LocalMapping::ResetIfRequested()
 
             mbResetRequested = false;
             mbResetRequestedActiveMap = false;
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: End reseting Local Mapping..." << endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: End reseting Local Mapping..." << endl;
         }
     }
     if (executed_reset)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "LM: Reset free the mutex" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "LM: Reset free the mutex" << endl;
     }
 }
 
@@ -1325,7 +1324,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
 
     if (mScale < 1e-1)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "scale too small" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "scale too small" << endl;
         bInitializing = false;
         return;
     }
@@ -1375,7 +1374,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
 
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
 
-    Verbose::PrintMess("Global Bundle Adjustment finished\nUpdating map ...", Verbose::VERBOSITY_NORMAL);
+    Verbose::PrintMess("Global Bundle Adjustment finished\nUpdating map ...", Verbose::VERBOSITY_DEBUG);
 
     // Get Map Mutex
     unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
@@ -1418,7 +1417,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
                 }
                 else
                 {
-                    Verbose::PrintMess("Child velocity empty!! ", Verbose::VERBOSITY_NORMAL);
+                    Verbose::PrintMess("Child velocity empty!! ", Verbose::VERBOSITY_DEBUG);
                 }
 
                 pChild->mBiasGBA = pChild->GetImuBias();
@@ -1438,7 +1437,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "KF " << pKF->mnId << " not set to inertial!! \n";
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "KF " << pKF->mnId << " not set to inertial!! \n";
         }
 
         lpKFtoCheck.pop_front();
@@ -1477,7 +1476,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
         }
     }
 
-    Verbose::PrintMess("Map updated!", Verbose::VERBOSITY_NORMAL);
+    Verbose::PrintMess("Map updated!", Verbose::VERBOSITY_DEBUG);
 
     mnKFs = vpKF.size();
     mIdxInit++;
@@ -1535,7 +1534,7 @@ void LocalMapping::ScaleRefinement()
 
     if (mScale < 1e-1)  // 1e-1
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "scale too small" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "scale too small" << endl;
         bInitializing = false;
         return;
     }

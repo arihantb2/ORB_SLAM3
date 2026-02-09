@@ -108,8 +108,7 @@ struct ProjectionMatchInput
 
 inline ProjectionStatus TryProjectMapPointToKeyFrame(MapPoint* pMP, KeyFrame* pKF, GeometricCamera* camera,
                                                      const Sophus::SE3f& Tcw, const Eigen::Vector3f& Ow, float th,
-                                                     bool useRight, bool checkViewingAngle,
-                                                     ProjectionMatchInput& out)
+                                                     bool useRight, bool checkViewingAngle, ProjectionMatchInput& out)
 {
     Eigen::Vector3f p3Dw = pMP->GetWorldPos();
     Eigen::Vector3f p3Dc = Tcw * p3Dw;
@@ -187,10 +186,7 @@ struct BestTwoMatches
     int secondBestDist;
     int bestIdx;
 
-    explicit BestTwoMatches(int initialDist)
-        : bestDist(initialDist), secondBestDist(initialDist), bestIdx(-1)
-    {
-    }
+    explicit BestTwoMatches(int initialDist) : bestDist(initialDist), secondBestDist(initialDist), bestIdx(-1) {}
 
     void Update(int dist, int idx)
     {
@@ -214,8 +210,8 @@ struct BestTwoMatches
 
 template <typename TSkip>
 inline BestMatch FindBestDescriptorMatch(const vector<size_t>& indices, const cv::Mat& descriptors,
-                                         const vector<cv::KeyPoint>& keys, int predictedLevel,
-                                         const cv::Mat& dMP, int initialDist, TSkip shouldSkip)
+                                         const vector<cv::KeyPoint>& keys, int predictedLevel, const cv::Mat& dMP,
+                                         int initialDist, TSkip shouldSkip)
 {
     BestMatch bestMatch(initialDist);
 
@@ -604,13 +600,13 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, vector<MapPoint*>& vpMapPoi
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx) {
-            vpMapPointMatches[idx] = static_cast<MapPoint*>(NULL);
-            nmatches--;
-        });
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx)
+            {
+                vpMapPointMatches[idx] = static_cast<MapPoint*>(NULL);
+                nmatches--;
+            });
     }
 
     return nmatches;
@@ -646,9 +642,9 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3f& Scw, const vect
         }
         // Match to the most similar keypoint in the radius
         const cv::Mat dMP = pMP->GetDescriptor();
-        const BestMatch bestMatch = FindBestDescriptorMatch(
-            projection.indices, pKF->mDescriptors, pKF->mvKeysUn, projection.predictedLevel, dMP, 256,
-            [&](size_t idx) { return vpMatched[idx]; });
+        const BestMatch bestMatch =
+            FindBestDescriptorMatch(projection.indices, pKF->mDescriptors, pKF->mvKeysUn, projection.predictedLevel,
+                                    dMP, 256, [&](size_t idx) { return vpMatched[idx]; });
 
         if (bestMatch.bestDist <= TH_LOW * ratioHamming)
         {
@@ -692,9 +688,9 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw, cons
         }
         // Match to the most similar keypoint in the radius
         const cv::Mat dMP = pMP->GetDescriptor();
-        const BestMatch bestMatch = FindBestDescriptorMatch(
-            projection.indices, pKF->mDescriptors, pKF->mvKeysUn, projection.predictedLevel, dMP, 256,
-            [&](size_t idx) { return vpMatched[idx]; });
+        const BestMatch bestMatch =
+            FindBestDescriptorMatch(projection.indices, pKF->mDescriptors, pKF->mvKeysUn, projection.predictedLevel,
+                                    dMP, 256, [&](size_t idx) { return vpMatched[idx]; });
 
         if (bestMatch.bestDist <= TH_LOW * ratioHamming)
         {
@@ -779,16 +775,16 @@ int ORBmatcher::SearchForInitialization(Frame& F1, Frame& F2, vector<cv::Point2f
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx1) {
-            if (vnMatches12[idx1] >= 0)
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx1)
             {
-                vnMatches12[idx1] = -1;
-                nmatches--;
-            }
-        });
+                if (vnMatches12[idx1] >= 0)
+                {
+                    vnMatches12[idx1] = -1;
+                    nmatches--;
+                }
+            });
     }
 
     //Update prev matched
@@ -911,13 +907,13 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, vector<MapPoint*>& v
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx) {
-            vpMatches12[idx] = static_cast<MapPoint*>(NULL);
-            nmatches--;
-        });
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx)
+            {
+                vpMatches12[idx] = static_cast<MapPoint*>(NULL);
+                nmatches--;
+            });
     }
 
     return nmatches;
@@ -1132,13 +1128,13 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2, vector<pa
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx) {
-            vMatches12[idx] = -1;
-            nmatches--;
-        });
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx)
+            {
+                vMatches12[idx] = -1;
+                nmatches--;
+            });
     }
 
     vMatchedPairs.clear();
@@ -1500,8 +1496,7 @@ int ORBmatcher::SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoin
         // Match to the most similar keypoint in the radius
         const cv::Mat dMP = pMP->GetDescriptor();
         const BestMatch bestMatch = FindBestDescriptorMatch(
-            vIndices, pKF2->mDescriptors, pKF2->mvKeysUn, nPredictedLevel, dMP, INT_MAX,
-            [&](size_t) { return false; });
+            vIndices, pKF2->mDescriptors, pKF2->mvKeysUn, nPredictedLevel, dMP, INT_MAX, [&](size_t) { return false; });
 
         if (bestMatch.bestDist <= TH_HIGH)
         {
@@ -1567,8 +1562,7 @@ int ORBmatcher::SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoin
         // Match to the most similar keypoint in the radius
         const cv::Mat dMP = pMP->GetDescriptor();
         const BestMatch bestMatch = FindBestDescriptorMatch(
-            vIndices, pKF1->mDescriptors, pKF1->mvKeysUn, nPredictedLevel, dMP, INT_MAX,
-            [&](size_t) { return false; });
+            vIndices, pKF1->mDescriptors, pKF1->mvKeysUn, nPredictedLevel, dMP, INT_MAX, [&](size_t) { return false; });
 
         if (bestMatch.bestDist <= TH_HIGH)
         {
@@ -1802,13 +1796,13 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFrame, 
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx) {
-            CurrentFrame.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
-            nmatches--;
-        });
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx)
+            {
+                CurrentFrame.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
+                nmatches--;
+            });
     }
 
     return nmatches;
@@ -1915,13 +1909,13 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF, const set
     if (mbCheckOrientation)
     {
         ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH, [&](int& ind1, int& ind2, int& ind3) {
-                ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3);
-            },
-            [&](int idx) {
-            CurrentFrame.mvpMapPoints[idx] = NULL;
-            nmatches--;
-        });
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx)
+            {
+                CurrentFrame.mvpMapPoints[idx] = NULL;
+                nmatches--;
+            });
     }
 
     return nmatches;

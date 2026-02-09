@@ -109,7 +109,7 @@ void LoopClosing::Run()
                     if ((mpTracker->mSensor == System::IMU_MONOCULAR || mpTracker->mSensor == System::IMU_STEREO) &&
                         (!mpCurrentKF->GetMap()->isImuInitialized()))
                     {
-                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "IMU is not initilized, merge is aborted" << endl;
+                        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "IMU is not initilized, merge is aborted" << endl;
                     }
                     else
                     {
@@ -124,7 +124,7 @@ void LoopClosing::Run()
 
                         if (mpCurrentKF->GetMap()->IsInertial() && mpMergeMatchedKF->GetMap()->IsInertial())
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Merge check transformation with IMU" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Merge check transformation with IMU" << endl;
                             if (mSold_new.scale() < 0.90 || mSold_new.scale() > 1.1)
                             {
                                 mpMergeLastCurrentKF->SetErase();
@@ -134,7 +134,7 @@ void LoopClosing::Run()
                                 mvpMergeMPs.clear();
                                 mnMergeNumNotFound = 0;
                                 mbMergeDetected = false;
-                                Verbose::PrintMess("scale bad estimated. Abort merging", Verbose::VERBOSITY_NORMAL);
+                                Verbose::PrintMess("scale bad estimated. Abort merging", Verbose::VERBOSITY_DEBUG);
                                 continue;
                             }
                             // If inertial, force only yaw
@@ -213,7 +213,7 @@ void LoopClosing::Run()
                         g2o::Sim3 g2oSww_new = g2oTwc * mg2oLoopScw;
 
                         Eigen::Vector3d phi = LogSO3(g2oSww_new.rotation().toRotationMatrix());
-                        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "phi = " << phi.transpose() << endl;
+                        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "phi = " << phi.transpose() << endl;
                         if (fabs(phi(0)) < 0.008f && fabs(phi(1)) < 0.008f && fabs(phi(2)) < 0.349f)
                         {
                             if (mpCurrentKF->GetMap()->IsInertial())
@@ -232,7 +232,7 @@ void LoopClosing::Run()
                         }
                         else
                         {
-                            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "BAD LOOP!!!" << endl;
+                            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "BAD LOOP!!!" << endl;
                             bGoodLoop = false;
                         }
                     }
@@ -360,7 +360,7 @@ bool LoopClosing::NewDetectCommonRegions()
 
             if (!mbLoopDetected)
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL) << "PR: Loop detected with Reffine Sim3" << endl;
+                Verbose::Print(Verbose::VERBOSITY_DEBUG) << "PR: Loop detected with Reffine Sim3" << endl;
             }
         }
         else
@@ -553,7 +553,7 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
         std::vector<KeyFrame*> vpCovKFi = pKFi->GetBestCovisibilityKeyFrames(nNumCovisibles);
         if (vpCovKFi.empty())
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Covisible list empty" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Covisible list empty" << std::endl;
             vpCovKFi.push_back(pKFi);
         }
         else
@@ -916,7 +916,7 @@ void LoopClosing::CorrectLoop()
     // If a Global Bundle Adjustment is running, abort it
     if (isRunningGBA())
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Stoping Global Bundle Adjustment...";
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Stoping Global Bundle Adjustment...";
         unique_lock<mutex> lock(mMutexGBA);
         mbStopGBA = true;
 
@@ -927,7 +927,7 @@ void LoopClosing::CorrectLoop()
             mpThreadGBA->detach();
             delete mpThreadGBA;
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "  Done!!" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "  Done!!" << endl;
     }
 
     // Wait until Local Mapping has effectively stopped
@@ -1868,7 +1868,7 @@ void LoopClosing::MergeLocal2()
 
 void LoopClosing::CheckObservations(set<KeyFrame*>& spKFsMap1, set<KeyFrame*>& spKFsMap2)
 {
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "----------------------" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------" << endl;
     for (KeyFrame* pKFi1 : spKFsMap1)
     {
         map<KeyFrame*, int> mMatchedMP;
@@ -1900,21 +1900,21 @@ void LoopClosing::CheckObservations(set<KeyFrame*>& spKFsMap1, set<KeyFrame*>& s
 
         if (mMatchedMP.size() == 0)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "CHECK-OBS: KF " << pKFi1->mnId << " has not any matched MP with the other map" << endl;
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "CHECK-OBS: KF " << pKFi1->mnId << " has matched MP with "
-                                                      << mMatchedMP.size() << " KF from the other map" << endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "CHECK-OBS: KF " << pKFi1->mnId << " has matched MP with "
+                                                     << mMatchedMP.size() << " KF from the other map" << endl;
             for (pair<KeyFrame*, int> matchedKF : mMatchedMP)
             {
-                Verbose::Print(Verbose::VERBOSITY_NORMAL)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "   -KF: " << matchedKF.first->mnId << ", Number of matches: " << matchedKF.second << endl;
             }
         }
     }
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "----------------------" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------" << endl;
 }
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose& CorrectedPosesMap, vector<MapPoint*>& vpMapPoints)
@@ -2032,7 +2032,7 @@ void LoopClosing::ResetIfRequested()
     unique_lock<mutex> lock(mMutexReset);
     if (mbResetRequested)
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Loop closer reset requested..." << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loop closer reset requested..." << endl;
         mlpLoopKeyFrameQueue.clear();
         mLastLoopKFid = 0;  //TODO old variable, it is not use in the new algorithm
         mbResetRequested = false;
@@ -2061,7 +2061,7 @@ void LoopClosing::ResetIfRequested()
 
 void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF)
 {
-    Verbose::PrintMess("Starting Global Bundle Adjustment", Verbose::VERBOSITY_NORMAL);
+    Verbose::PrintMess("Starting Global Bundle Adjustment", Verbose::VERBOSITY_DEBUG);
 
     const bool bImuInit = pActiveMap->isImuInitialized();
 
@@ -2091,8 +2091,8 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
         }
         if (!mbStopGBA)
         {
-            Verbose::PrintMess("Global Bundle Adjustment finished", Verbose::VERBOSITY_NORMAL);
-            Verbose::PrintMess("Updating map ...", Verbose::VERBOSITY_NORMAL);
+            Verbose::PrintMess("Global Bundle Adjustment finished", Verbose::VERBOSITY_DEBUG);
+            Verbose::PrintMess("Updating map ...", Verbose::VERBOSITY_DEBUG);
 
             mpLocalMapper->RequestStop();
             // Wait until Local Mapping has effectively stopped
@@ -2132,7 +2132,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                         }
                         else
                         {
-                            Verbose::PrintMess("Child velocity empty!! ", Verbose::VERBOSITY_NORMAL);
+                            Verbose::PrintMess("Child velocity empty!! ", Verbose::VERBOSITY_DEBUG);
                         }
                         pChild->mBiasGBA = pChild->GetImuBias();
 
@@ -2191,7 +2191,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 
             mpLocalMapper->Release();
 
-            Verbose::PrintMess("Map updated!", Verbose::VERBOSITY_NORMAL);
+            Verbose::PrintMess("Map updated!", Verbose::VERBOSITY_DEBUG);
         }
 
         mbFinishedGBA = true;

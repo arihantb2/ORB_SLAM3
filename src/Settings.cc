@@ -170,44 +170,44 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     }
     else
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Loading settings from " << configFile << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loading settings from " << configFile << endl;
     }
 
     //Read first camera
     readCamera1(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded camera 1" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 1" << endl;
 
     //Read second camera if stereo (not rectified)
     if (sensor_ == System::STEREO || sensor_ == System::IMU_STEREO)
     {
         readCamera2(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded camera 2" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 2" << endl;
     }
 
     //Read image info
     readImageInfo(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded image info" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info" << endl;
 
     if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO)
     {
         readIMU(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded IMU calibration" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded IMU calibration" << endl;
     }
 
     readORB(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded ORB settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << endl;
     readViewer(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded viewer settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded viewer settings" << endl;
     readOtherParameters(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Loaded misc parameters" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded misc parameters" << endl;
 
     if (bNeedToRectify_)
     {
         precomputeRectificationMaps();
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "\t-Computed rectification maps" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Computed rectification maps" << endl;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "----------------------------------" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << endl;
 }
 
 void Settings::readCamera1(cv::FileStorage& fSettings)
@@ -489,6 +489,11 @@ void Settings::readORB(cv::FileStorage& fSettings)
     bool found;
 
     nFeatures_ = readParameter<int>(fSettings, "ORBextractor.nFeatures", found);
+    nInitFeatures_ = readParameter<int>(fSettings, "ORBExtractor.nInitFeatures", found, false);
+    if (!found)
+    {
+        nInitFeatures_ = static_cast<int>(2.5f * nFeatures_);
+    }
     scaleFactor_ = readParameter<float>(fSettings, "ORBextractor.scaleFactor", found);
     nLevels_ = readParameter<int>(fSettings, "ORBextractor.nLevels", found);
     initThFAST_ = readParameter<int>(fSettings, "ORBextractor.iniThFAST", found);
@@ -522,6 +527,34 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     bool found;
 
     thFarPoints_ = readParameter<float>(fSettings, "System.thFarPoints", found, false);
+
+    monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "MonocularInit.SearchWindowSize", found, false);
+    if (!found)
+    {
+        monocularInitSearchWindowSize_ = 100;
+        std::cerr << "[WARNING] MonocularInit.SearchWindowSize not found. Defaulting to 100." << std::endl;
+    }
+
+    monocularInitMinKeypoints_ = readParameter<int>(fSettings, "MonocularInit.MinKeypoints", found, false);
+    if (!found)
+    {
+        monocularInitMinKeypoints_ = 100;
+        std::cerr << "[WARNING] MonocularInit.MinKeypoints not found. Defaulting to 100." << std::endl;
+    }
+
+    monocularInitNNRatio_ = readParameter<float>(fSettings, "MonocularInit.NNRatio", found, false);
+    if (!found)
+    {
+        monocularInitNNRatio_ = 0.9f;
+        std::cerr << "[WARNING] MonocularInit.NNRatio not found. Defaulting to 0.9." << std::endl;
+    }
+
+    monocularInitMinMatches_ = readParameter<int>(fSettings, "MonocularInit.MinMatches", found, false);
+    if (!found)
+    {
+        monocularInitMinMatches_ = 100;
+        std::cerr << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
+    }
 }
 
 void Settings::precomputeRectificationMaps()

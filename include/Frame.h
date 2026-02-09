@@ -347,12 +347,16 @@ public:
             if (mvpMapPoints[i] && !mvbOutlier[i])
             {
                 if (i < Nlim)
-{                    left++;
-}                else
-{                    right++;
-}            }
+                {
+                    left++;
+                }
+                else
+                {
+                    right++;
+                }
+            }
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "Point distribution in Frame: left-> " << left << " --- right-> " << right << endl;
     }
 

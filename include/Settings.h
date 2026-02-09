@@ -103,6 +103,7 @@ public:
     float depthMapFactor() { return depthMapFactor_; }
 
     int nFeatures() { return nFeatures_; }
+    int nInitFeatures() { return nInitFeatures_; }
     int nLevels() { return nLevels_; }
     float initThFAST() { return initThFAST_; }
     float minThFAST() { return minThFAST_; }
@@ -121,6 +122,10 @@ public:
     float imageViewerScale() { return imageViewerScale_; }
 
     float thFarPoints() { return thFarPoints_; }
+    int monocularInitSearchWindowSize() { return monocularInitSearchWindowSize_; }
+    int monocularInitMinKeypoints() { return monocularInitMinKeypoints_; }
+    float monocularInitNNRatio() { return monocularInitNNRatio_; }
+    int monocularInitMinMatches() { return monocularInitMinMatches_; }
 
     cv::Mat M1l() { return M1l_; }
     cv::Mat M2l() { return M2l_; }
@@ -206,6 +211,7 @@ private:
          * ORB stuff
          */
     int nFeatures_;
+    int nInitFeatures_;
     float scaleFactor_;
     int nLevels_;
     int initThFAST_, minThFAST_;
@@ -231,6 +237,10 @@ private:
          * Other stuff
          */
     float thFarPoints_;
+    int monocularInitSearchWindowSize_;
+    int monocularInitMinKeypoints_;
+    float monocularInitNNRatio_;
+    int monocularInitMinMatches_;
 };
 };  // namespace ORB_SLAM3
 

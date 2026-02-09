@@ -228,7 +228,7 @@ void Viewer::Run()
 
     float trackedImageScale = mpTracker->GetImageScale();
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Starting the Viewer" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Starting the Viewer" << endl;
     while (1)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

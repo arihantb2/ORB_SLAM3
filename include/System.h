@@ -119,7 +119,7 @@ public:
     // and are flagged as outliers. Useful if you only want "failed tracks".
     std::vector<cv::KeyPoint> GetOutlierKeyPoints();
     std::vector<cv::KeyPoint> GetOutlierKeyPointsRight();
- 
+
     // Keyframe trajectory in the world frame.
     std::vector<Sophus::SE3f> GetKeyframeTrajectory();
 
@@ -187,7 +187,7 @@ private:
 
     // Undistorted keypoints (mvKeysUn) of last frame
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
- 
+
     // Original/detected keypoints (mvKeys) of last frame, suitable for overlay on the input image
     std::vector<cv::KeyPoint> mDetectedKeyPoints;
     std::vector<cv::KeyPoint> mDetectedKeyPointsRight;

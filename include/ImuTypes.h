@@ -208,12 +208,12 @@ public:
 
     void printMeasurements() const
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "pint meas:\n";
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "pint meas:\n";
         for (int i = 0; i < mvMeasurements.size(); i++)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "meas " << mvMeasurements[i].t << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "meas " << mvMeasurements[i].t << std::endl;
         }
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "end pint meas:\n";
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "end pint meas:\n";
     }
 
 public:

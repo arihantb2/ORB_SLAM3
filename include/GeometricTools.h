@@ -47,7 +47,7 @@ public:
         const float epsilon = 1e-3;
         if (rows != cvMat.rows || cols != cvMat.cols)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "wrong cvmat size\n";
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "wrong cvmat size\n";
             return false;
         }
         for (int i = 0; i < rows; i++)
@@ -55,8 +55,8 @@ public:
                 if ((cvMat.at<float>(i, j) > (eigMat(i, j) + epsilon)) ||
                     (cvMat.at<float>(i, j) < (eigMat(i, j) - epsilon)))
                 {
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "cv mat:\n" << cvMat << std::endl;
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat:\n" << eigMat << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "cv mat:\n" << cvMat << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat:\n" << eigMat << std::endl;
                     return false;
                 }
         return true;
@@ -70,8 +70,8 @@ public:
             for (int j = 0; j < cols; j++)
                 if ((eigMat1(i, j) > (eigMat2(i, j) + epsilon)) || (eigMat1(i, j) < (eigMat2(i, j) - epsilon)))
                 {
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat 1:\n" << eigMat1 << std::endl;
-                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "eig mat 2:\n" << eigMat2 << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat 1:\n" << eigMat1 << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat 2:\n" << eigMat2 << std::endl;
                     return false;
                 }
         return true;
