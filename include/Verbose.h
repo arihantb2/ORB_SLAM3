@@ -34,15 +34,18 @@ public:
         VerboseStream& operator<<(const T& value)
         {
             if (level <= th.load(std::memory_order_relaxed))
+            {
                 buffer << value;
+            }
             return *this;
         }
 
         VerboseStream& operator<<(std::ostream& (*manip)(std::ostream&))
         {
             if (level > th.load(std::memory_order_relaxed))
+            {
                 return *this;
-
+            }
             manip(buffer);
             if (manip == static_cast<std::ostream& (*)(std::ostream&)>(std::endl) ||
                 manip == static_cast<std::ostream& (*)(std::ostream&)>(std::flush))
@@ -56,15 +59,18 @@ public:
         void Flush()
         {
             if (level > th.load(std::memory_order_relaxed))
+            {
                 return;
-
+            }
             const std::string out = buffer.str();
             if (!out.empty())
             {
                 std::lock_guard<std::mutex> lock(cout_mutex);
                 std::cout << out;
                 if (out.back() != '\n')
+                {
                     std::cout << '\n';
+                }
                 std::cout.flush();
                 buffer.str("");
                 buffer.clear();
@@ -77,7 +83,7 @@ public:
 
     static VerboseStream Print(eLevel lev = VERBOSITY_NORMAL) { return VerboseStream(lev); }
 
-    static void PrintMess(std::string str, eLevel lev)
+    static void PrintMess(const std::string& str, eLevel lev)
     {
         if (lev <= th.load(std::memory_order_relaxed))
         {
