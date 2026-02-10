@@ -20,6 +20,7 @@
 
 #include "CameraModels/GeometricCamera.h"
 #include "CameraModels/KannalaBrandt8.h"
+#include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"
 #include "Verbose.h"
@@ -305,6 +306,32 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
             static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea = vOverlapping;
         }
     }
+    else if (cameraModel == "Metashape")
+    {
+        cameraType_ = Metashape;
+
+        const float f = readParameter<float>(fSettings, "Camera1.f", found);
+        const float cx = readParameter<float>(fSettings, "Camera1.cx", found);
+        const float cy = readParameter<float>(fSettings, "Camera1.cy", found);
+        const float b1 = readParameter<float>(fSettings, "Camera1.b1", found);
+        const float b2 = readParameter<float>(fSettings, "Camera1.b2", found);
+
+        const float k1 = readParameter<float>(fSettings, "Camera1.k1", found);
+        const float k2 = readParameter<float>(fSettings, "Camera1.k2", found);
+        const float k3 = readParameter<float>(fSettings, "Camera1.k3", found);
+        const float k4 = readParameter<float>(fSettings, "Camera1.k4", found);
+        const float p1 = readParameter<float>(fSettings, "Camera1.p1", found);
+        const float p2 = readParameter<float>(fSettings, "Camera1.p2", found);
+
+        const float fx = f + b1;
+        const float fy = f;
+        const float skew = b2;
+
+        vCalibration = {fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+
+        calibration1_ = new ORB_SLAM3::Metashape(vCalibration);
+        originalCalib1_ = new ORB_SLAM3::Metashape(vCalibration);
+    }
     else
     {
         cerr << "Error: " << cameraModel << " not known" << endl;
@@ -375,6 +402,30 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
 
         static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea = vOverlapping;
     }
+    else if (cameraType_ == Metashape)
+    {
+        const float f = readParameter<float>(fSettings, "Camera2.f", found);
+        const float cx = readParameter<float>(fSettings, "Camera2.cx", found);
+        const float cy = readParameter<float>(fSettings, "Camera2.cy", found);
+        const float b1 = readParameter<float>(fSettings, "Camera2.b1", found);
+        const float b2 = readParameter<float>(fSettings, "Camera2.b2", found);
+
+        const float k1 = readParameter<float>(fSettings, "Camera2.k1", found);
+        const float k2 = readParameter<float>(fSettings, "Camera2.k2", found);
+        const float k3 = readParameter<float>(fSettings, "Camera2.k3", found);
+        const float k4 = readParameter<float>(fSettings, "Camera2.k4", found);
+        const float p1 = readParameter<float>(fSettings, "Camera2.p1", found);
+        const float p2 = readParameter<float>(fSettings, "Camera2.p2", found);
+
+        const float fx = f + b1;
+        const float fy = f;
+        const float skew = b2;
+
+        vCalibration = {fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+
+        calibration2_ = new ORB_SLAM3::Metashape(vCalibration);
+        originalCalib2_ = new ORB_SLAM3::Metashape(vCalibration);
+    }
 
     //Load stereo extrinsic calibration
     if (cameraType_ == Rectified)
@@ -439,11 +490,19 @@ void Settings::readImageInfo(cv::FileStorage& fSettings)
             float scaleColFactor = (float)newImSize_.width / (float)originalImSize_.width;
             calibration1_->setParameter(calibration1_->getParameter(0) * scaleColFactor, 0);
             calibration1_->setParameter(calibration1_->getParameter(2) * scaleColFactor, 2);
+            if (cameraType_ == Metashape)
+            {
+                calibration1_->setParameter(calibration1_->getParameter(10) * scaleColFactor, 10);
+            }
 
             if ((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && cameraType_ != Rectified)
             {
                 calibration2_->setParameter(calibration2_->getParameter(0) * scaleColFactor, 0);
                 calibration2_->setParameter(calibration2_->getParameter(2) * scaleColFactor, 2);
+                if (cameraType_ == Metashape)
+                {
+                    calibration2_->setParameter(calibration2_->getParameter(10) * scaleColFactor, 10);
+                }
 
                 if (cameraType_ == KannalaBrandt)
                 {
@@ -610,6 +669,10 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
     {
         output << "Pinhole";
     }
+    else if (settings.cameraType_ == Settings::Metashape)
+    {
+        output << "Metashape";
+    }
     else
     {
         output << "Kannala-Brandt";
@@ -637,6 +700,10 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         if (settings.cameraType_ == Settings::PinHole || settings.cameraType_ == Settings::Rectified)
         {
             output << "Pinhole";
+        }
+        else if (settings.cameraType_ == Settings::Metashape)
+        {
+            output << "Metashape";
         }
         else
         {

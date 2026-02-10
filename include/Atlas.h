@@ -23,6 +23,7 @@
 
 #include "CameraModels/GeometricCamera.h"
 #include "CameraModels/KannalaBrandt8.h"
+#include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "KeyFrame.h"
 #include "Map.h"
@@ -42,6 +43,7 @@ class KeyFrame;
 class KeyFrameDatabase;
 class Frame;
 class KannalaBrandt8;
+class Metashape;
 class Pinhole;
 
 //BOOST_CLASS_EXPORT_GUID(Pinhole, "Pinhole")
@@ -56,6 +58,7 @@ class Atlas
     {
         ar.template register_type<Pinhole>();
         ar.template register_type<KannalaBrandt8>();
+        ar.template register_type<Metashape>();
 
         // Save/load a set structure, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
         //ar & mspMaps;

@@ -23,6 +23,7 @@ add_library(${PROJECT_NAME} SHARED
     G2oTypes.cc
     CameraModels/Pinhole.cpp
     CameraModels/KannalaBrandt8.cpp
+    CameraModels/Metashape.cpp
     OptimizableTypes.cpp
     MLPnPsolver.cpp
     GeometricTools.cc

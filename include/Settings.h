@@ -46,7 +46,8 @@ public:
     {
         PinHole = 0,
         Rectified = 1,
-        KannalaBrandt = 2
+        KannalaBrandt = 2,
+        Metashape = 3
     };
 
     /*

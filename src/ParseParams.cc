@@ -4,6 +4,7 @@
 #include "System.h"
 
 #include "CameraModels/KannalaBrandt8.h"
+#include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"
 #include "G2oTypes.h"
@@ -32,17 +33,8 @@ void Tracking::newParameterLoader(Settings* settings)
     //TODO: missing image scaling and rectification
     mImageScale = 1.0f;
 
-    mK = cv::Mat::eye(3, 3, CV_32F);
-    mK.at<float>(0, 0) = mpCamera->getParameter(0);
-    mK.at<float>(1, 1) = mpCamera->getParameter(1);
-    mK.at<float>(0, 2) = mpCamera->getParameter(2);
-    mK.at<float>(1, 2) = mpCamera->getParameter(3);
-
-    mK_.setIdentity();
-    mK_(0, 0) = mpCamera->getParameter(0);
-    mK_(1, 1) = mpCamera->getParameter(1);
-    mK_(0, 2) = mpCamera->getParameter(2);
-    mK_(1, 2) = mpCamera->getParameter(3);
+    mK = mpCamera->toK();
+    mK_ = mpCamera->toK_();
 
     if ((mSensor == System::STEREO || mSensor == System::IMU_STEREO) &&
         settings->cameraType() == Settings::KannalaBrandt)
@@ -692,6 +684,193 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "- Camera2 Lapping: " << rightLappingBegin << ", " << rightLappingEnd << std::endl;
             }
+        }
+
+        if (b_miss_params)
+        {
+            return false;
+        }
+    }
+    else if (sCameraName == "Metashape")
+    {
+        float f, cx, cy;
+        float b1, b2;
+        float k1, k2, k3, k4, p1, p2;
+        mImageScale = 1.f;
+
+        cv::FileNode node = fSettings["Camera.f"];
+        if (!node.empty() && node.isReal())
+        {
+            f = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.f parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.cx"];
+        if (!node.empty() && node.isReal())
+        {
+            cx = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.cx parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.cy"];
+        if (!node.empty() && node.isReal())
+        {
+            cy = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.cy parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.b1"];
+        if (!node.empty() && node.isReal())
+        {
+            b1 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.b1 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.b2"];
+        if (!node.empty() && node.isReal())
+        {
+            b2 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.b2 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.k1"];
+        if (!node.empty() && node.isReal())
+        {
+            k1 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.k1 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.k2"];
+        if (!node.empty() && node.isReal())
+        {
+            k2 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.k2 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.k3"];
+        if (!node.empty() && node.isReal())
+        {
+            k3 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.k3 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.k4"];
+        if (!node.empty() && node.isReal())
+        {
+            k4 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.k4 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.p1"];
+        if (!node.empty() && node.isReal())
+        {
+            p1 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.p1 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.p2"];
+        if (!node.empty() && node.isReal())
+        {
+            p2 = node.real();
+        }
+        else
+        {
+            std::cerr << "*Camera.p2 parameter doesn't exist or is not a real number*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.imageScale"];
+        if (!node.empty() && node.isReal())
+        {
+            mImageScale = node.real();
+        }
+
+        if (!b_miss_params)
+        {
+            if (mImageScale != 1.f)
+            {
+                f = f * mImageScale;
+                cx = cx * mImageScale;
+                cy = cy * mImageScale;
+                b1 = b1 * mImageScale;
+                b2 = b2 * mImageScale;
+            }
+
+            const float fx = f + b1;
+            const float fy = f;
+            const float skew = b2;
+
+            vector<float> vCamCalib{fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+            mpCamera = new Metashape(vCamCalib);
+            mpCamera = mpAtlas->AddCamera(mpCamera);
+
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- Camera: Metashape" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- Image scale: " << mImageScale << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- f: " << f << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- b1: " << b1 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- b2: " << b2 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cx: " << cx << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cy: " << cy << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k1: " << k1 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k2: " << k2 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k3: " << k3 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k4: " << k4 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- p1: " << p1 << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- p2: " << p2 << std::endl;
+
+            mK = cv::Mat::eye(3, 3, CV_32F);
+            mK.at<float>(0, 0) = fx;
+            mK.at<float>(1, 1) = fy;
+            mK.at<float>(0, 1) = skew;
+            mK.at<float>(0, 2) = cx;
+            mK.at<float>(1, 2) = cy;
+
+            mK_.setIdentity();
+            mK_(0, 0) = fx;
+            mK_(1, 1) = fy;
+            mK_(0, 1) = skew;
+            mK_(0, 2) = cx;
+            mK_(1, 2) = cy;
         }
 
         if (b_miss_params)

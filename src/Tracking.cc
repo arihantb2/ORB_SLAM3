@@ -92,6 +92,10 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
         {
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is fisheye" << std::endl;
         }
+        else if (pCam->GetType() == GeometricCamera::CAM_METASHAPE)
+        {
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is metashape" << std::endl;
+        }
         else
         {
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is unknown" << std::endl;
