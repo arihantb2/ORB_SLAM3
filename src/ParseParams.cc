@@ -819,6 +819,30 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             b_miss_params = true;
         }
 
+        int width_px = 0;
+        int height_px = 0;
+        node = fSettings["Camera.width"];
+        if (!node.empty() && node.isInt())
+        {
+            width_px = node.operator int();
+        }
+        else
+        {
+            std::cerr << "*Camera.width parameter doesn't exist or is not an integer*" << std::endl;
+            b_miss_params = true;
+        }
+
+        node = fSettings["Camera.height"];
+        if (!node.empty() && node.isInt())
+        {
+            height_px = node.operator int();
+        }
+        else
+        {
+            std::cerr << "*Camera.height parameter doesn't exist or is not an integer*" << std::endl;
+            b_miss_params = true;
+        }
+
         node = fSettings["Camera.imageScale"];
         if (!node.empty() && node.isReal())
         {
@@ -834,13 +858,18 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
                 cy = cy * mImageScale;
                 b1 = b1 * mImageScale;
                 b2 = b2 * mImageScale;
+                width_px = static_cast<int>(width_px * mImageScale);
+                height_px = static_cast<int>(height_px * mImageScale);
             }
 
             const float fx = f + b1;
             const float fy = f;
             const float skew = b2;
 
-            vector<float> vCamCalib{fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+            const float cx_abs = cx + 0.5f * static_cast<float>(width_px);
+            const float cy_abs = cy + 0.5f * static_cast<float>(height_px);
+
+            vector<float> vCamCalib{fx, fy, cx_abs, cy_abs, k1, k2, k3, k4, p1, p2, skew};
             mpCamera = new Metashape(vCamCalib);
             mpCamera = mpAtlas->AddCamera(mpCamera);
 
@@ -849,8 +878,8 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- f: " << f << std::endl;
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- b1: " << b1 << std::endl;
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- b2: " << b2 << std::endl;
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cx: " << cx << std::endl;
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cy: " << cy << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cx: " << cx_abs << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- cy: " << cy_abs << std::endl;
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k1: " << k1 << std::endl;
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k2: " << k2 << std::endl;
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "- k3: " << k3 << std::endl;
@@ -862,15 +891,15 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
             mK.at<float>(0, 0) = fx;
             mK.at<float>(1, 1) = fy;
             mK.at<float>(0, 1) = skew;
-            mK.at<float>(0, 2) = cx;
-            mK.at<float>(1, 2) = cy;
+            mK.at<float>(0, 2) = cx_abs;
+            mK.at<float>(1, 2) = cy_abs;
 
             mK_.setIdentity();
             mK_(0, 0) = fx;
             mK_(1, 1) = fy;
             mK_(0, 1) = skew;
-            mK_(0, 2) = cx;
-            mK_(1, 2) = cy;
+            mK_(0, 2) = cx_abs;
+            mK_(1, 2) = cy_abs;
         }
 
         if (b_miss_params)

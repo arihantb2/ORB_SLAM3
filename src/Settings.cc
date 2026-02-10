@@ -313,6 +313,8 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
         const float f = readParameter<float>(fSettings, "Camera1.f", found);
         const float cx = readParameter<float>(fSettings, "Camera1.cx", found);
         const float cy = readParameter<float>(fSettings, "Camera1.cy", found);
+        const int width = readParameter<int>(fSettings, "Camera.width", found);
+        const int height = readParameter<int>(fSettings, "Camera.height", found);
         const float b1 = readParameter<float>(fSettings, "Camera1.b1", found);
         const float b2 = readParameter<float>(fSettings, "Camera1.b2", found);
 
@@ -327,7 +329,10 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
         const float fy = f;
         const float skew = b2;
 
-        vCalibration = {fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+        const float cx_abs = cx + 0.5f * static_cast<float>(width);
+        const float cy_abs = cy + 0.5f * static_cast<float>(height);
+
+        vCalibration = {fx, fy, cx_abs, cy_abs, k1, k2, k3, k4, p1, p2, skew};
 
         calibration1_ = new ORB_SLAM3::Metashape(vCalibration);
         originalCalib1_ = new ORB_SLAM3::Metashape(vCalibration);
@@ -407,6 +412,8 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
         const float f = readParameter<float>(fSettings, "Camera2.f", found);
         const float cx = readParameter<float>(fSettings, "Camera2.cx", found);
         const float cy = readParameter<float>(fSettings, "Camera2.cy", found);
+        const int width = readParameter<int>(fSettings, "Camera.width", found);
+        const int height = readParameter<int>(fSettings, "Camera.height", found);
         const float b1 = readParameter<float>(fSettings, "Camera2.b1", found);
         const float b2 = readParameter<float>(fSettings, "Camera2.b2", found);
 
@@ -421,7 +428,10 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
         const float fy = f;
         const float skew = b2;
 
-        vCalibration = {fx, fy, cx, cy, k1, k2, k3, k4, p1, p2, skew};
+        const float cx_abs = cx + 0.5f * static_cast<float>(width);
+        const float cy_abs = cy + 0.5f * static_cast<float>(height);
+
+        vCalibration = {fx, fy, cx_abs, cy_abs, k1, k2, k3, k4, p1, p2, skew};
 
         calibration2_ = new ORB_SLAM3::Metashape(vCalibration);
         originalCalib2_ = new ORB_SLAM3::Metashape(vCalibration);
