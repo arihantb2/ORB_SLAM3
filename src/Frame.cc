@@ -197,6 +197,18 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
 
     ComputeStereoMatches();
 
+    int nStereoInliers = 0;
+    for (int i = 0; i < N; i++)
+    {
+        if (mvDepth[i] > 0)
+        {
+            nStereoInliers++;
+        }
+    }
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mnId << "] STEREO_PINHOLE_FRAME: stereo_inlier_matches=" << nStereoInliers << " (keypoints=" << N
+        << " ratio=" << (N > 0 ? static_cast<float>(nStereoInliers) / N : 0.f) << ")." << endl;
+
     mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
     mvbOutlier = vector<bool>(N, false);
     mmProjectPoints.clear();

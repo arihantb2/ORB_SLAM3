@@ -119,6 +119,21 @@ public:
     int mMonocularInitSearchWindowSize = 100;
     int mMonocularInitMinMatches = 100;
 
+    int mStereoInitMinKeypoints = 500;
+    float mReferenceKeyframeNNRatio = 0.7f;
+    int mReferenceKeyframeMinBoWMatches = 15;
+    int mReferenceKeyframeMinOptimizedMapMatches = 10;
+    float mMotionModelNNRatio = 0.9f;
+    int mMotionModelProjectionSearchThStereo = 7;
+    int mMotionModelProjectionSearchThMono = 30;
+    int mMotionModelMinInitialMatches = 20;
+    int mMotionModelRetryProjectionSearchThStereo = 14;
+    int mMotionModelRetryProjectionSearchThMono = 60;
+    int mMotionModelMinRetryMatches = 20;
+    int mMotionModelMinOptimizedMapMatches = 10;
+    int mLocalMapGenericMinInliers = 10;
+    int mLocalMapVisualMinInliers = 30;
+
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
     list<Sophus::SE3f> mlRelativeFramePoses;
@@ -295,9 +310,9 @@ protected:
     void UpdateMonocularDebugFrame(const cv::Mat& image);
 
     StereoDebugFrame BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
-                                                            const cv::Mat& rightRectified) const;
+                                                           const cv::Mat& rightRectified) const;
     StereoDebugFrame BuildStereoDebugFrameFisheye(const Frame& frame, const cv::Mat& leftRectified,
-                                                   const cv::Mat& rightRectified) const;
+                                                  const cv::Mat& rightRectified) const;
     void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
 
     mutable std::mutex mMutexMonocularDebugFrame;

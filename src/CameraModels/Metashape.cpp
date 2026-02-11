@@ -306,10 +306,9 @@ Eigen::Matrix<double, 2, 3> Metashape::projectJac(const Eigen::Vector3d& v3D)
 
     const double du_dX = (fx * term_x + 2.0 * s * term_xy) / z;
     const double du_dY = (2.0 * fx * term_xy + s * term_y) / z;
-    const double du_dZ =
-        -(fx * (4.0 * p1 * x * y + 2.0 * p2 * (3.0 * x * x + y * y) + 2.0 * x * r2 * dr + x * radial) +
-          s * (2.0 * p1 * (x * x + 3.0 * y * y) + 4.0 * p2 * x * y + 2.0 * y * r2 * dr + y * radial)) /
-        z;
+    const double du_dZ = -(fx * (4.0 * p1 * x * y + 2.0 * p2 * (3.0 * x * x + y * y) + 2.0 * x * r2 * dr + x * radial) +
+                           s * (2.0 * p1 * (x * x + 3.0 * y * y) + 4.0 * p2 * x * y + 2.0 * y * r2 * dr + y * radial)) /
+                         z;
     const double dv_dX = (2.0 * fy * term_xy) / z;
     const double dv_dY = (fy * term_y) / z;
     const double dv_dZ =
@@ -327,9 +326,9 @@ Eigen::Matrix<double, 2, 3> Metashape::projectJac(const Eigen::Vector3d& v3D)
 }
 
 bool Metashape::ReconstructWithTwoViews(const std::vector<cv::KeyPoint>& vKeys1,
-                                        const std::vector<cv::KeyPoint>& vKeys2,
-                                        const std::vector<int>& vMatches12, Sophus::SE3f& T21,
-                                        std::vector<cv::Point3f>& vP3D, std::vector<bool>& vbTriangulated)
+                                        const std::vector<cv::KeyPoint>& vKeys2, const std::vector<int>& vMatches12,
+                                        Sophus::SE3f& T21, std::vector<cv::Point3f>& vP3D,
+                                        std::vector<bool>& vbTriangulated)
 {
     if (!tvr)
     {

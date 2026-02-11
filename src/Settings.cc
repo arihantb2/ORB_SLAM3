@@ -626,6 +626,88 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
         monocularInitMinMatches_ = 100;
         std::cerr << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
     }
+
+    stereoInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinKeypoints", found, false);
+    if (!found)
+    {
+        stereoInitMinKeypoints_ = 500;
+    }
+
+    referenceKeyframeNNRatio_ = readParameter<float>(fSettings, "Tracking.ReferenceKeyframe.NNRatio", found, false);
+    if (!found)
+    {
+        referenceKeyframeNNRatio_ = 0.7f;
+    }
+    referenceKeyframeMinBoWMatches_ =
+        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinBoWMatches", found, false);
+    if (!found)
+    {
+        referenceKeyframeMinBoWMatches_ = 15;
+    }
+    referenceKeyframeMinOptimizedMapMatches_ =
+        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinOptimizedMapMatches", found, false);
+    if (!found)
+    {
+        referenceKeyframeMinOptimizedMapMatches_ = 10;
+    }
+
+    motionModelNNRatio_ = readParameter<float>(fSettings, "Tracking.MotionModel.NNRatio", found, false);
+    if (!found)
+    {
+        motionModelNNRatio_ = 0.9f;
+    }
+    motionModelProjectionSearchThStereo_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThStereo", found, false);
+    if (!found)
+    {
+        motionModelProjectionSearchThStereo_ = 7;
+    }
+    motionModelProjectionSearchThMono_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThMono", found, false);
+    if (!found)
+    {
+        motionModelProjectionSearchThMono_ = 30;
+    }
+    motionModelMinInitialMatches_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.MinInitialMatches", found, false);
+    if (!found)
+    {
+        motionModelMinInitialMatches_ = 20;
+    }
+    motionModelRetryProjectionSearchThStereo_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThStereo", found, false);
+    if (!found)
+    {
+        motionModelRetryProjectionSearchThStereo_ = 14;
+    }
+    motionModelRetryProjectionSearchThMono_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThMono", found, false);
+    if (!found)
+    {
+        motionModelRetryProjectionSearchThMono_ = 60;
+    }
+    motionModelMinRetryMatches_ = readParameter<int>(fSettings, "Tracking.MotionModel.MinRetryMatches", found, false);
+    if (!found)
+    {
+        motionModelMinRetryMatches_ = 20;
+    }
+    motionModelMinOptimizedMapMatches_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.MinOptimizedMapMatches", found, false);
+    if (!found)
+    {
+        motionModelMinOptimizedMapMatches_ = 10;
+    }
+
+    localMapGenericMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.GenericMinInliers", found, false);
+    if (!found)
+    {
+        localMapGenericMinInliers_ = 10;
+    }
+    localMapVisualMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.VisualMinInliers", found, false);
+    if (!found)
+    {
+        localMapVisualMinInliers_ = 30;
+    }
 }
 
 void Settings::precomputeRectificationMaps()

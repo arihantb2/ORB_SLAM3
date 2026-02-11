@@ -77,6 +77,20 @@ void Tracking::newParameterLoader(Settings* settings)
     mMonocularInitMinKeypoints = settings->monocularInitMinKeypoints();
     mMonocularInitNNRatio = settings->monocularInitNNRatio();
     mMonocularInitMinMatches = settings->monocularInitMinMatches();
+    mStereoInitMinKeypoints = settings->stereoInitMinKeypoints();
+    mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
+    mReferenceKeyframeMinBoWMatches = settings->referenceKeyframeMinBoWMatches();
+    mReferenceKeyframeMinOptimizedMapMatches = settings->referenceKeyframeMinOptimizedMapMatches();
+    mMotionModelNNRatio = settings->motionModelNNRatio();
+    mMotionModelProjectionSearchThStereo = settings->motionModelProjectionSearchThStereo();
+    mMotionModelProjectionSearchThMono = settings->motionModelProjectionSearchThMono();
+    mMotionModelMinInitialMatches = settings->motionModelMinInitialMatches();
+    mMotionModelRetryProjectionSearchThStereo = settings->motionModelRetryProjectionSearchThStereo();
+    mMotionModelRetryProjectionSearchThMono = settings->motionModelRetryProjectionSearchThMono();
+    mMotionModelMinRetryMatches = settings->motionModelMinRetryMatches();
+    mMotionModelMinOptimizedMapMatches = settings->motionModelMinOptimizedMapMatches();
+    mLocalMapGenericMinInliers = settings->localMapGenericMinInliers();
+    mLocalMapVisualMinInliers = settings->localMapVisualMinInliers();
     //IMU parameters
     Sophus::SE3f Tbc = settings->Tbc();
     mInsertKFsLost = settings->insertKFsWhenLost();
@@ -165,6 +179,77 @@ void Tracking::oldParameterLoader(const string& strSettingPath)
     {
         mMonocularInitMinMatches = 100;
         std::cerr << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
+    }
+
+    node = fSettings["Tracking.StereoInit.MinKeypoints"];
+    if (!node.empty() && node.isInt())
+    {
+        mStereoInitMinKeypoints = node.operator int();
+    }
+    node = fSettings["Tracking.ReferenceKeyframe.NNRatio"];
+    if (!node.empty() && node.isReal())
+    {
+        mReferenceKeyframeNNRatio = node.real();
+    }
+    node = fSettings["Tracking.ReferenceKeyframe.MinBoWMatches"];
+    if (!node.empty() && node.isInt())
+    {
+        mReferenceKeyframeMinBoWMatches = node.operator int();
+    }
+    node = fSettings["Tracking.ReferenceKeyframe.MinOptimizedMapMatches"];
+    if (!node.empty() && node.isInt())
+    {
+        mReferenceKeyframeMinOptimizedMapMatches = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.NNRatio"];
+    if (!node.empty() && node.isReal())
+    {
+        mMotionModelNNRatio = node.real();
+    }
+    node = fSettings["Tracking.MotionModel.ProjectionSearchThStereo"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelProjectionSearchThStereo = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.ProjectionSearchThMono"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelProjectionSearchThMono = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.MinInitialMatches"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelMinInitialMatches = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.RetryProjectionSearchThStereo"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelRetryProjectionSearchThStereo = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.RetryProjectionSearchThMono"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelRetryProjectionSearchThMono = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.MinRetryMatches"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelMinRetryMatches = node.operator int();
+    }
+    node = fSettings["Tracking.MotionModel.MinOptimizedMapMatches"];
+    if (!node.empty() && node.isInt())
+    {
+        mMotionModelMinOptimizedMapMatches = node.operator int();
+    }
+    node = fSettings["Tracking.LocalMap.GenericMinInliers"];
+    if (!node.empty() && node.isInt())
+    {
+        mLocalMapGenericMinInliers = node.operator int();
+    }
+    node = fSettings["Tracking.LocalMap.VisualMinInliers"];
+    if (!node.empty() && node.isInt())
+    {
+        mLocalMapVisualMinInliers = node.operator int();
     }
 
     if (!b_parse_cam || !b_parse_orb || !b_parse_imu)

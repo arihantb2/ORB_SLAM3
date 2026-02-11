@@ -128,6 +128,21 @@ public:
     float monocularInitNNRatio() { return monocularInitNNRatio_; }
     int monocularInitMinMatches() { return monocularInitMinMatches_; }
 
+    int stereoInitMinKeypoints() { return stereoInitMinKeypoints_; }
+    float referenceKeyframeNNRatio() { return referenceKeyframeNNRatio_; }
+    int referenceKeyframeMinBoWMatches() { return referenceKeyframeMinBoWMatches_; }
+    int referenceKeyframeMinOptimizedMapMatches() { return referenceKeyframeMinOptimizedMapMatches_; }
+    float motionModelNNRatio() { return motionModelNNRatio_; }
+    int motionModelProjectionSearchThStereo() { return motionModelProjectionSearchThStereo_; }
+    int motionModelProjectionSearchThMono() { return motionModelProjectionSearchThMono_; }
+    int motionModelMinInitialMatches() { return motionModelMinInitialMatches_; }
+    int motionModelRetryProjectionSearchThStereo() { return motionModelRetryProjectionSearchThStereo_; }
+    int motionModelRetryProjectionSearchThMono() { return motionModelRetryProjectionSearchThMono_; }
+    int motionModelMinRetryMatches() { return motionModelMinRetryMatches_; }
+    int motionModelMinOptimizedMapMatches() { return motionModelMinOptimizedMapMatches_; }
+    int localMapGenericMinInliers() { return localMapGenericMinInliers_; }
+    int localMapVisualMinInliers() { return localMapVisualMinInliers_; }
+
     cv::Mat M1l() { return M1l_; }
     cv::Mat M2l() { return M2l_; }
     cv::Mat M1r() { return M1r_; }
@@ -242,6 +257,21 @@ private:
     int monocularInitMinKeypoints_;
     float monocularInitNNRatio_;
     int monocularInitMinMatches_;
+
+    int stereoInitMinKeypoints_;
+    float referenceKeyframeNNRatio_;
+    int referenceKeyframeMinBoWMatches_;
+    int referenceKeyframeMinOptimizedMapMatches_;
+    float motionModelNNRatio_;
+    int motionModelProjectionSearchThStereo_;
+    int motionModelProjectionSearchThMono_;
+    int motionModelMinInitialMatches_;
+    int motionModelRetryProjectionSearchThStereo_;
+    int motionModelRetryProjectionSearchThMono_;
+    int motionModelMinRetryMatches_;
+    int motionModelMinOptimizedMapMatches_;
+    int localMapGenericMinInliers_;
+    int localMapVisualMinInliers_;
 };
 };  // namespace ORB_SLAM3
 
