@@ -29,6 +29,7 @@
 
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
+#include "StereoDebug.h"
 
 namespace ORB_SLAM3
 {
@@ -102,23 +103,8 @@ public:
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo)
     int GetTrackingState();
-    std::vector<MapPoint*> GetTrackedMapPoints();
-    std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
-    // Detected keypoints in the last processed frame (Frame::mvKeys).
-    // These are in the same pixel coordinates as the image fed into Track* (before undistortion),
-    // so they are suitable for direct overlay.
-    std::vector<cv::KeyPoint> GetDetectedKeyPoints();
-    std::vector<cv::KeyPoint> GetDetectedKeyPointsRight();
-
-    // Subset of detected keypoints that are currently tracked (i.e., have a MapPoint association)
-    // and are not flagged as outliers. Useful if you only want "successful tracks".
-    std::vector<cv::KeyPoint> GetInlierKeyPoints();
-    std::vector<cv::KeyPoint> GetInlierKeyPointsRight();
-
-    // Subset of detected keypoints that are currently tracked (i.e., have a MapPoint association)
-    // and are flagged as outliers. Useful if you only want "failed tracks".
-    std::vector<cv::KeyPoint> GetOutlierKeyPoints();
-    std::vector<cv::KeyPoint> GetOutlierKeyPointsRight();
+    MonocularDebugFrame GetMonocularDebugFrame();
+    StereoDebugFrame GetStereoDebugFrame();
 
     // Keyframe trajectory in the world frame.
     std::vector<Sophus::SE3f> GetKeyframeTrajectory();
@@ -183,17 +169,8 @@ private:
     // Tracking state
     int mTrackingState;
 
-    std::vector<MapPoint*> mTrackedMapPoints;
-
-    // Undistorted keypoints (mvKeysUn) of last frame
-    std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
-
-    // Original/detected keypoints (mvKeys) of last frame, suitable for overlay on the input image
-    std::vector<cv::KeyPoint> mDetectedKeyPoints;
-    std::vector<cv::KeyPoint> mDetectedKeyPointsRight;
-
-    // Outlier flags aligned with mDetectedKeyPoints / mTrackedMapPoints
-    std::vector<bool> mTrackedOutliers;
+    MonocularDebugFrame mMonocularDebugFrame;
+    StereoDebugFrame mStereoDebugFrame;
 
     std::mutex mMutexState;
 

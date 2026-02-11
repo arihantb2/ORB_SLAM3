@@ -30,6 +30,7 @@
 #include "Frame.h"
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
+#include "StereoDebug.h"
 
 namespace ORB_SLAM3
 {
@@ -81,6 +82,8 @@ public:
     void CreateMapInAtlas();
 
     int GetMatchesInliers();
+    MonocularDebugFrame GetMonocularDebugFrame() const;
+    StereoDebugFrame GetStereoDebugFrame() const;
 
     float GetImageScale();
 
@@ -287,6 +290,21 @@ protected:
     bool ParseCamParamFile(cv::FileStorage& fSettings);
     bool ParseORBParamFile(cv::FileStorage& fSettings);
     bool ParseIMUParamFile(cv::FileStorage& fSettings);
+
+    MonocularDebugFrame BuildMonocularDebugFrame(const Frame& frame, const cv::Mat& image) const;
+    void UpdateMonocularDebugFrame(const cv::Mat& image);
+
+    StereoDebugFrame BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
+                                                            const cv::Mat& rightRectified) const;
+    StereoDebugFrame BuildStereoDebugFrameFisheye(const Frame& frame, const cv::Mat& leftRectified,
+                                                   const cv::Mat& rightRectified) const;
+    void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
+
+    mutable std::mutex mMutexMonocularDebugFrame;
+    MonocularDebugFrame mLastMonocularDebugFrame;
+
+    mutable std::mutex mMutexStereoDebugFrame;
+    StereoDebugFrame mLastStereoDebugFrame;
 };
 
 }  // namespace ORB_SLAM3

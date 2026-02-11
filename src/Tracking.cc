@@ -35,7 +35,9 @@
 #include "System.h"
 #include "Viewer.h"
 
+#include <algorithm>
 #include <iostream>
+#include <utility>
 
 #include <mutex>
 
@@ -174,6 +176,7 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat&
     }
 
     Track();
+    UpdateStereoDebugFrame(mImGray, imGrayRight);
 
     return mCurrentFrame.GetPose();
 }
@@ -238,6 +241,7 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& times
 
     lastID = mCurrentFrame.mnId;
     Track();
+    UpdateMonocularDebugFrame(mImGray);
 
     return mCurrentFrame.GetPose();
 }
@@ -2536,6 +2540,149 @@ void Tracking::UpdateFrameIMU(const float s, const IMU::Bias& b, KeyFrame* pCurr
 int Tracking::GetMatchesInliers()
 {
     return mnMatchesInliers;
+}
+
+MonocularDebugFrame Tracking::GetMonocularDebugFrame() const
+{
+    std::unique_lock<std::mutex> lock(mMutexMonocularDebugFrame);
+    return mLastMonocularDebugFrame;
+}
+
+MonocularDebugFrame Tracking::BuildMonocularDebugFrame(const Frame& frame, const cv::Mat& image) const
+{
+    MonocularDebugFrame debugFrame;
+    debugFrame.image = image.clone();
+    debugFrame.keypoints_detected = frame.mvKeys;
+    const size_t n = frame.mvKeys.size();
+    if (frame.mvpMapPoints.size() != n || frame.mvbOutlier.size() != n)
+    {
+        return debugFrame;
+    }
+    debugFrame.keypoints_inlier.reserve(n);
+    debugFrame.keypoints_outlier.reserve(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (frame.mvpMapPoints[i])
+        {
+            if (frame.mvbOutlier[i])
+            {
+                debugFrame.keypoints_outlier.push_back(frame.mvKeys[i]);
+            }
+            else
+            {
+                debugFrame.keypoints_inlier.push_back(frame.mvKeys[i]);
+            }
+        }
+    }
+    return debugFrame;
+}
+
+void Tracking::UpdateMonocularDebugFrame(const cv::Mat& image)
+{
+    MonocularDebugFrame debugFrame = BuildMonocularDebugFrame(mCurrentFrame, image);
+    std::unique_lock<std::mutex> lock(mMutexMonocularDebugFrame);
+    mLastMonocularDebugFrame = std::move(debugFrame);
+}
+
+StereoDebugFrame Tracking::GetStereoDebugFrame() const
+{
+    std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
+    return mLastStereoDebugFrame;
+}
+
+StereoDebugFrame Tracking::BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
+                                                                 const cv::Mat& rightRectified) const
+{
+    StereoDebugFrame debugFrame;
+    debugFrame.mode = StereoDebugMode::METASHAPE_PINHOLE;
+    debugFrame.left_rectified = leftRectified.clone();
+    debugFrame.right_rectified = rightRectified.clone();
+    debugFrame.left_keypoints = frame.mvKeys;
+    debugFrame.right_keypoints = frame.mvKeysRight;
+
+    const size_t n = std::min(frame.mvKeys.size(), frame.mvuRight.size());
+    debugFrame.matches.reserve(n);
+    debugFrame.match_lines.reserve(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        const float uRight = frame.mvuRight[i];
+        if (uRight < 0.0f)
+        {
+            continue;
+        }
+
+        StereoMatchDebug match;
+        match.left_idx = static_cast<int>(i);
+        match.right_idx = -1;
+        match.left_point = frame.mvKeys[i].pt;
+        match.right_point = cv::Point2f(uRight, frame.mvKeys[i].pt.y);
+        match.disparity = match.left_point.x - match.right_point.x;
+        if (i < frame.mvDepth.size() && frame.mvDepth[i] > 0.0f)
+        {
+            match.depth = frame.mvDepth[i];
+            match.has_depth = true;
+        }
+        debugFrame.matches.push_back(match);
+        debugFrame.match_lines.emplace_back(match.left_point.x, match.left_point.y, match.right_point.x,
+                                            match.right_point.y);
+    }
+
+    return debugFrame;
+}
+
+StereoDebugFrame Tracking::BuildStereoDebugFrameFisheye(const Frame& frame, const cv::Mat& leftRectified,
+                                                        const cv::Mat& rightRectified) const
+{
+    StereoDebugFrame debugFrame;
+    debugFrame.mode = StereoDebugMode::FISHEYE;
+    debugFrame.left_rectified = leftRectified.clone();
+    debugFrame.right_rectified = rightRectified.clone();
+    debugFrame.left_keypoints = frame.mvKeys;
+    debugFrame.right_keypoints = frame.mvKeysRight;
+
+    debugFrame.matches.reserve(frame.mvLeftToRightMatch.size());
+    debugFrame.match_lines.reserve(frame.mvLeftToRightMatch.size());
+    for (size_t i = 0; i < frame.mvLeftToRightMatch.size() && i < frame.mvKeys.size(); ++i)
+    {
+        const int rightIdx = frame.mvLeftToRightMatch[i];
+        if (rightIdx < 0 || static_cast<size_t>(rightIdx) >= frame.mvKeysRight.size())
+        {
+            continue;
+        }
+
+        StereoMatchDebug match;
+        match.left_idx = static_cast<int>(i);
+        match.right_idx = rightIdx;
+        match.left_point = frame.mvKeys[i].pt;
+        match.right_point = frame.mvKeysRight[rightIdx].pt;
+        match.disparity = match.left_point.x - match.right_point.x;
+        if (i < frame.mvDepth.size() && frame.mvDepth[i] > 0.0f)
+        {
+            match.depth = frame.mvDepth[i];
+            match.has_depth = true;
+        }
+        debugFrame.matches.push_back(match);
+        debugFrame.match_lines.emplace_back(match.left_point.x, match.left_point.y, match.right_point.x,
+                                            match.right_point.y);
+    }
+
+    return debugFrame;
+}
+
+void Tracking::UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified)
+{
+    StereoDebugFrame debugFrame;
+    if (mCurrentFrame.mpCamera2)
+    {
+        debugFrame = BuildStereoDebugFrameFisheye(mCurrentFrame, leftRectified, rightRectified);
+    }
+    else
+    {
+        debugFrame = BuildStereoDebugFrameMetashapePinhole(mCurrentFrame, leftRectified, rightRectified);
+    }
+
+    std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
+    mLastStereoDebugFrame = std::move(debugFrame);
 }
 
 float Tracking::GetImageScale()

@@ -409,6 +409,8 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
     }
     else if (cameraType_ == Metashape)
     {
+        bNeedToRectify_ = true;
+
         const float f = readParameter<float>(fSettings, "Camera2.f", found);
         const float cx = readParameter<float>(fSettings, "Camera2.cx", found);
         const float cy = readParameter<float>(fSettings, "Camera2.cy", found);
@@ -629,10 +631,37 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
 void Settings::precomputeRectificationMaps()
 {
     //Precompute rectification maps, new calibrations, ...
-    cv::Mat K1 = static_cast<Pinhole*>(calibration1_)->toK();
+    cv::Mat K1;
+    cv::Mat K2;
+    cv::Mat D1;
+    cv::Mat D2;
+
+    if (cameraType_ == PinHole)
+    {
+        K1 = static_cast<Pinhole*>(calibration1_)->toK();
+        K2 = static_cast<Pinhole*>(calibration2_)->toK();
+        D1 = camera1DistortionCoef();
+        D2 = camera2DistortionCoef();
+    }
+    else if (cameraType_ == Metashape)
+    {
+        K1 = static_cast<class Metashape*>(calibration1_)->toK();
+        K2 = static_cast<class Metashape*>(calibration2_)->toK();
+        // OpenCV radtan: (k1, k2, p1, p2, k3). Metashape params [fx,fy,cx,cy,k1,k2,k3,k4,p1,p2,skew]; k4 omitted for API.
+        D1 = (cv::Mat_<float>(5, 1) << calibration1_->getParameter(4), calibration1_->getParameter(5),
+              calibration1_->getParameter(8), calibration1_->getParameter(9), calibration1_->getParameter(6));
+        D2 = (cv::Mat_<float>(5, 1) << calibration2_->getParameter(4), calibration2_->getParameter(5),
+              calibration2_->getParameter(8), calibration2_->getParameter(9), calibration2_->getParameter(6));
+    }
+    else
+    {
+        throw std::runtime_error("precomputeRectificationMaps only supports PinHole and Metashape camera types");
+    }
+
     K1.convertTo(K1, CV_64F);
-    cv::Mat K2 = static_cast<Pinhole*>(calibration2_)->toK();
     K2.convertTo(K2, CV_64F);
+    D1.convertTo(D1, CV_64F);
+    D2.convertTo(D2, CV_64F);
 
     cv::Mat cvTlr;
     cv::eigen2cv(Tlr_.inverse().matrix3x4(), cvTlr);
@@ -644,18 +673,33 @@ void Settings::precomputeRectificationMaps()
     cv::Mat R_r1_u1, R_r2_u2;
     cv::Mat P1, P2, Q;
 
-    cv::stereoRectify(K1, camera1DistortionCoef(), K2, camera2DistortionCoef(), newImSize_, R12, t12, R_r1_u1, R_r2_u2,
-                      P1, P2, Q, cv::CALIB_ZERO_DISPARITY, -1, newImSize_);
-    cv::initUndistortRectifyMap(K1, camera1DistortionCoef(), R_r1_u1, P1.rowRange(0, 3).colRange(0, 3), newImSize_,
-                                CV_32F, M1l_, M2l_);
-    cv::initUndistortRectifyMap(K2, camera2DistortionCoef(), R_r2_u2, P2.rowRange(0, 3).colRange(0, 3), newImSize_,
-                                CV_32F, M1r_, M2r_);
+    cv::stereoRectify(K1, D1, K2, D2, newImSize_, R12, t12, R_r1_u1, R_r2_u2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, -1,
+                      newImSize_);
+    cv::initUndistortRectifyMap(K1, D1, R_r1_u1, P1.rowRange(0, 3).colRange(0, 3), newImSize_, CV_32F, M1l_, M2l_);
+    cv::initUndistortRectifyMap(K2, D2, R_r2_u2, P2.rowRange(0, 3).colRange(0, 3), newImSize_, CV_32F, M1r_, M2r_);
 
-    //Update calibration
+    //Update calibration to rectified intrinsics
     calibration1_->setParameter(P1.at<double>(0, 0), 0);
     calibration1_->setParameter(P1.at<double>(1, 1), 1);
     calibration1_->setParameter(P1.at<double>(0, 2), 2);
     calibration1_->setParameter(P1.at<double>(1, 2), 3);
+
+    if (cameraType_ == Metashape)
+    {
+        // Zero distortion and skew so runtime projection matches rectified pinhole assumptions
+        for (int i = 4; i <= 10; i++)
+        {
+            calibration1_->setParameter(0.f, i);
+        }
+        calibration2_->setParameter(P2.at<double>(0, 0), 0);
+        calibration2_->setParameter(P2.at<double>(1, 1), 1);
+        calibration2_->setParameter(P2.at<double>(0, 2), 2);
+        calibration2_->setParameter(P2.at<double>(1, 2), 3);
+        for (int i = 4; i <= 10; i++)
+        {
+            calibration2_->setParameter(0.f, i);
+        }
+    }
 
     //Update bf
     bf_ = b_ * P1.at<double>(0, 0);

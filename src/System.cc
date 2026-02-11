@@ -260,10 +260,8 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    mDetectedKeyPoints = mpTracker->mCurrentFrame.mvKeys;
-    mTrackedOutliers = mpTracker->mCurrentFrame.mvbOutlier;
+    mMonocularDebugFrame = MonocularDebugFrame();
+    mStereoDebugFrame = mpTracker->GetStereoDebugFrame();
 
     return Tcw;
 }
@@ -323,10 +321,8 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
-    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
-    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-    mDetectedKeyPoints = mpTracker->mCurrentFrame.mvKeys;
-    mTrackedOutliers = mpTracker->mCurrentFrame.mvbOutlier;
+    mMonocularDebugFrame = mpTracker->GetMonocularDebugFrame();
+    mStereoDebugFrame = StereoDebugFrame();
 
     return Tcw;
 }
@@ -422,80 +418,16 @@ int System::GetTrackingState()
     return mTrackingState;
 }
 
-vector<MapPoint*> System::GetTrackedMapPoints()
+MonocularDebugFrame System::GetMonocularDebugFrame()
 {
     unique_lock<mutex> lock(mMutexState);
-    return mTrackedMapPoints;
+    return mMonocularDebugFrame;
 }
 
-vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
+StereoDebugFrame System::GetStereoDebugFrame()
 {
     unique_lock<mutex> lock(mMutexState);
-    return mTrackedKeyPointsUn;
-}
-
-vector<cv::KeyPoint> System::GetDetectedKeyPoints()
-{
-    unique_lock<mutex> lock(mMutexState);
-    return mDetectedKeyPoints;
-}
-
-vector<cv::KeyPoint> System::GetDetectedKeyPointsRight()
-{
-    unique_lock<mutex> lock(mMutexState);
-    return {};
-}
-
-vector<cv::KeyPoint> System::GetInlierKeyPoints()
-{
-    unique_lock<mutex> lock(mMutexState);
-    vector<cv::KeyPoint> out;
-    const size_t n = mDetectedKeyPoints.size();
-    if (mTrackedMapPoints.size() != n || mTrackedOutliers.size() != n)
-    {
-        return out;
-    }
-    out.reserve(n);
-    for (size_t i = 0; i < n; ++i)
-    {
-        if (mTrackedMapPoints[i] && !mTrackedOutliers[i])
-        {
-            out.push_back(mDetectedKeyPoints[i]);
-        }
-    }
-    return out;
-}
-
-vector<cv::KeyPoint> System::GetInlierKeyPointsRight()
-{
-    unique_lock<mutex> lock(mMutexState);
-    return {};
-}
-
-vector<cv::KeyPoint> System::GetOutlierKeyPoints()
-{
-    unique_lock<mutex> lock(mMutexState);
-    vector<cv::KeyPoint> out;
-    const size_t n = mDetectedKeyPoints.size();
-    if (mTrackedMapPoints.size() != n || mTrackedOutliers.size() != n)
-    {
-        return out;
-    }
-    out.reserve(n);
-    for (size_t i = 0; i < n; ++i)
-    {
-        if (mTrackedMapPoints[i] && mTrackedOutliers[i])
-        {
-            out.push_back(mDetectedKeyPoints[i]);
-        }
-    }
-    return out;
-}
-
-vector<cv::KeyPoint> System::GetOutlierKeyPointsRight()
-{
-    unique_lock<mutex> lock(mMutexState);
-    return {};
+    return mStereoDebugFrame;
 }
 
 vector<Sophus::SE3f> System::GetKeyframeTrajectory()
