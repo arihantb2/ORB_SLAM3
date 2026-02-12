@@ -53,8 +53,6 @@ public:
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix& M, pangolin::OpenGlMatrix& MOw);
 
 private:
-    bool ParseViewerParamFile(cv::FileStorage& fSettings);
-
     float mKeyFrameSize;
     float mKeyFrameLineWidth;
     float mGraphLineWidth;

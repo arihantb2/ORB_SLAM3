@@ -63,14 +63,11 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
       mbAtlasNewMaps(newMaps)
 {
     // Load camera parameters from settings file
-    if (settings)
+    if (!settings)
     {
-        newParameterLoader(settings);
+        throw std::runtime_error("Settings must be provided (File.version \"1.0\" format only).");
     }
-    else
-    {
-        oldParameterLoader(strSettingPath);
-    }
+    newParameterLoader(settings);
 
     initID = 0;
     lastID = 0;

@@ -31,20 +31,11 @@ namespace ORB_SLAM3
 
 MapDrawer::MapDrawer(Atlas* pAtlas, const std::string& strSettingPath, Settings* settings) : mpAtlas(pAtlas)
 {
-    if (settings)
+    if (!settings)
     {
-        newParameterLoader(settings);
+        throw std::runtime_error("MapDrawer requires non-null Settings (File.version 1.0 config)");
     }
-    else
-    {
-        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-        bool is_correct = ParseViewerParamFile(fSettings);
-
-        if (!is_correct)
-        {
-            throw std::runtime_error("**ERROR in the config file, the format is not correct**");
-        }
-    }
+    newParameterLoader(settings);
 }
 
 void MapDrawer::newParameterLoader(Settings* settings)
@@ -55,85 +46,6 @@ void MapDrawer::newParameterLoader(Settings* settings)
     mPointSize = settings->pointSize();
     mCameraSize = settings->cameraSize();
     mCameraLineWidth = settings->cameraLineWidth();
-}
-
-bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
-{
-    bool b_miss_params = false;
-
-    cv::FileNode node = fSettings["Viewer.KeyFrameSize"];
-    if (!node.empty())
-    {
-        mKeyFrameSize = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.KeyFrameSize parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    node = fSettings["Viewer.KeyFrameLineWidth"];
-    if (!node.empty())
-    {
-        mKeyFrameLineWidth = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.KeyFrameLineWidth parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    node = fSettings["Viewer.GraphLineWidth"];
-    if (!node.empty())
-    {
-        mGraphLineWidth = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.GraphLineWidth parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    node = fSettings["Viewer.PointSize"];
-    if (!node.empty())
-    {
-        mPointSize = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.PointSize parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    node = fSettings["Viewer.CameraSize"];
-    if (!node.empty())
-    {
-        mCameraSize = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.CameraSize parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    node = fSettings["Viewer.CameraLineWidth"];
-    if (!node.empty())
-    {
-        mCameraLineWidth = node.real();
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "*Viewer.CameraLineWidth parameter doesn't exist or is not a real number*" << std::endl;
-        b_miss_params = true;
-    }
-
-    return !b_miss_params;
 }
 
 void MapDrawer::DrawMapPoints()

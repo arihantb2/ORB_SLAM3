@@ -21,7 +21,6 @@
 
 #include <Eigen/Core>
 #include <list>
-#include <map>
 #include <vector>
 
 #include "ORBVocabulary.h"
