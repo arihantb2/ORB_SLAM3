@@ -19,8 +19,6 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include "Verbose.h"
-
 #include <pangolin/pangolin.h>
 #include <list>
 #include <map>
@@ -43,11 +41,6 @@ class Atlas;
 class KeyFrameDatabase;
 class GeometricCamera;
 
-using std::list;
-using std::map;
-using std::string;
-using std::vector;
-
 class Map
 {
     friend class boost::serialization::access;
@@ -61,8 +54,6 @@ class Map
         ar & mnBigChangeIdx;
 
         // Save/load a set structure, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
-        //ar & mspKeyFrames;
-        //ar & mspMapPoints;
         ar & mvpBackupKeyFrames;
         ar & mvpBackupMapPoints;
 
@@ -141,14 +132,15 @@ public:
     unsigned int GetLowerKFID();
 
     void PreSave(std::set<GeometricCamera*>& spCams);
-    void PostLoad(KeyFrameDatabase* pKFDB, ORBVocabulary* pORBVoc /*, map<long unsigned int, KeyFrame*>& mpKeyFrameId*/,
-                  map<unsigned int, GeometricCamera*>& mpCams);
+    void PostLoad(KeyFrameDatabase* pKFDB,
+                  ORBVocabulary* pORBVoc /*, std::map<long unsigned int, KeyFrame*>& mpKeyFrameId*/,
+                  std::map<unsigned int, GeometricCamera*>& mpCams);
 
-    void printReprojectionError(list<KeyFrame*>& lpLocalWindowKFs, KeyFrame* mpCurrentKF, string& name,
-                                string& name_folder);
+    void printReprojectionError(std::list<KeyFrame*>& lpLocalWindowKFs, KeyFrame* mpCurrentKF, std::string& name,
+                                std::string& name_folder);
 
-    vector<KeyFrame*> mvpKeyFrameOrigins;
-    vector<unsigned long int> mvBackupKeyFrameOriginsId;
+    std::vector<KeyFrame*> mvpKeyFrameOrigins;
+    std::vector<unsigned long int> mvBackupKeyFrameOriginsId;
     KeyFrame* mpFirstRegionKF;
     std::mutex mMutexMapUpdate;
 

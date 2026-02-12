@@ -23,10 +23,6 @@ endif()
 # ==============================================================================
 # Build dependencies as subdirectories
 # ==============================================================================
-
-message(STATUS "Configuring and building Thirdparty/DBoW2 ...")
-add_subdirectory(Thirdparty/DBoW2)
-
 message(STATUS "Configuring and building Thirdparty/g2o ...")
 add_subdirectory(Thirdparty/g2o)
 
@@ -73,6 +69,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
+find_package(DBoW2 REQUIRED)
 
 # g2o is always built internally from Thirdparty/g2o
 # Set up g2o variables based on build tree
@@ -103,14 +100,6 @@ add_subdirectory(src/CameraModels/tests)
 # ---------------
 # Installation instructions.
 # ---------------
-# Install Thirdparty libraries
-install(TARGETS DBoW2
-    EXPORT ORB_SLAM3Targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    COMPONENT library)
-
 # Install g2o libraries from build tree
 # Note: Target names are without prefix, but OUTPUT_NAME includes g2o_ prefix
 # Collect only the targets that actually exist (some may be conditionally built)
@@ -154,7 +143,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
 
-# Install Thirdparty headers (DBoW2, g2o source headers)
+# Install Thirdparty headers (g2o source headers)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty
     COMPONENT library

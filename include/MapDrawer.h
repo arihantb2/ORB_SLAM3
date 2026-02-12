@@ -19,8 +19,6 @@
 #ifndef MAPDRAWER_H
 #define MAPDRAWER_H
 
-#include "Verbose.h"
-
 #include <pangolin/pangolin.h>
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
@@ -36,13 +34,11 @@ class Atlas;
 class KeyFrame;
 class MapPoint;
 
-using std::string;
-
 class MapDrawer
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    MapDrawer(Atlas* pAtlas, const string& strSettingPath, Settings* settings);
+    MapDrawer(Atlas* pAtlas, const std::string& strSettingPath, Settings* settings);
 
     void newParameterLoader(Settings* settings);
 

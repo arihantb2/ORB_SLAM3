@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include "Verbose.h"
+
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
 
@@ -157,12 +159,12 @@ private:
         {
             if (required)
             {
-                std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                exit(-1);
+                throw std::runtime_error(name + " required parameter does not exist, aborting...");
             }
             else
             {
-                std::cerr << name << " optional parameter does not exist..." << std::endl;
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << name << " optional parameter does not exist..." << std::endl;
                 found = false;
                 return T();
             }

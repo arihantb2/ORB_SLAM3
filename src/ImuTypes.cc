@@ -17,11 +17,6 @@
 */
 
 #include "ImuTypes.h"
-#include "Converter.h"
-
-#include "GeometricTools.h"
-
-#include <iostream>
 
 namespace ORB_SLAM3
 {
@@ -191,7 +186,9 @@ void Preintegrated::Reintegrate()
     const std::vector<integrable> aux = mvMeasurements;
     Initialize(bu);
     for (size_t i = 0; i < aux.size(); i++)
+    {
         IntegrateNewMeasurement(aux[i].a, aux[i].w, aux[i].t);
+    }
 }
 
 void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f& acceleration, const Eigen::Vector3f& angVel,
@@ -257,8 +254,9 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f& acceleration,
 void Preintegrated::MergePrevious(Preintegrated* pPrev)
 {
     if (pPrev == this)
+    {
         return;
-
+    }
     std::unique_lock<std::mutex> lock1(mMutex);
     std::unique_lock<std::mutex> lock2(pPrev->mMutex);
     Bias bav;
@@ -274,9 +272,13 @@ void Preintegrated::MergePrevious(Preintegrated* pPrev)
 
     Initialize(bav);
     for (size_t i = 0; i < aux1.size(); i++)
+    {
         IntegrateNewMeasurement(aux1[i].a, aux1[i].w, aux1[i].t);
+    }
     for (size_t i = 0; i < aux2.size(); i++)
+    {
         IntegrateNewMeasurement(aux2[i].a, aux2[i].w, aux2[i].t);
+    }
 }
 
 void Preintegrated::SetNewBias(const Bias& bu_)
@@ -391,22 +393,34 @@ void Bias::CopyFrom(Bias& b)
 std::ostream& operator<<(std::ostream& out, const Bias& b)
 {
     if (b.bwx > 0)
+    {
         out << " ";
+    }
     out << b.bwx << ",";
     if (b.bwy > 0)
+    {
         out << " ";
+    }
     out << b.bwy << ",";
     if (b.bwz > 0)
+    {
         out << " ";
+    }
     out << b.bwz << ",";
     if (b.bax > 0)
+    {
         out << " ";
+    }
     out << b.bax << ",";
     if (b.bay > 0)
+    {
         out << " ";
+    }
     out << b.bay << ",";
     if (b.baz > 0)
+    {
         out << " ";
+    }
     out << b.baz;
 
     return out;

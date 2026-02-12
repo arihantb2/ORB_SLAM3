@@ -23,6 +23,7 @@
 #include <string>
 #include "Converter.h"
 #include "ImuTypes.h"
+#include "MapPoint.h"
 
 namespace ORB_SLAM3
 {
@@ -59,10 +60,10 @@ KeyFrame::KeyFrame()
       mb(0),
       mThDepth(0),
       N(0),
-      mvKeys(static_cast<vector<cv::KeyPoint>>(NULL)),
-      mvKeysUn(static_cast<vector<cv::KeyPoint>>(NULL)),
-      mvuRight(static_cast<vector<float>>(NULL)),
-      mvDepth(static_cast<vector<float>>(NULL)),
+      mvKeys(static_cast<std::vector<cv::KeyPoint>>(NULL)),
+      mvKeysUn(static_cast<std::vector<cv::KeyPoint>>(NULL)),
+      mvuRight(static_cast<std::vector<float>>(NULL)),
+      mvDepth(static_cast<std::vector<float>>(NULL)),
       mnScaleLevels(0),
       mfScaleFactor(0),
       mfLogScaleFactor(0),
@@ -213,7 +214,7 @@ void KeyFrame::ComputeBoW()
 {
     if (mBowVec.empty() || mFeatVec.empty())
     {
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+        std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise
         mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
@@ -443,7 +444,7 @@ void KeyFrame::EraseMapPointMatch(const int& idx)
 void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
 {
     std::tuple<size_t, size_t> indexes = pMP->GetIndexInKeyFrame(this);
-    size_t leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
+    size_t leftIndex = std::get<0>(indexes), rightIndex = std::get<1>(indexes);
     if (leftIndex != -1)
     {
         mvpMapPoints[leftIndex] = static_cast<MapPoint*>(NULL);
@@ -854,7 +855,7 @@ void KeyFrame::EraseConnection(KeyFrame* pKF)
     }
 }
 
-vector<size_t> KeyFrame::GetFeaturesInArea(const float& x, const float& y, const float& r, const bool bRight) const
+std::vector<size_t> KeyFrame::GetFeaturesInArea(const float& x, const float& y, const float& r, const bool bRight) const
 {
     std::vector<size_t> vIndices;
     vIndices.reserve(N);

@@ -47,8 +47,8 @@ namespace ORB_SLAM3
 std::atomic<Verbose::eLevel> Verbose::th{Verbose::VERBOSITY_NORMAL};
 std::mutex Verbose::cout_mutex;
 
-System::System(const string& strVocFile, const string& strSettingsFile, const eSensor sensor, const bool bUseViewer,
-               const bool bTurnOffLC)
+System::System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
+               const bool bUseViewer, const bool bTurnOffLC)
     : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     // Fix verbosity
@@ -56,43 +56,42 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
 
     // Output welcome message
     Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << endl
+        << std::endl
         << "ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and "
            "Juan D. Tardós, University of Zaragoza."
-        << endl
+        << std::endl
         << "ORB-SLAM2 Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós, University of "
            "Zaragoza."
-        << endl
-        << "This program comes with ABSOLUTELY NO WARRANTY;" << endl
-        << "This is free software, and you are welcome to redistribute it" << endl
-        << "under certain conditions. See LICENSE.txt." << endl
-        << endl;
+        << std::endl
+        << "This program comes with ABSOLUTELY NO WARRANTY;" << std::endl
+        << "This is free software, and you are welcome to redistribute it" << std::endl
+        << "under certain conditions. See LICENSE.txt." << std::endl
+        << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Input sensor was set to: ";
 
     if (mSensor == MONOCULAR)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular" << std::endl;
     }
     else if (mSensor == STEREO)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << std::endl;
     }
     else if (mSensor == IMU_MONOCULAR)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular-Inertial" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular-Inertial" << std::endl;
     }
     else if (mSensor == IMU_STEREO)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << std::endl;
     }
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
     if (!fsSettings.isOpened())
     {
-        cerr << "Failed to open settings file at: " << strSettingsFile << endl;
-        exit(-1);
+        throw std::runtime_error("Failed to open settings file at: " + strSettingsFile);
     }
 
     cv::FileNode node = fsSettings["File.version"];
@@ -100,14 +99,14 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         settings_ = new Settings(strSettingsFile, mSensor);
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << std::endl;
     }
     else
     {
         throw std::runtime_error("Settings file version is not supported");
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << std::endl;
 
     node = fsSettings["newMaps"];
     bool newMaps = true;
@@ -115,28 +114,27 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     {
         newMaps = (node.operator int()) == 1;
     }
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << std::endl;
 
     mStrVocabularyFilePath = strVocFile;
 
     //Load ORB Vocabulary
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << std::endl
+                                             << "Loading ORB Vocabulary. This could take a while..." << std::endl;
 
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
     if (!bVocLoad)
     {
-        cerr << "Wrong path to vocabulary. " << endl;
-        cerr << "Falied to open at: " << strVocFile << endl;
-        exit(-1);
+        throw std::runtime_error("Could not load vocabulary from file: " + strVocFile);
     }
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << endl << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << std::endl << std::endl;
 
     //Create KeyFrame Database
     mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
     //Create the Atlas
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << std::endl;
     mpAtlas = new Atlas(0);
 
     const bool monocular = mSensor == MONOCULAR || mSensor == IMU_MONOCULAR;
@@ -156,7 +154,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial);
-    mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
+    mptLocalMapping = new std::thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
     if (settings_)
     {
         mpLocalMapper->mThFarPoints = settings_->thFarPoints();
@@ -168,7 +166,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     if (mpLocalMapper->mThFarPoints != 0)
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << endl;
+            << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << std::endl;
         mpLocalMapper->mbFarPoints = true;
     }
     else
@@ -179,7 +177,7 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR,
                                    !bTurnOffLC);  // mSensor!=MONOCULAR);
-    mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
+    mptLoopClosing = new std::thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
 
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
@@ -195,19 +193,18 @@ System::System(const string& strVocFile, const string& strSettingsFile, const eS
     if (bUseViewer)
     {
         mpViewer = new Viewer(this, mpMapDrawer, mpTracker, strSettingsFile, settings_);
-        mptViewer = new thread(&Viewer::Run, mpViewer);
+        mptViewer = new std::thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
     }
 }
 
 Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
-                                 const vector<IMU::Point>& vImuMeas)
+                                 const std::vector<IMU::Point>& vImuMeas)
 {
     if (mSensor != STEREO && mSensor != IMU_STEREO)
     {
-        cerr << "ERROR: you called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial." << endl;
-        exit(-1);
+        throw std::runtime_error("You called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial.");
     }
 
     cv::Mat imLeftToFeed, imRightToFeed;
@@ -234,7 +231,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
 
     // Check reset
     {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbReset)
         {
             mpTracker->Reset();
@@ -258,7 +255,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
 
     Sophus::SE3f Tcw = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp);
 
-    unique_lock<mutex> lock2(mMutexState);
+    std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mMonocularDebugFrame = MonocularDebugFrame();
     mStereoDebugFrame = mpTracker->GetStereoDebugFrame();
@@ -266,11 +263,11 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
     return Tcw;
 }
 
-Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, const vector<IMU::Point>& vImuMeas)
+Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, const std::vector<IMU::Point>& vImuMeas)
 {
 
     {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbShutDown)
         {
             return Sophus::SE3f();
@@ -279,9 +276,8 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
 
     if (mSensor != MONOCULAR && mSensor != IMU_MONOCULAR)
     {
-        cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular nor Monocular-Inertial."
-             << endl;
-        exit(-1);
+        throw std::runtime_error(
+            "You called TrackMonocular but input sensor was not set to Monocular nor Monocular-Inertial.");
     }
 
     cv::Mat imToFeed = im.clone();
@@ -294,7 +290,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
 
     // Check reset
     {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbReset)
         {
             mpTracker->Reset();
@@ -303,7 +299,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
         }
         else if (mbResetActiveMap)
         {
-            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "SYSTEM-> Reseting active map in monocular case" << endl;
+            Verbose::Print(Verbose::VERBOSITY_NORMAL) << "SYSTEM-> Reseting active map in monocular case" << std::endl;
             mpTracker->ResetActiveMap();
             mbResetActiveMap = false;
         }
@@ -319,7 +315,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
 
     Sophus::SE3f Tcw = mpTracker->GrabImageMonocular(imToFeed, timestamp);
 
-    unique_lock<mutex> lock2(mMutexState);
+    std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mMonocularDebugFrame = mpTracker->GetMonocularDebugFrame();
     mStereoDebugFrame = StereoDebugFrame();
@@ -344,24 +340,24 @@ bool System::MapChanged()
 
 void System::Reset()
 {
-    unique_lock<mutex> lock(mMutexReset);
+    std::unique_lock<std::mutex> lock(mMutexReset);
     mbReset = true;
 }
 
 void System::ResetActiveMap()
 {
-    unique_lock<mutex> lock(mMutexReset);
+    std::unique_lock<std::mutex> lock(mMutexReset);
     mbResetActiveMap = true;
 }
 
 void System::Shutdown()
 {
     {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         mbShutDown = true;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Shutdown" << endl;
+    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Shutdown" << std::endl;
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
@@ -408,32 +404,32 @@ void System::Shutdown()
 
 bool System::isShutDown()
 {
-    unique_lock<mutex> lock(mMutexReset);
+    std::unique_lock<std::mutex> lock(mMutexReset);
     return mbShutDown;
 }
 
 int System::GetTrackingState()
 {
-    unique_lock<mutex> lock(mMutexState);
+    std::unique_lock<std::mutex> lock(mMutexState);
     return mTrackingState;
 }
 
 MonocularDebugFrame System::GetMonocularDebugFrame()
 {
-    unique_lock<mutex> lock(mMutexState);
+    std::unique_lock<std::mutex> lock(mMutexState);
     return mMonocularDebugFrame;
 }
 
 StereoDebugFrame System::GetStereoDebugFrame()
 {
-    unique_lock<mutex> lock(mMutexState);
+    std::unique_lock<std::mutex> lock(mMutexState);
     return mStereoDebugFrame;
 }
 
-vector<Sophus::SE3f> System::GetKeyframeTrajectory()
+std::vector<Sophus::SE3f> System::GetKeyframeTrajectory()
 {
-    unique_lock<mutex> lock(mMutexState);
-    vector<Sophus::SE3f> trajectory;
+    std::unique_lock<std::mutex> lock(mMutexState);
+    std::vector<Sophus::SE3f> trajectory;
     auto keyframes = GetKeyFrames();
     trajectory.reserve(keyframes.size());
     for (KeyFrame* pKF : keyframes)
@@ -457,9 +453,9 @@ int System::GetLastBigChangeIdx()
     return mpAtlas->GetLastBigChangeIdx();
 }
 
-vector<KeyFrame*> System::GetKeyFrames()
+std::vector<KeyFrame*> System::GetKeyFrames()
 {
-    unique_lock<mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
+    std::unique_lock<std::mutex> lock(mpAtlas->GetCurrentMap()->mMutexMapUpdate);
     return mpAtlas->GetAllKeyFrames();
 }
 

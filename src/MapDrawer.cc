@@ -29,7 +29,7 @@
 namespace ORB_SLAM3
 {
 
-MapDrawer::MapDrawer(Atlas* pAtlas, const string& strSettingPath, Settings* settings) : mpAtlas(pAtlas)
+MapDrawer::MapDrawer(Atlas* pAtlas, const std::string& strSettingPath, Settings* settings) : mpAtlas(pAtlas)
 {
     if (settings)
     {
@@ -42,14 +42,7 @@ MapDrawer::MapDrawer(Atlas* pAtlas, const string& strSettingPath, Settings* sett
 
         if (!is_correct)
         {
-            std::cerr << "**ERROR in the config file, the format is not correct**" << std::endl;
-            try
-            {
-                throw -1;
-            }
-            catch (exception& e)
-            {
-            }
+            throw std::runtime_error("**ERROR in the config file, the format is not correct**");
         }
     }
 }
@@ -75,7 +68,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.KeyFrameSize parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.KeyFrameSize parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -86,7 +80,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.KeyFrameLineWidth parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.KeyFrameLineWidth parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -97,7 +92,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.GraphLineWidth parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.GraphLineWidth parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -108,7 +104,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.PointSize parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.PointSize parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -119,7 +116,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.CameraSize parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.CameraSize parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -130,7 +128,8 @@ bool MapDrawer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.CameraLineWidth parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.CameraLineWidth parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -141,16 +140,18 @@ void MapDrawer::DrawMapPoints()
 {
     Map* pActiveMap = mpAtlas->GetCurrentMap();
     if (!pActiveMap)
+    {
         return;
+    }
+    const std::vector<MapPoint*>& vpMPs = pActiveMap->GetAllMapPoints();
+    const std::vector<MapPoint*>& vpRefMPs = pActiveMap->GetReferenceMapPoints();
 
-    const vector<MapPoint*>& vpMPs = pActiveMap->GetAllMapPoints();
-    const vector<MapPoint*>& vpRefMPs = pActiveMap->GetReferenceMapPoints();
-
-    set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+    std::set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
     if (vpMPs.empty())
+    {
         return;
-
+    }
     glPointSize(mPointSize);
     glBegin(GL_POINTS);
     glColor3f(0.0, 0.0, 0.0);
@@ -158,7 +159,9 @@ void MapDrawer::DrawMapPoints()
     for (size_t i = 0, iend = vpMPs.size(); i < iend; i++)
     {
         if (vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
+        {
             continue;
+        }
         Eigen::Matrix<float, 3, 1> pos = vpMPs[i]->GetWorldPos();
         glVertex3f(pos(0), pos(1), pos(2));
     }
@@ -168,10 +171,12 @@ void MapDrawer::DrawMapPoints()
     glBegin(GL_POINTS);
     glColor3f(1.0, 0.0, 0.0);
 
-    for (set<MapPoint*>::iterator sit = spRefMPs.begin(), send = spRefMPs.end(); sit != send; sit++)
+    for (std::set<MapPoint*>::iterator sit = spRefMPs.begin(), send = spRefMPs.end(); sit != send; sit++)
     {
         if ((*sit)->isBad())
+        {
             continue;
+        }
         Eigen::Matrix<float, 3, 1> pos = (*sit)->GetWorldPos();
         glVertex3f(pos(0), pos(1), pos(2));
     }
@@ -192,9 +197,10 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
     std::set<long unsigned int> sFixedKFs = pActiveMap->msFixedKFs;
 
     if (!pActiveMap)
+    {
         return;
-
-    const vector<KeyFrame*> vpKFs = pActiveMap->GetAllKeyFrames();
+    }
+    const std::vector<KeyFrame*> vpKFs = pActiveMap->GetAllKeyFrames();
 
     if (bDrawKF)
     {
@@ -276,14 +282,17 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
         for (size_t i = 0; i < vpKFs.size(); i++)
         {
             // Covisibility Graph
-            const vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
+            const std::vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
             Eigen::Vector3f Ow = vpKFs[i]->GetCameraCenter();
             if (!vCovKFs.empty())
             {
-                for (vector<KeyFrame*>::const_iterator vit = vCovKFs.begin(), vend = vCovKFs.end(); vit != vend; vit++)
+                for (std::vector<KeyFrame*>::const_iterator vit = vCovKFs.begin(), vend = vCovKFs.end(); vit != vend;
+                     vit++)
                 {
                     if ((*vit)->mnId < vpKFs[i]->mnId)
+                    {
                         continue;
+                    }
                     Eigen::Vector3f Ow2 = (*vit)->GetCameraCenter();
                     glVertex3f(Ow(0), Ow(1), Ow(2));
                     glVertex3f(Ow2(0), Ow2(1), Ow2(2));
@@ -300,11 +309,13 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
             }
 
             // Loops
-            set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
-            for (set<KeyFrame*>::iterator sit = sLoopKFs.begin(), send = sLoopKFs.end(); sit != send; sit++)
+            std::set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
+            for (std::set<KeyFrame*>::iterator sit = sLoopKFs.begin(), send = sLoopKFs.end(); sit != send; sit++)
             {
                 if ((*sit)->mnId < vpKFs[i]->mnId)
+                {
                     continue;
+                }
                 Eigen::Vector3f Owl = (*sit)->GetCameraCenter();
                 glVertex3f(Ow(0), Ow(1), Ow(2));
                 glVertex3f(Owl(0), Owl(1), Owl(2));
@@ -337,16 +348,17 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
         glEnd();
     }
 
-    vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+    std::vector<Map*> vpMaps = mpAtlas->GetAllMaps();
 
     if (bDrawKF)
     {
         for (Map* pMap : vpMaps)
         {
             if (pMap == pActiveMap)
+            {
                 continue;
-
-            vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+            }
+            std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
 
             for (size_t i = 0; i < vpKFs.size(); i++)
             {
@@ -444,7 +456,7 @@ void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix& Twc)
 
 void MapDrawer::SetCurrentCameraPose(const Sophus::SE3f& Tcw)
 {
-    unique_lock<mutex> lock(mMutexCamera);
+    std::unique_lock<std::mutex> lock(mMutexCamera);
     mCameraPose = Tcw.inverse();
 }
 
@@ -452,7 +464,7 @@ void MapDrawer::GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix& M, pangolin
 {
     Eigen::Matrix4f Twc;
     {
-        unique_lock<mutex> lock(mMutexCamera);
+        std::unique_lock<std::mutex> lock(mMutexCamera);
         Twc = mCameraPose.matrix();
     }
 

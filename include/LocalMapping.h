@@ -19,15 +19,12 @@
 #ifndef LOCALMAPPING_H
 #define LOCALMAPPING_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <fstream>
 #include <list>
 #include <mutex>
 #include <string>
-#include <utility>
 
 namespace ORB_SLAM3
 {
@@ -40,17 +37,12 @@ class KeyFrame;
 class Map;
 class MapPoint;
 
-using std::list;
-using std::ofstream;
-using std::string;
-using std::unique_lock;
-
 class LocalMapping
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
-                 const string& _strSeqName = std::string());
+                 const std::string& _strSeqName = std::string());
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -84,7 +76,7 @@ public:
 
     int KeyframesInQueue()
     {
-        unique_lock<std::mutex> lock(mMutexNewKFs);
+        std::unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
     }
 
@@ -111,7 +103,7 @@ public:
     // For debugging (erase in normal mode)
     int mInitFr;
     int mIdxIteration;
-    string strSequence;
+    std::string strSequence;
 
     bool mbNotBA1;
     bool mbNotBA2;
@@ -186,7 +178,7 @@ protected:
     int countRefinement;
 
     //DEBUG
-    ofstream f_lm;
+    std::ofstream f_lm;
 };
 
 }  // namespace ORB_SLAM3

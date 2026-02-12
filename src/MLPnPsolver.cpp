@@ -47,12 +47,14 @@
 ******************************************************************************/
 
 #include "MLPnPsolver.h"
+#include "Converter.h"
 
 #include <Eigen/Sparse>
+#include <random>
 
 namespace ORB_SLAM3
 {
-MLPnPsolver::MLPnPsolver(const Frame& F, const vector<MapPoint*>& vpMapPointMatches)
+MLPnPsolver::MLPnPsolver(const Frame& F, const std::vector<MapPoint*>& vpMapPointMatches)
     : mnInliersi(0), mnIterations(0), mnBestInliers(0), N(0), mpCamera(F.mpCamera)
 {
     mvpMapPointMatches = vpMapPointMatches;
@@ -73,7 +75,9 @@ MLPnPsolver::MLPnPsolver(const Frame& F, const vector<MapPoint*>& vpMapPointMatc
             if (!pMP->isBad())
             {
                 if (i >= F.mvKeysUn.size())
+                {
                     continue;
+                }
                 const cv::KeyPoint& kp = F.mvKeysUn[i];
 
                 mvP2D.push_back(kp.pt);
@@ -102,7 +106,8 @@ MLPnPsolver::MLPnPsolver(const Frame& F, const vector<MapPoint*>& vpMapPointMatc
 }
 
 //RANSAC methods
-bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, vector<bool>& vbInliers, int& nInliers, Eigen::Matrix4f& Tout)
+bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, std::vector<bool>& vbInliers, int& nInliers,
+                          Eigen::Matrix4f& Tout)
 {
     Tout.setIdentity();
     bNoMore = false;
@@ -115,7 +120,9 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, vector<bool>& vbInlier
         return false;
     }
 
-    vector<size_t> vAvailableIndices;
+    std::vector<size_t> vAvailableIndices;
+
+    static thread_local std::mt19937 gen(0u);
 
     int nCurrentIterations = 0;
     while (mnIterations < mRansacMaxIts || nCurrentIterations < nIterations)
@@ -128,12 +135,13 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, vector<bool>& vbInlier
         //Bearing vectors and 3D points used for this ransac iteration
         bearingVectors_t bearingVecs(mRansacMinSet);
         points_t p3DS(mRansacMinSet);
-        vector<int> indexes(mRansacMinSet);
+        std::vector<int> indexes(mRansacMinSet);
 
         // Get min set of points
         for (short i = 0; i < mRansacMinSet; ++i)
         {
-            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size() - 1);
+            std::uniform_int_distribution<int> dis(0, static_cast<int>(vAvailableIndices.size()) - 1);
+            int randi = dis(gen);
 
             int idx = vAvailableIndices[randi];
 
@@ -197,11 +205,13 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, vector<bool>& vbInlier
             if (Refine())
             {
                 nInliers = mnRefinedInliers;
-                vbInliers = vector<bool>(mvpMapPointMatches.size(), false);
+                vbInliers = std::vector<bool>(mvpMapPointMatches.size(), false);
                 for (int i = 0; i < N; i++)
                 {
                     if (mvbRefinedInliers[i])
+                    {
                         vbInliers[mvKeyPointIndices[i]] = true;
+                    }
                 }
                 Tout = mRefinedTcw;
                 return true;
@@ -215,11 +225,13 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, vector<bool>& vbInlier
         if (mnBestInliers >= mRansacMinInliers)
         {
             nInliers = mnBestInliers;
-            vbInliers = vector<bool>(mvpMapPointMatches.size(), false);
+            vbInliers = std::vector<bool>(mvpMapPointMatches.size(), false);
             for (int i = 0; i < N; i++)
             {
                 if (mvbBestInliers[i])
+                {
                     vbInliers[mvKeyPointIndices[i]] = true;
+                }
             }
             Tout = mBestTcw;
             return true;
@@ -245,27 +257,37 @@ void MLPnPsolver::SetRansacParameters(double probability, int minInliers, int ma
     // Adjust Parameters according to number of correspondences
     int nMinInliers = N * mRansacEpsilon;
     if (nMinInliers < mRansacMinInliers)
+    {
         nMinInliers = mRansacMinInliers;
+    }
     if (nMinInliers < minSet)
+    {
         nMinInliers = minSet;
+    }
     mRansacMinInliers = nMinInliers;
 
     if (mRansacEpsilon < (float)mRansacMinInliers / N)
+    {
         mRansacEpsilon = (float)mRansacMinInliers / N;
-
+    }
     // Set RANSAC iterations according to probability, epsilon, and max iterations
     int nIterations;
 
     if (mRansacMinInliers == N)
+    {
         nIterations = 1;
+    }
     else
+    {
         nIterations = ceil(log(1 - mRansacProb) / log(1 - pow(mRansacEpsilon, 3)));
-
-    mRansacMaxIts = max(1, min(nIterations, mRansacMaxIts));
+    }
+    mRansacMaxIts = std::max(1, std::min(nIterations, mRansacMaxIts));
 
     mvMaxError.resize(mvSigma2.size());
     for (size_t i = 0; i < mvSigma2.size(); i++)
+    {
         mvMaxError[i] = mvSigma2[i] * th2;
+    }
 }
 
 void MLPnPsolver::CheckInliers()
@@ -304,7 +326,7 @@ void MLPnPsolver::CheckInliers()
 
 bool MLPnPsolver::Refine()
 {
-    vector<int> vIndices;
+    std::vector<int> vIndices;
     vIndices.reserve(mvbBestInliers.size());
 
     for (size_t i = 0; i < mvbBestInliers.size(); i++)
@@ -318,7 +340,7 @@ bool MLPnPsolver::Refine()
     //Bearing vectors and 3D points used for this ransac iteration
     bearingVectors_t bearingVecs;
     points_t p3DS;
-    vector<int> indexes;
+    std::vector<int> indexes;
 
     for (size_t i = 0; i < vIndices.size(); i++)
     {
@@ -409,7 +431,9 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         eigenRot = eigen_solver.eigenvectors().real();
         eigenRot.transposeInPlace();
         for (size_t i = 0; i < numberCorrespondences; i++)
+        {
             points3.col(i) = eigenRot * points3.col(i);
+        }
     }
     //////////////////////////////////////
     // 2. stochastic model
@@ -449,7 +473,9 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         A = Eigen::MatrixXd(rowsA, 9);
     }
     else
+    {
         A = Eigen::MatrixXd(rowsA, 12);
+    }
     A.setZero();
 
     // fill design matrix
@@ -538,10 +564,13 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
     //////////////////////////////////////
     Eigen::MatrixXd AtPA;
     if (use_cov)
+    {
         AtPA = A.transpose() * P * A;  // setting up the full normal equations seems to be unstable
+    }
     else
+    {
         AtPA = A.transpose() * A;
-
+    }
     Eigen::JacobiSVD<Eigen::MatrixXd> svd_A(AtPA, Eigen::ComputeFullV);
     Eigen::MatrixXd result1 = svd_A.matrixV().col(colsA - 1);
 
@@ -567,16 +596,18 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         rotation_t Rout1 = svd_R_frob.matrixU() * svd_R_frob.matrixV().transpose();
         // test if we found a good rotation matrix
         if (Rout1.determinant() < 0)
+        {
             Rout1 *= -1.0;
-        // rotate this matrix back using the eigen frame
+        }  // rotate this matrix back using the eigen frame
         Rout1 = eigenRot.transpose() * Rout1;
 
         translation_t t = scale * translation_t(result1(6, 0), result1(7, 0), result1(8, 0));
         Rout1.transposeInPlace();
         Rout1 *= -1;
         if (Rout1.determinant() < 0.0)
+        {
             Rout1.col(2) *= -1;
-        // now we have to find the best out of 4 combinations
+        }  // now we have to find the best out of 4 combinations
         rotation_t R1, R2;
         R1.col(0) = Rout1.col(0);
         R1.col(1) = Rout1.col(1);
@@ -585,7 +616,7 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         R2.col(1) = -Rout1.col(1);
         R2.col(2) = Rout1.col(2);
 
-        vector<transformation_t, Eigen::aligned_allocator<transformation_t>> Ts(4);
+        std::vector<transformation_t, Eigen::aligned_allocator<transformation_t>> Ts(4);
         Ts[0].block<3, 3>(0, 0) = R1;
         Ts[0].block<3, 1>(0, 3) = t;
         Ts[1].block<3, 3>(0, 0) = R1;
@@ -595,7 +626,7 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         Ts[3].block<3, 3>(0, 0) = R2;
         Ts[3].block<3, 1>(0, 3) = -t;
 
-        vector<double> normVal(4);
+        std::vector<double> normVal(4);
         for (int i = 0; i < 4; ++i)
         {
             point_t reproPt;
@@ -626,22 +657,27 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
         Rout = svd_R_frob.matrixU() * svd_R_frob.matrixV().transpose();
         // test if we found a good rotation matrix
         if (Rout.determinant() < 0)
+        {
             Rout *= -1.0;
-        // scale translation
+        }  // scale translation
         tout = Rout * (scale * translation_t(result1(9, 0), result1(10, 0), result1(11, 0)));
 
         // find correct direction in terms of reprojection error, just take the first 6 correspondences
-        vector<double> error(2);
-        vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>> Ts(2);
+        std::vector<double> error(2);
+        std::vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>> Ts(2);
         for (int s = 0; s < 2; ++s)
         {
             error[s] = 0.0;
             Ts[s] = Eigen::Matrix4d::Identity();
             Ts[s].block<3, 3>(0, 0) = Rout;
             if (s == 0)
+            {
                 Ts[s].block<3, 1>(0, 3) = tout;
+            }
             else
+            {
                 Ts[s].block<3, 1>(0, 3) = -tout;
+            }
             Ts[s] = Ts[s].inverse().eval();
             for (int p = 0; p < 6; ++p)
             {
@@ -651,9 +687,13 @@ void MLPnPsolver::computePose(const bearingVectors_t& f, const points_t& p, cons
             }
         }
         if (error[0] < error[1])
+        {
             tout = Ts[0].block<3, 1>(0, 3);
+        }
         else
+        {
             tout = Ts[1].block<3, 1>(0, 3);
+        }
         Rout = Ts[0].block<3, 3>(0, 0);
     }
 
@@ -688,9 +728,10 @@ Eigen::Matrix3d MLPnPsolver::rodrigues2rot(const Eigen::Vector3d& omega)
     double omega_norm = omega.norm();
 
     if (omega_norm > std::numeric_limits<double>::epsilon())
+    {
         R = R + sin(omega_norm) / omega_norm * skewW +
             (1 - cos(omega_norm)) / (omega_norm * omega_norm) * (skewW * skewW);
-
+    }
     return R;
 }
 
@@ -748,10 +789,13 @@ void MLPnPsolver::mlpnp_gn(Eigen::VectorXd& x, const points_t& pts, const std::v
         mlpnp_residuals_and_jacs(x, pts, nullspaces, r, Jac, true);
 
         if (use_cov)
+        {
             JacTSKll = Jac.transpose() * Kll;
+        }
         else
+        {
             JacTSKll = Jac.transpose();
-
+        }
         A = JacTSKll * Jac;
 
         // get system matrix
@@ -763,8 +807,9 @@ void MLPnPsolver::mlpnp_gn(Eigen::VectorXd& x, const points_t& pts, const std::v
         // this is to prevent the solution from falling into a wrong minimum
         // if the linear estimate is spurious
         if (dx.array().abs().maxCoeff() > 5.0 || dx.array().abs().minCoeff() > 1.0)
+        {
             break;
-        // observation update
+        }  // observation update
         Eigen::MatrixXd dl = Jac * dx;
         if (dl.array().abs().maxCoeff() < epsP)
         {
@@ -773,8 +818,9 @@ void MLPnPsolver::mlpnp_gn(Eigen::VectorXd& x, const points_t& pts, const std::v
             break;
         }
         else
+        {
             x = x - dx;
-
+        }
         ++it_cnt;
     }  //while
     // result

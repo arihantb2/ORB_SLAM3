@@ -21,14 +21,12 @@
 
 #include "Verbose.h"
 
-#include "DBoW2/BowVector.h"
-#include "DBoW2/FeatureVector.h"
+#include <DBoW2/BowVector.h>
+#include <DBoW2/FeatureVector.h>
 #include "Frame.h"
 #include "ImuTypes.h"
 #include "KeyFrameDatabase.h"
-#include "MapPoint.h"
 #include "ORBVocabulary.h"
-#include "ORBextractor.h"
 
 #include "CameraModels/GeometricCamera.h"
 #include "SerializationUtils.h"
@@ -87,8 +85,8 @@ class KeyFrame
         // KeyPoints
         serializeVectorKeyPoints<Archive>(ar, mvKeys, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysUn, version);
-        ar& const_cast<vector<float>&>(mvuRight);
-        ar& const_cast<vector<float>&>(mvDepth);
+        ar& const_cast<std::vector<float>&>(mvuRight);
+        ar& const_cast<std::vector<float>&>(mvDepth);
         serializeMatrix<Archive>(ar, mDescriptors, version);
 
         // BOW
@@ -102,9 +100,9 @@ class KeyFrame
         ar& const_cast<int&>(mnScaleLevels);
         ar& const_cast<float&>(mfScaleFactor);
         ar& const_cast<float&>(mfLogScaleFactor);
-        ar& const_cast<vector<float>&>(mvScaleFactors);
-        ar& const_cast<vector<float>&>(mvLevelSigma2);
-        ar& const_cast<vector<float>&>(mvInvLevelSigma2);
+        ar& const_cast<std::vector<float>&>(mvScaleFactors);
+        ar& const_cast<std::vector<float>&>(mvLevelSigma2);
+        ar& const_cast<std::vector<float>&>(mvInvLevelSigma2);
 
         // Image bounds and calibration
         ar& const_cast<int&>(mnMinX);
@@ -381,7 +379,7 @@ public:
 
     unsigned int mnOriginMapId;
 
-    string mNameFile;
+    std::string mNameFile;
 
     int mnDataset;
 

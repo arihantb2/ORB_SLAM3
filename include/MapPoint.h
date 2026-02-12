@@ -19,9 +19,6 @@
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
 
-#include "Verbose.h"
-
-#include "Converter.h"
 #include "Frame.h"
 #include "KeyFrame.h"
 #include "Map.h"
@@ -34,6 +31,8 @@
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/serialization.hpp>
+
+#include <set>
 
 namespace ORB_SLAM3
 {
@@ -53,47 +52,14 @@ class MapPoint
         ar & mnFirstKFid;
         ar & mnFirstFrame;
         ar & nObs;
-        // Variables used by the tracking
-        //ar & mTrackProjX;
-        //ar & mTrackProjY;
-        //ar & mTrackDepth;
-        //ar & mTrackDepthR;
-        //ar & mTrackProjXR;
-        //ar & mTrackProjYR;
-        //ar & mbTrackInView;
-        //ar & mbTrackInViewR;
-        //ar & mnTrackScaleLevel;
-        //ar & mnTrackScaleLevelR;
-        //ar & mTrackViewCos;
-        //ar & mTrackViewCosR;
-        //ar & mnTrackReferenceForFrame;
-        //ar & mnLastFrameSeen;
-
-        // Variables used by local mapping
-        //ar & mnBALocalForKF;
-        //ar & mnFuseCandidateForKF;
-
-        // Variables used by loop closing and merging
-        //ar & mnLoopPointForKF;
-        //ar & mnCorrectedByKF;
-        //ar & mnCorrectedReference;
-        //serializeMatrix(ar,mPosGBA,version);
-        //ar & mnBAGlobalForKF;
-        //ar & mnBALocalForMerge;
-        //serializeMatrix(ar,mPosMerge,version);
-        //serializeMatrix(ar,mNormalVectorMerge,version);
 
         // Protected variables
         ar& boost::serialization::make_array(mWorldPos.data(), mWorldPos.size());
         ar& boost::serialization::make_array(mNormalVector.data(), mNormalVector.size());
-        //ar & BOOST_SERIALIZATION_NVP(mBackupObservationsId);
-        //ar & mObservations;
         ar & mBackupObservationsId1;
         ar & mBackupObservationsId2;
         serializeMatrix(ar, mDescriptor, version);
         ar & mBackupRefKFId;
-        //ar & mnVisible;
-        //ar & mnFound;
 
         ar & mbBad;
         ar & mBackupReplacedId;
@@ -154,8 +120,8 @@ public:
 
     void PrintObservations();
 
-    void PreSave(set<KeyFrame*>& spKF, set<MapPoint*>& spMP);
-    void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid);
+    void PreSave(std::set<KeyFrame*>& spKF, std::set<MapPoint*>& spMP);
+    void PostLoad(std::map<long unsigned int, KeyFrame*>& mpKFid, std::map<long unsigned int, MapPoint*>& mpMPid);
 
 public:
     long unsigned int mnId;

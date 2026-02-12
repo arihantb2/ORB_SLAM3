@@ -64,7 +64,7 @@ class MLPnPsolver
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    MLPnPsolver(const Frame& F, const vector<MapPoint*>& vpMapPointMatches);
+    MLPnPsolver(const Frame& F, const std::vector<MapPoint*>& vpMapPointMatches);
 
     ~MLPnPsolver();
 
@@ -73,7 +73,7 @@ public:
 
     //Find metod is necessary?
 
-    bool iterate(int nIterations, bool& bNoMore, vector<bool>& vbInliers, int& nInliers, Eigen::Matrix4f& Tout);
+    bool iterate(int nIterations, bool& bNoMore, std::vector<bool>& vbInliers, int& nInliers, Eigen::Matrix4f& Tout);
 
     //Type definitions needed by the original code
 
@@ -167,45 +167,45 @@ private:
     //----------------------------------------------------
     //Fields of the solver
     //----------------------------------------------------
-    vector<MapPoint*> mvpMapPointMatches;
+    std::vector<MapPoint*> mvpMapPointMatches;
 
     // 2D Points
-    vector<cv::Point2f> mvP2D;
+    std::vector<cv::Point2f> mvP2D;
     //Substitued by bearing vectors
     bearingVectors_t mvBearingVecs;
 
-    vector<float> mvSigma2;
+    std::vector<float> mvSigma2;
 
     // 3D Points
     //vector<cv::Point3f> mvP3Dw;
     points_t mvP3Dw;
 
     // Index in Frame
-    vector<size_t> mvKeyPointIndices;
+    std::vector<size_t> mvKeyPointIndices;
 
     // Current Estimation
     double mRi[3][3];
     double mti[3];
     Eigen::Matrix4f mTcwi;
-    vector<bool> mvbInliersi;
+    std::vector<bool> mvbInliersi;
     int mnInliersi;
 
     // Current Ransac State
     int mnIterations;
-    vector<bool> mvbBestInliers;
+    std::vector<bool> mvbBestInliers;
     int mnBestInliers;
     Eigen::Matrix4f mBestTcw;
 
     // Refined
     Eigen::Matrix4f mRefinedTcw;
-    vector<bool> mvbRefinedInliers;
+    std::vector<bool> mvbRefinedInliers;
     int mnRefinedInliers;
 
     // Number of Correspondences
     int N;
 
     // Indices for random selection [0 .. N-1]
-    vector<size_t> mvAllIndices;
+    std::vector<size_t> mvAllIndices;
 
     // RANSAC probability
     double mRansacProb;
@@ -226,7 +226,7 @@ private:
     int mRansacMinSet;
 
     // Max square error associated with scale level. Max error = th*th*sigma(level)*sigma(level)
-    vector<float> mvMaxError;
+    std::vector<float> mvMaxError;
 
     GeometricCamera* mpCamera;
 };

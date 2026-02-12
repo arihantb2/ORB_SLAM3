@@ -109,7 +109,7 @@ public:
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
 
-    vector<Map*> GetAllMaps();
+    std::vector<Map*> GetAllMaps();
 
     int CountMaps();
 
@@ -131,7 +131,7 @@ public:
     void PreSave();
     void PostLoad();
 
-    map<long unsigned int, KeyFrame*> GetAtlasKeyframes();
+    std::map<long unsigned int, KeyFrame*> GetAtlasKeyframes();
 
     void SetKeyFrameDababase(KeyFrameDatabase* pKFDB);
     KeyFrameDatabase* GetKeyFrameDatabase();

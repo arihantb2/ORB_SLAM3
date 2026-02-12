@@ -19,8 +19,6 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include "Verbose.h"
-
 #include "Frame.h"
 #include "KeyFrame.h"
 #include "LoopClosing.h"
@@ -28,6 +26,8 @@
 #include "MapPoint.h"
 
 #include <math.h>
+#include <set>
+#include <vector>
 
 namespace ORB_SLAM3
 {
@@ -57,16 +57,18 @@ public:
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
                                        const LoopClosing::KeyFrameAndPose& NonCorrectedSim3,
                                        const LoopClosing::KeyFrameAndPose& CorrectedSim3,
-                                       const map<KeyFrame*, set<KeyFrame*>>& LoopConnections, const bool& bFixScale);
-    void static OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*>& vpFixedKFs,
-                                       vector<KeyFrame*>& vpFixedCorrectedKFs, vector<KeyFrame*>& vpNonFixedKFs,
-                                       vector<MapPoint*>& vpNonCorrectedMPs);
+                                       const std::map<KeyFrame*, std::set<KeyFrame*>>& LoopConnections,
+                                       const bool& bFixScale);
+    void static OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>& vpFixedKFs,
+                                       std::vector<KeyFrame*>& vpFixedCorrectedKFs,
+                                       std::vector<KeyFrame*>& vpNonFixedKFs,
+                                       std::vector<MapPoint*>& vpNonCorrectedMPs);
 
     // For inertial loopclosing
     void static OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
                                            const LoopClosing::KeyFrameAndPose& NonCorrectedSim3,
                                            const LoopClosing::KeyFrameAndPose& CorrectedSim3,
-                                           const map<KeyFrame*, set<KeyFrame*>>& LoopConnections);
+                                           const std::map<KeyFrame*, std::set<KeyFrame*>>& LoopConnections);
 
     // if bFixScale is true, optimize SE3 (stereo), Sim3 otherwise (mono) (NEW)
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches1, g2o::Sim3& g2oS12,
@@ -81,8 +83,8 @@ public:
                                 LoopClosing::KeyFrameAndPose& corrPoses);
 
     // Local BA in welding area when two maps are merged
-    void static LocalBundleAdjustment(KeyFrame* pMainKF, vector<KeyFrame*> vpAdjustKF, vector<KeyFrame*> vpFixedKF,
-                                      bool* pbStopFlag);
+    void static LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> vpAdjustKF,
+                                      std::vector<KeyFrame*> vpFixedKF, bool* pbStopFlag);
 
     // Marginalize block element (start:end,start:end). Perform Schur complement.
     // Marginalized elements are filled with zeros.

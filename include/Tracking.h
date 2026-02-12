@@ -19,7 +19,6 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include <fstream>
 #include <list>
 #include <mutex>
 #include <opencv2/core/core.hpp>
@@ -49,18 +48,13 @@ class MapPoint;
 class ORBextractor;
 class GeometricCamera;
 
-using std::list;
-using std::ofstream;
-using std::string;
-using std::vector;
-
 class Tracking
 {
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
-             const string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
+             const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
 
     ~Tracking();
 
@@ -136,10 +130,10 @@ public:
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
-    list<Sophus::SE3f> mlRelativeFramePoses;
-    list<KeyFrame*> mlpReferences;
-    list<double> mlFrameTimes;
-    list<bool> mlbLost;
+    std::list<Sophus::SE3f> mlRelativeFramePoses;
+    std::list<KeyFrame*> mlpReferences;
+    std::list<double> mlFrameTimes;
+    std::list<bool> mlbLost;
 
     // frames with estimated pose
     int mTrackedFr;
@@ -154,7 +148,7 @@ public:
     double t0IMU;  // time-stamp of IMU initialization
     bool mFastInit = false;
 
-    vector<MapPoint*> GetLocalMapMPS();
+    std::vector<MapPoint*> GetLocalMapMPS();
 
     bool mbWriteStats;
 
@@ -289,7 +283,7 @@ protected:
     // Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
 
-    list<MapPoint*> mlpTemporalPoints;
+    std::list<MapPoint*> mlpTemporalPoints;
 
     GeometricCamera *mpCamera, *mpCamera2;
 
@@ -298,7 +292,7 @@ protected:
     Sophus::SE3f mTlr;
 
     void newParameterLoader(Settings* settings);
-    void oldParameterLoader(const string& strSettingPath);
+    void oldParameterLoader(const std::string& strSettingPath);
     bool ParseCamParamFile(cv::FileStorage& fSettings);
     bool ParseORBParamFile(cv::FileStorage& fSettings);
     bool ParseIMUParamFile(cv::FileStorage& fSettings);

@@ -18,10 +18,13 @@
 
 #include "CameraModels/KannalaBrandt8.h"
 
+#include "Verbose.h"
+
 #include <cassert>
 #include <cmath>
-#include <iostream>
 #include <vector>
+
+using namespace ORB_SLAM3;
 
 namespace
 {
@@ -34,7 +37,7 @@ void ExpectNear(const double a, const double b, const double tol, const char* la
 {
     if (!NearlyEqual(a, b, tol))
     {
-        std::cerr << label << " mismatch: " << a << " vs " << b << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL) << label << " mismatch: " << a << " vs " << b << std::endl;
         assert(false);
     }
 }
@@ -101,8 +104,8 @@ int main()
                 const double diff = std::abs(J(r, c) - Jnum(r, c));
                 if (diff > 1e-4)
                 {
-                    std::cerr << "Jacobian mismatch (" << r << "," << c << "): " << J(r, c) << " vs " << Jnum(r, c)
-                              << std::endl;
+                    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Jacobian mismatch (" << r << "," << c
+                                                              << "): " << J(r, c) << " vs " << Jnum(r, c) << std::endl;
                     assert(false);
                 }
             }

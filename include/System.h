@@ -46,9 +46,6 @@ class Map;
 class MapPoint;
 class KeyFrameDatabase;
 
-using std::string;
-using std::vector;
-
 class System
 {
 public:
@@ -71,20 +68,20 @@ public:
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string& strVocFile, const string& strSettingsFile, const eSensor sensor, const bool bUseViewer = true,
-           const bool bTurnOffLC = false);
+    System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
+           const bool bUseViewer = true, const bool bTurnOffLC = false);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     Sophus::SE3f TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
-                             const vector<IMU::Point>& vImuMeas = vector<IMU::Point>());
+                             const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
 
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     Sophus::SE3f TrackMonocular(const cv::Mat& im, const double& timestamp,
-                                const vector<IMU::Point>& vImuMeas = vector<IMU::Point>());
+                                const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
 
     // Returns true if there have been a big map change (loop closure, global BA)
     // since last call to this function
@@ -111,7 +108,7 @@ public:
 
     Tracking* GetTracker() const;
     int GetLastBigChangeIdx();
-    vector<KeyFrame*> GetKeyFrames();
+    std::vector<KeyFrame*> GetKeyFrames();
 
     // For debugging
     double GetTimeFromIMUInit();
@@ -173,7 +170,7 @@ private:
 
     std::mutex mMutexState;
 
-    string mStrVocabularyFilePath;
+    std::string mStrVocabularyFilePath;
 
     Settings* settings_;
 };

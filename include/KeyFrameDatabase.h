@@ -19,12 +19,9 @@
 #ifndef KEYFRAMEDATABASE_H
 #define KEYFRAMEDATABASE_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <list>
 #include <map>
-#include <set>
 #include <vector>
 
 #include "ORBVocabulary.h"
@@ -41,10 +38,6 @@ namespace ORB_SLAM3
 class KeyFrame;
 class Frame;
 class Map;
-
-using std::list;
-using std::map;
-using std::vector;
 
 class KeyFrameDatabase
 {
@@ -73,14 +66,15 @@ public:
     std::vector<KeyFrame*> DetectLoopCandidates(KeyFrame* pKF, float minScore);
 
     // Loop and Merge Detection
-    void DetectCandidates(KeyFrame* pKF, float minScore, vector<KeyFrame*>& vpLoopCand, vector<KeyFrame*>& vpMergeCand);
-    void DetectBestCandidates(KeyFrame* pKF, vector<KeyFrame*>& vpLoopCand, vector<KeyFrame*>& vpMergeCand,
+    void DetectCandidates(KeyFrame* pKF, float minScore, std::vector<KeyFrame*>& vpLoopCand,
+                          std::vector<KeyFrame*>& vpMergeCand);
+    void DetectBestCandidates(KeyFrame* pKF, std::vector<KeyFrame*>& vpLoopCand, std::vector<KeyFrame*>& vpMergeCand,
                               int nMinWords);
-    void DetectNBestCandidates(KeyFrame* pKF, vector<KeyFrame*>& vpLoopCand, vector<KeyFrame*>& vpMergeCand,
+    void DetectNBestCandidates(KeyFrame* pKF, std::vector<KeyFrame*>& vpLoopCand, std::vector<KeyFrame*>& vpMergeCand,
                                int nNumCandidates);
 
     void PreSave();
-    void PostLoad(map<long unsigned int, KeyFrame*> mpKFid);
+    void PostLoad(std::map<long unsigned int, KeyFrame*> mpKFid);
     void SetORBVocabulary(ORBVocabulary* pORBVoc);
 
 protected:
@@ -88,10 +82,10 @@ protected:
     const ORBVocabulary* mpVoc;
 
     // Inverted file
-    std::vector<list<KeyFrame*>> mvInvertedFile;
+    std::vector<std::list<KeyFrame*>> mvInvertedFile;
 
     // For save relation without pointer, this is necessary for save/load function
-    std::vector<list<long unsigned int>> mvBackupInvertedFileId;
+    std::vector<std::list<long unsigned int>> mvBackupInvertedFileId;
 
     // Mutex
     std::mutex mMutex;

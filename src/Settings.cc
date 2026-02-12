@@ -30,9 +30,8 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/core/persistence.hpp>
 
-#include <iostream>
-
-using namespace std;
+#include <string>
+#include <vector>
 
 namespace ORB_SLAM3
 {
@@ -46,20 +45,18 @@ float Settings::readParameter<float>(cv::FileStorage& fSettings, const std::stri
     {
         if (required)
         {
-            std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " required parameter does not exist, aborting...");
         }
         else
         {
-            std::cerr << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return 0.0f;
         }
     }
     else if (!node.isReal())
     {
-        std::cerr << name << " parameter must be a real number, aborting..." << std::endl;
-        exit(-1);
+        throw std::runtime_error(name + " parameter must be a real number, aborting...");
     }
     else
     {
@@ -76,20 +73,18 @@ int Settings::readParameter<int>(cv::FileStorage& fSettings, const std::string& 
     {
         if (required)
         {
-            std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " required parameter does not exist, aborting...");
         }
         else
         {
-            std::cerr << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return 0;
         }
     }
     else if (!node.isInt())
     {
-        std::cerr << name << " parameter must be an integer number, aborting..." << std::endl;
-        exit(-1);
+        throw std::runtime_error(name + " parameter must be an integer number, aborting...");
     }
     else
     {
@@ -99,28 +94,26 @@ int Settings::readParameter<int>(cv::FileStorage& fSettings, const std::string& 
 }
 
 template <>
-string Settings::readParameter<string>(cv::FileStorage& fSettings, const std::string& name, bool& found,
-                                       const bool required)
+std::string Settings::readParameter<std::string>(cv::FileStorage& fSettings, const std::string& name, bool& found,
+                                                 const bool required)
 {
     cv::FileNode node = fSettings[name];
     if (node.empty())
     {
         if (required)
         {
-            std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " required parameter does not exist, aborting...");
         }
         else
         {
-            std::cerr << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
             found = false;
-            return string();
+            return std::string();
         }
     }
     else if (!node.isString())
     {
-        std::cerr << name << " parameter must be a string, aborting..." << std::endl;
-        exit(-1);
+        throw std::runtime_error(name + " parameter must be a string, aborting...");
     }
     else
     {
@@ -138,12 +131,11 @@ cv::Mat Settings::readParameter<cv::Mat>(cv::FileStorage& fSettings, const std::
     {
         if (required)
         {
-            std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " required parameter does not exist, aborting...");
         }
         else
         {
-            std::cerr << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return cv::Mat();
         }
@@ -164,51 +156,48 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     cv::FileStorage fSettings(configFile, cv::FileStorage::READ);
     if (!fSettings.isOpened())
     {
-        cerr << "[ERROR]: could not open configuration file at: " << configFile << endl;
-        cerr << "Aborting..." << endl;
-
-        exit(-1);
+        throw std::runtime_error("Failed to open settings file at: " + configFile);
     }
     else
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loading settings from " << configFile << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loading settings from " << configFile << std::endl;
     }
 
     //Read first camera
     readCamera1(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 1" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 1" << std::endl;
 
     //Read second camera if stereo (not rectified)
     if (sensor_ == System::STEREO || sensor_ == System::IMU_STEREO)
     {
         readCamera2(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 2" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 2" << std::endl;
     }
 
     //Read image info
     readImageInfo(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info" << std::endl;
 
     if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO)
     {
         readIMU(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded IMU calibration" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded IMU calibration" << std::endl;
     }
 
     readORB(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << std::endl;
     readViewer(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded viewer settings" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded viewer settings" << std::endl;
     readOtherParameters(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded misc parameters" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded misc parameters" << std::endl;
 
     if (bNeedToRectify_)
     {
         precomputeRectificationMaps();
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Computed rectification maps" << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Computed rectification maps" << std::endl;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << std::endl;
 }
 
 void Settings::readCamera1(cv::FileStorage& fSettings)
@@ -216,9 +205,9 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
     bool found;
 
     //Read camera model
-    string cameraModel = readParameter<string>(fSettings, "Camera.type", found);
+    std::string cameraModel = readParameter<std::string>(fSettings, "Camera.type", found);
 
-    vector<float> vCalibration;
+    std::vector<float> vCalibration;
     if (cameraModel == "PinHole")
     {
         cameraType_ = PinHole;
@@ -301,7 +290,7 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
         {
             int colBegin = readParameter<int>(fSettings, "Camera1.overlappingBegin", found);
             int colEnd = readParameter<int>(fSettings, "Camera1.overlappingEnd", found);
-            vector<int> vOverlapping = {colBegin, colEnd};
+            std::vector<int> vOverlapping = {colBegin, colEnd};
 
             static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea = vOverlapping;
         }
@@ -339,15 +328,14 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
     }
     else
     {
-        cerr << "Error: " << cameraModel << " not known" << endl;
-        exit(-1);
+        throw std::runtime_error("Invalid camera model: " + cameraModel);
     }
 }
 
 void Settings::readCamera2(cv::FileStorage& fSettings)
 {
     bool found;
-    vector<float> vCalibration;
+    std::vector<float> vCalibration;
     if (cameraType_ == PinHole)
     {
         bNeedToRectify_ = true;
@@ -403,7 +391,7 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
 
         int colBegin = readParameter<int>(fSettings, "Camera2.overlappingBegin", found);
         int colEnd = readParameter<int>(fSettings, "Camera2.overlappingEnd", found);
-        vector<int> vOverlapping = {colBegin, colEnd};
+        std::vector<int> vOverlapping = {colBegin, colEnd};
 
         static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea = vOverlapping;
     }
@@ -603,28 +591,32 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     if (!found)
     {
         monocularInitSearchWindowSize_ = 100;
-        std::cerr << "[WARNING] MonocularInit.SearchWindowSize not found. Defaulting to 100." << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[WARNING] MonocularInit.SearchWindowSize not found. Defaulting to 100." << std::endl;
     }
 
     monocularInitMinKeypoints_ = readParameter<int>(fSettings, "MonocularInit.MinKeypoints", found, false);
     if (!found)
     {
         monocularInitMinKeypoints_ = 100;
-        std::cerr << "[WARNING] MonocularInit.MinKeypoints not found. Defaulting to 100." << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[WARNING] MonocularInit.MinKeypoints not found. Defaulting to 100." << std::endl;
     }
 
     monocularInitNNRatio_ = readParameter<float>(fSettings, "MonocularInit.NNRatio", found, false);
     if (!found)
     {
         monocularInitNNRatio_ = 0.9f;
-        std::cerr << "[WARNING] MonocularInit.NNRatio not found. Defaulting to 0.9." << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[WARNING] MonocularInit.NNRatio not found. Defaulting to 0.9." << std::endl;
     }
 
     monocularInitMinMatches_ = readParameter<int>(fSettings, "MonocularInit.MinMatches", found, false);
     if (!found)
     {
         monocularInitMinMatches_ = 100;
-        std::cerr << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
     }
 
     stereoInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinKeypoints", found, false);
@@ -796,9 +788,9 @@ void Settings::precomputeRectificationMaps()
     }
 }
 
-ostream& operator<<(std::ostream& output, const Settings& settings)
+std::ostream& operator<<(std::ostream& output, const Settings& settings)
 {
-    output << "SLAM settings: " << endl;
+    output << "SLAM settings: " << std::endl;
 
     output << "\t-Camera 1 parameters (";
     if (settings.cameraType_ == Settings::PinHole || settings.cameraType_ == Settings::Rectified)
@@ -818,7 +810,7 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
     {
         output << " " << settings.originalCalib1_->getParameter(i);
     }
-    output << " ]" << endl;
+    output << " ]" << std::endl;
 
     if (!settings.vPinHoleDistorsion1_.empty())
     {
@@ -827,7 +819,7 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         {
             output << " " << d;
         }
-        output << " ]" << endl;
+        output << " ]" << std::endl;
     }
 
     if (settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO)
@@ -850,7 +842,7 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         {
             output << " " << settings.originalCalib2_->getParameter(i);
         }
-        output << " ]" << endl;
+        output << " ]" << std::endl;
 
         if (!settings.vPinHoleDistorsion2_.empty())
         {
@@ -859,14 +851,14 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
             {
                 output << " " << d;
             }
-            output << " ]" << endl;
+            output << " ]" << std::endl;
         }
     }
 
     output << "\t-Original image size: [ " << settings.originalImSize_.width << " , " << settings.originalImSize_.height
-           << " ]" << endl;
+           << " ]" << std::endl;
     output << "\t-Current image size: [ " << settings.newImSize_.width << " , " << settings.newImSize_.height << " ]"
-           << endl;
+           << std::endl;
 
     if (settings.bNeedToRectify_)
     {
@@ -875,7 +867,7 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         {
             output << " " << settings.calibration1_->getParameter(i);
         }
-        output << " ]" << endl;
+        output << " ]" << std::endl;
     }
     else if (settings.bNeedToResize1_)
     {
@@ -884,7 +876,7 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
         {
             output << " " << settings.calibration1_->getParameter(i);
         }
-        output << " ]" << endl;
+        output << " ]" << std::endl;
 
         if ((settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO) &&
             settings.cameraType_ == Settings::KannalaBrandt)
@@ -894,43 +886,43 @@ ostream& operator<<(std::ostream& output, const Settings& settings)
             {
                 output << " " << settings.calibration2_->getParameter(i);
             }
-            output << " ]" << endl;
+            output << " ]" << std::endl;
         }
     }
 
-    output << "\t-Sequence FPS: " << settings.fps_ << endl;
+    output << "\t-Sequence FPS: " << settings.fps_ << std::endl;
 
     //Stereo stuff
     if (settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO)
     {
-        output << "\t-Stereo baseline: " << settings.b_ << endl;
-        output << "\t-Stereo depth threshold : " << settings.thDepth_ << endl;
+        output << "\t-Stereo baseline: " << settings.b_ << std::endl;
+        output << "\t-Stereo depth threshold : " << settings.thDepth_ << std::endl;
 
         if (settings.cameraType_ == Settings::KannalaBrandt)
         {
             auto vOverlapping1 = static_cast<KannalaBrandt8*>(settings.calibration1_)->mvLappingArea;
             auto vOverlapping2 = static_cast<KannalaBrandt8*>(settings.calibration2_)->mvLappingArea;
             output << "\t-Camera 1 overlapping area: [ " << vOverlapping1[0] << " , " << vOverlapping1[1] << " ]"
-                   << endl;
+                   << std::endl;
             output << "\t-Camera 2 overlapping area: [ " << vOverlapping2[0] << " , " << vOverlapping2[1] << " ]"
-                   << endl;
+                   << std::endl;
         }
     }
 
     if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO)
     {
-        output << "\t-Gyro noise: " << settings.noiseGyro_ << endl;
-        output << "\t-Accelerometer noise: " << settings.noiseAcc_ << endl;
-        output << "\t-Gyro walk: " << settings.gyroWalk_ << endl;
-        output << "\t-Accelerometer walk: " << settings.accWalk_ << endl;
-        output << "\t-IMU frequency: " << settings.imuFrequency_ << endl;
+        output << "\t-Gyro noise: " << settings.noiseGyro_ << std::endl;
+        output << "\t-Accelerometer noise: " << settings.noiseAcc_ << std::endl;
+        output << "\t-Gyro walk: " << settings.gyroWalk_ << std::endl;
+        output << "\t-Accelerometer walk: " << settings.accWalk_ << std::endl;
+        output << "\t-IMU frequency: " << settings.imuFrequency_ << std::endl;
     }
 
-    output << "\t-Features per image: " << settings.nFeatures_ << endl;
-    output << "\t-ORB scale factor: " << settings.scaleFactor_ << endl;
-    output << "\t-ORB number of scales: " << settings.nLevels_ << endl;
-    output << "\t-Initial FAST threshold: " << settings.initThFAST_ << endl;
-    output << "\t-Min FAST threshold: " << settings.minThFAST_ << endl;
+    output << "\t-Features per image: " << settings.nFeatures_ << std::endl;
+    output << "\t-ORB scale factor: " << settings.scaleFactor_ << std::endl;
+    output << "\t-ORB number of scales: " << settings.nLevels_ << std::endl;
+    output << "\t-Initial FAST threshold: " << settings.initThFAST_ << std::endl;
+    output << "\t-Min FAST threshold: " << settings.minThFAST_ << std::endl;
 
     return output;
 }

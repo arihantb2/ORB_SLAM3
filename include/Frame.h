@@ -26,18 +26,14 @@
 #include "DBoW2/BowVector.h"
 #include "DBoW2/FeatureVector.h"
 
-#include "sophus/geometry.hpp"
-
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
-#include "Converter.h"
 #include "Settings.h"
 
 #include <mutex>
 #include <opencv2/opencv.hpp>
 
-#include "Eigen/Core"
 #include "sophus/se3.hpp"
 
 namespace ORB_SLAM3
@@ -118,7 +114,7 @@ public:
     bool PosInGrid(const cv::KeyPoint& kp, int& posX, int& posY);
 
     std::vector<size_t> GetFeaturesInArea(const float& x, const float& y, const float& r, const int minLevel = -1,
-                                     const int maxLevel = -1, const bool bRight = false) const;
+                                          const int maxLevel = -1, const bool bRight = false) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.

@@ -31,7 +31,7 @@
 namespace ORB_SLAM3
 {
 
-Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, const string& strSettingPath,
+Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, const std::string& strSettingPath,
                Settings* settings)
     : both(false),
       mpSystem(pSystem),
@@ -55,14 +55,7 @@ Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, cons
 
         if (!is_correct)
         {
-            std::cerr << "**ERROR in the config file, the format is not correct**" << std::endl;
-            try
-            {
-                throw -1;
-            }
-            catch (exception& e)
-            {
-            }
+            throw std::runtime_error("**ERROR in the config file, the format is not correct**");
         }
     }
 
@@ -110,7 +103,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Camera.width parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Camera.width parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -121,7 +115,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Camera.height parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Camera.height parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -138,7 +133,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.ViewpointX parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.ViewpointX parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -149,7 +145,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.ViewpointY parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.ViewpointY parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -160,7 +157,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.ViewpointZ parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.ViewpointZ parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -171,7 +169,8 @@ bool Viewer::ParseViewerParamFile(cv::FileStorage& fSettings)
     }
     else
     {
-        std::cerr << "*Viewer.ViewpointF parameter doesn't exist or is not a real number*" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "*Viewer.ViewpointF parameter doesn't exist or is not a real number*" << std::endl;
         b_miss_params = true;
     }
 
@@ -228,7 +227,7 @@ void Viewer::Run()
 
     float trackedImageScale = mpTracker->GetImageScale();
 
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Starting the Viewer" << endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Starting the Viewer" << std::endl;
     while (1)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -324,44 +323,44 @@ void Viewer::Run()
 
 void Viewer::RequestFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
+    std::unique_lock<std::mutex> lock(mMutexFinish);
     mbFinishRequested = true;
 }
 
 bool Viewer::CheckFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
+    std::unique_lock<std::mutex> lock(mMutexFinish);
     return mbFinishRequested;
 }
 
 void Viewer::SetFinish()
 {
-    unique_lock<mutex> lock(mMutexFinish);
+    std::unique_lock<std::mutex> lock(mMutexFinish);
     mbFinished = true;
 }
 
 bool Viewer::isFinished()
 {
-    unique_lock<mutex> lock(mMutexFinish);
+    std::unique_lock<std::mutex> lock(mMutexFinish);
     return mbFinished;
 }
 
 void Viewer::RequestStop()
 {
-    unique_lock<mutex> lock(mMutexStop);
+    std::unique_lock<std::mutex> lock(mMutexStop);
     mbStopRequested = !mbStopped;
 }
 
 bool Viewer::isStopped()
 {
-    unique_lock<mutex> lock(mMutexStop);
+    std::unique_lock<std::mutex> lock(mMutexStop);
     return mbStopped;
 }
 
 bool Viewer::Stop()
 {
-    unique_lock<mutex> lock(mMutexStop);
-    unique_lock<mutex> lock2(mMutexFinish);
+    std::unique_lock<std::mutex> lock(mMutexStop);
+    std::unique_lock<std::mutex> lock2(mMutexFinish);
 
     if (mbFinishRequested)
     {
@@ -379,7 +378,7 @@ bool Viewer::Stop()
 
 void Viewer::Release()
 {
-    unique_lock<mutex> lock(mMutexStop);
+    std::unique_lock<std::mutex> lock(mMutexStop);
     mbStopped = false;
 }
 

@@ -19,11 +19,8 @@
 #ifndef SIM3SOLVER_H
 #define SIM3SOLVER_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
-#include <utility>
 #include <vector>
 
 namespace ORB_SLAM3
@@ -33,21 +30,20 @@ class GeometricCamera;
 class KeyFrame;
 class MapPoint;
 
-using std::vector;
-
 class Sim3Solver
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*>& vpMatched12, const bool bFixScale = true,
-               const vector<KeyFrame*> vpKeyFrameMatchedMP = vector<KeyFrame*>());
+               const std::vector<KeyFrame*> vpKeyFrameMatchedMP = std::vector<KeyFrame*>());
 
     void SetRansacParameters(double probability = 0.99, int minInliers = 6, int maxIterations = 300);
 
     Eigen::Matrix4f find(std::vector<bool>& vbInliers12, int& nInliers);
 
     Eigen::Matrix4f iterate(int nIterations, bool& bNoMore, std::vector<bool>& vbInliers, int& nInliers);
-    Eigen::Matrix4f iterate(int nIterations, bool& bNoMore, vector<bool>& vbInliers, int& nInliers, bool& bConverge);
+    Eigen::Matrix4f iterate(int nIterations, bool& bNoMore, std::vector<bool>& vbInliers, int& nInliers,
+                            bool& bConverge);
 
     Eigen::Matrix4f GetEstimatedTransformation();
     Eigen::Matrix3f GetEstimatedRotation();

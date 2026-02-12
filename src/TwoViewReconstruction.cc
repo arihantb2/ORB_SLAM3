@@ -18,14 +18,12 @@
 
 #include "TwoViewReconstruction.h"
 
-#include "Converter.h"
 #include "GeometricTools.h"
-
-#include "DUtils/Random.h"
 
 #include <thread>
 
-using namespace std;
+#include <random>
+
 namespace ORB_SLAM3
 {
 TwoViewReconstruction::TwoViewReconstruction(const Eigen::Matrix3f& k, float sigma, int iterations)
@@ -38,8 +36,9 @@ TwoViewReconstruction::TwoViewReconstruction(const Eigen::Matrix3f& k, float sig
 }
 
 bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
-                                        const std::vector<cv::KeyPoint>& vKeys2, const vector<int>& vMatches12,
-                                        Sophus::SE3f& T21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated)
+                                        const std::vector<cv::KeyPoint>& vKeys2, const std::vector<int>& vMatches12,
+                                        Sophus::SE3f& T21, std::vector<cv::Point3f>& vP3D,
+                                        std::vector<bool>& vbTriangulated)
 {
     mvKeys1.clear();
     mvKeys2.clear();
@@ -56,19 +55,21 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
     {
         if (vMatches12[i] >= 0)
         {
-            mvMatches12.push_back(make_pair(i, vMatches12[i]));
+            mvMatches12.push_back(std::make_pair(i, vMatches12[i]));
             mvbMatched1[i] = true;
         }
         else
+        {
             mvbMatched1[i] = false;
+        }
     }
 
     const int N = mvMatches12.size();
 
     // Indices for minimum set selection
-    vector<size_t> vAllIndices;
+    std::vector<size_t> vAllIndices;
     vAllIndices.reserve(N);
-    vector<size_t> vAvailableIndices;
+    std::vector<size_t> vAvailableIndices;
 
     for (int i = 0; i < N; i++)
     {
@@ -76,9 +77,9 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
     }
 
     // Generate sets of 8 points for each RANSAC iteration
-    mvSets = vector<vector<size_t>>(mMaxIterations, vector<size_t>(8, 0));
+    mvSets = std::vector<std::vector<size_t>>(mMaxIterations, std::vector<size_t>(8, 0));
 
-    DUtils::Random::SeedRandOnce(0);
+    static thread_local std::mt19937 gen(0u);
 
     for (int it = 0; it < mMaxIterations; it++)
     {
@@ -87,7 +88,8 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
         // Select a minimum set
         for (size_t j = 0; j < 8; j++)
         {
-            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size() - 1);
+            std::uniform_int_distribution<int> dis(0, static_cast<int>(vAvailableIndices.size()) - 1);
+            int randi = dis(gen);
             int idx = vAvailableIndices[randi];
 
             mvSets[it][j] = idx;
@@ -98,12 +100,14 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
     }
 
     // Launch threads to compute in parallel a fundamental matrix and a homography
-    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
+    std::vector<bool> vbMatchesInliersH, vbMatchesInliersF;
     float SH, SF;
     Eigen::Matrix3f H, F;
 
-    thread threadH(&TwoViewReconstruction::FindHomography, this, ref(vbMatchesInliersH), ref(SH), ref(H));
-    thread threadF(&TwoViewReconstruction::FindFundamental, this, ref(vbMatchesInliersF), ref(SF), ref(F));
+    std::thread threadH(&TwoViewReconstruction::FindHomography, this, std::ref(vbMatchesInliersH), std::ref(SH),
+                        std::ref(H));
+    std::thread threadF(&TwoViewReconstruction::FindFundamental, this, std::ref(vbMatchesInliersF), std::ref(SF),
+                        std::ref(F));
 
     // Wait until both threads have finished
     threadH.join();
@@ -111,7 +115,9 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
 
     // Compute ratio of scores
     if (SH + SF == 0.f)
+    {
         return false;
+    }
     float RH = SH / (SH + SF);
 
     float minParallax = 1.0;
@@ -127,13 +133,13 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
     }
 }
 
-void TwoViewReconstruction::FindHomography(vector<bool>& vbMatchesInliers, float& score, Eigen::Matrix3f& H21)
+void TwoViewReconstruction::FindHomography(std::vector<bool>& vbMatchesInliers, float& score, Eigen::Matrix3f& H21)
 {
     // Number of putative matches
     const int N = mvMatches12.size();
 
     // Normalize coordinates
-    vector<cv::Point2f> vPn1, vPn2;
+    std::vector<cv::Point2f> vPn1, vPn2;
     Eigen::Matrix3f T1, T2;
     Normalize(mvKeys1, vPn1, T1);
     Normalize(mvKeys2, vPn2, T2);
@@ -141,13 +147,13 @@ void TwoViewReconstruction::FindHomography(vector<bool>& vbMatchesInliers, float
 
     // Best Results variables
     score = 0.0;
-    vbMatchesInliers = vector<bool>(N, false);
+    vbMatchesInliers = std::vector<bool>(N, false);
 
     // Iteration variables
-    vector<cv::Point2f> vPn1i(8);
-    vector<cv::Point2f> vPn2i(8);
+    std::vector<cv::Point2f> vPn1i(8);
+    std::vector<cv::Point2f> vPn2i(8);
     Eigen::Matrix3f H21i, H12i;
-    vector<bool> vbCurrentInliers(N, false);
+    std::vector<bool> vbCurrentInliers(N, false);
     float currentScore;
 
     // Perform all RANSAC iterations and save the solution with highest score
@@ -177,13 +183,13 @@ void TwoViewReconstruction::FindHomography(vector<bool>& vbMatchesInliers, float
     }
 }
 
-void TwoViewReconstruction::FindFundamental(vector<bool>& vbMatchesInliers, float& score, Eigen::Matrix3f& F21)
+void TwoViewReconstruction::FindFundamental(std::vector<bool>& vbMatchesInliers, float& score, Eigen::Matrix3f& F21)
 {
     // Number of putative matches
     const int N = vbMatchesInliers.size();
 
     // Normalize coordinates
-    vector<cv::Point2f> vPn1, vPn2;
+    std::vector<cv::Point2f> vPn1, vPn2;
     Eigen::Matrix3f T1, T2;
     Normalize(mvKeys1, vPn1, T1);
     Normalize(mvKeys2, vPn2, T2);
@@ -191,13 +197,13 @@ void TwoViewReconstruction::FindFundamental(vector<bool>& vbMatchesInliers, floa
 
     // Best Results variables
     score = 0.0;
-    vbMatchesInliers = vector<bool>(N, false);
+    vbMatchesInliers = std::vector<bool>(N, false);
 
     // Iteration variables
-    vector<cv::Point2f> vPn1i(8);
-    vector<cv::Point2f> vPn2i(8);
+    std::vector<cv::Point2f> vPn1i(8);
+    std::vector<cv::Point2f> vPn2i(8);
     Eigen::Matrix3f F21i;
-    vector<bool> vbCurrentInliers(N, false);
+    std::vector<bool> vbCurrentInliers(N, false);
     float currentScore;
 
     // Perform all RANSAC iterations and save the solution with highest score
@@ -227,7 +233,8 @@ void TwoViewReconstruction::FindFundamental(vector<bool>& vbMatchesInliers, floa
     }
 }
 
-Eigen::Matrix3f TwoViewReconstruction::ComputeH21(const vector<cv::Point2f>& vP1, const vector<cv::Point2f>& vP2)
+Eigen::Matrix3f TwoViewReconstruction::ComputeH21(const std::vector<cv::Point2f>& vP1,
+                                                  const std::vector<cv::Point2f>& vP2)
 {
     const int N = vP1.size();
 
@@ -268,7 +275,8 @@ Eigen::Matrix3f TwoViewReconstruction::ComputeH21(const vector<cv::Point2f>& vP1
     return H;
 }
 
-Eigen::Matrix3f TwoViewReconstruction::ComputeF21(const vector<cv::Point2f>& vP1, const vector<cv::Point2f>& vP2)
+Eigen::Matrix3f TwoViewReconstruction::ComputeF21(const std::vector<cv::Point2f>& vP1,
+                                                  const std::vector<cv::Point2f>& vP2)
 {
     const int N = vP1.size();
 
@@ -305,7 +313,7 @@ Eigen::Matrix3f TwoViewReconstruction::ComputeF21(const vector<cv::Point2f>& vP1
 }
 
 float TwoViewReconstruction::CheckHomography(const Eigen::Matrix3f& H21, const Eigen::Matrix3f& H12,
-                                             vector<bool>& vbMatchesInliers, float sigma)
+                                             std::vector<bool>& vbMatchesInliers, float sigma)
 {
     const int N = mvMatches12.size();
 
@@ -361,10 +369,13 @@ float TwoViewReconstruction::CheckHomography(const Eigen::Matrix3f& H21, const E
         const float chiSquare1 = squareDist1 * invSigmaSquare;
 
         if (chiSquare1 > th)
+        {
             bIn = false;
+        }
         else
+        {
             score += th - chiSquare1;
-
+        }
         // Reprojection error in second image
         // x1in2 = H21*x1
 
@@ -377,20 +388,28 @@ float TwoViewReconstruction::CheckHomography(const Eigen::Matrix3f& H21, const E
         const float chiSquare2 = squareDist2 * invSigmaSquare;
 
         if (chiSquare2 > th)
+        {
             bIn = false;
+        }
         else
+        {
             score += th - chiSquare2;
-
+        }
         if (bIn)
+        {
             vbMatchesInliers[i] = true;
+        }
         else
+        {
             vbMatchesInliers[i] = false;
+        }
     }
 
     return score;
 }
 
-float TwoViewReconstruction::CheckFundamental(const Eigen::Matrix3f& F21, vector<bool>& vbMatchesInliers, float sigma)
+float TwoViewReconstruction::CheckFundamental(const Eigen::Matrix3f& F21, std::vector<bool>& vbMatchesInliers,
+                                              float sigma)
 {
     const int N = mvMatches12.size();
 
@@ -439,10 +458,13 @@ float TwoViewReconstruction::CheckFundamental(const Eigen::Matrix3f& F21, vector
         const float chiSquare1 = squareDist1 * invSigmaSquare;
 
         if (chiSquare1 > th)
+        {
             bIn = false;
+        }
         else
+        {
             score += thScore - chiSquare1;
-
+        }
         // Reprojection error in second image
         // l1 =x2tF21=(a1,b1,c1)
 
@@ -457,28 +479,38 @@ float TwoViewReconstruction::CheckFundamental(const Eigen::Matrix3f& F21, vector
         const float chiSquare2 = squareDist2 * invSigmaSquare;
 
         if (chiSquare2 > th)
+        {
             bIn = false;
+        }
         else
+        {
             score += thScore - chiSquare2;
-
+        }
         if (bIn)
+        {
             vbMatchesInliers[i] = true;
+        }
         else
+        {
             vbMatchesInliers[i] = false;
+        }
     }
 
     return score;
 }
 
-bool TwoViewReconstruction::ReconstructF(vector<bool>& vbMatchesInliers, Eigen::Matrix3f& F21, Eigen::Matrix3f& K,
-                                         Sophus::SE3f& T21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated,
-                                         float minParallax, int minTriangulated)
+bool TwoViewReconstruction::ReconstructF(std::vector<bool>& vbMatchesInliers, Eigen::Matrix3f& F21, Eigen::Matrix3f& K,
+                                         Sophus::SE3f& T21, std::vector<cv::Point3f>& vP3D,
+                                         std::vector<bool>& vbTriangulated, float minParallax, int minTriangulated)
 {
     int N = 0;
     for (size_t i = 0, iend = vbMatchesInliers.size(); i < iend; i++)
+    {
         if (vbMatchesInliers[i])
+        {
             N++;
-
+        }
+    }
     // Compute Essential Matrix from Fundamental Matrix
     Eigen::Matrix3f E21 = K.transpose() * F21 * K;
 
@@ -492,8 +524,8 @@ bool TwoViewReconstruction::ReconstructF(vector<bool>& vbMatchesInliers, Eigen::
     Eigen::Vector3f t2 = -t;
 
     // Reconstruct with the 4 hyphoteses and check
-    vector<cv::Point3f> vP3D1, vP3D2, vP3D3, vP3D4;
-    vector<bool> vbTriangulated1, vbTriangulated2, vbTriangulated3, vbTriangulated4;
+    std::vector<cv::Point3f> vP3D1, vP3D2, vP3D3, vP3D4;
+    std::vector<bool> vbTriangulated1, vbTriangulated2, vbTriangulated3, vbTriangulated4;
     float parallax1, parallax2, parallax3, parallax4;
 
     int nGood1 = CheckRT(R1, t1, mvKeys1, mvKeys2, mvMatches12, vbMatchesInliers, K, vP3D1, 4.0 * mSigma2,
@@ -505,20 +537,27 @@ bool TwoViewReconstruction::ReconstructF(vector<bool>& vbMatchesInliers, Eigen::
     int nGood4 = CheckRT(R2, t2, mvKeys1, mvKeys2, mvMatches12, vbMatchesInliers, K, vP3D4, 4.0 * mSigma2,
                          vbTriangulated4, parallax4);
 
-    int maxGood = max(nGood1, max(nGood2, max(nGood3, nGood4)));
+    int maxGood = std::max(nGood1, std::max(nGood2, std::max(nGood3, nGood4)));
 
-    int nMinGood = max(static_cast<int>(0.9 * N), minTriangulated);
+    int nMinGood = std::max(static_cast<int>(0.9 * N), minTriangulated);
 
     int nsimilar = 0;
     if (nGood1 > 0.7 * maxGood)
+    {
         nsimilar++;
+    }
     if (nGood2 > 0.7 * maxGood)
+    {
         nsimilar++;
+    }
     if (nGood3 > 0.7 * maxGood)
+    {
         nsimilar++;
+    }
     if (nGood4 > 0.7 * maxGood)
+    {
         nsimilar++;
-
+    }
     // If there is not a clear winner or not enough triangulated points reject initialization
     if (maxGood < nMinGood || nsimilar > 1)
     {
@@ -574,15 +613,18 @@ bool TwoViewReconstruction::ReconstructF(vector<bool>& vbMatchesInliers, Eigen::
     return false;
 }
 
-bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::Matrix3f& H21, Eigen::Matrix3f& K,
-                                         Sophus::SE3f& T21, vector<cv::Point3f>& vP3D, vector<bool>& vbTriangulated,
-                                         float minParallax, int minTriangulated)
+bool TwoViewReconstruction::ReconstructH(std::vector<bool>& vbMatchesInliers, Eigen::Matrix3f& H21, Eigen::Matrix3f& K,
+                                         Sophus::SE3f& T21, std::vector<cv::Point3f>& vP3D,
+                                         std::vector<bool>& vbTriangulated, float minParallax, int minTriangulated)
 {
     int N = 0;
     for (size_t i = 0, iend = vbMatchesInliers.size(); i < iend; i++)
+    {
         if (vbMatchesInliers[i])
+        {
             N++;
-
+        }
+    }
     // We recover 8 motion hypotheses using the method of Faugeras et al.
     // Motion and structure from motion in a piecewise planar environment.
     // International Journal of Pattern Recognition and Artificial Intelligence, 1988
@@ -590,8 +632,8 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
     Eigen::Matrix3f A = invK * H21 * K;
 
     Eigen::JacobiSVD<Eigen::Matrix3f> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    Eigen::Matrix3f U = svd.matrixU();
-    Eigen::Matrix3f V = svd.matrixV();
+    const Eigen::Matrix3f& U = svd.matrixU();
+    const Eigen::Matrix3f& V = svd.matrixV();
     Eigen::Matrix3f Vt = V.transpose();
     Eigen::Vector3f w = svd.singularValues();
 
@@ -606,8 +648,8 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
         return false;
     }
 
-    vector<Eigen::Matrix3f> vR;
-    vector<Eigen::Vector3f> vt, vn;
+    std::vector<Eigen::Matrix3f> vR;
+    std::vector<Eigen::Vector3f> vt, vn;
     vR.reserve(8);
     vt.reserve(8);
     vn.reserve(8);
@@ -653,7 +695,9 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
 
         Eigen::Vector3f n = V * np;
         if (n(2) < 0)
+        {
             n = -n;
+        }
         vn.push_back(n);
     }
 
@@ -692,7 +736,9 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
 
         Eigen::Vector3f n = V * np;
         if (n(2) < 0)
+        {
             n = -n;
+        }
         vn.push_back(n);
     }
 
@@ -700,16 +746,16 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
     int secondBestGood = 0;
     int bestSolutionIdx = -1;
     float bestParallax = -1;
-    vector<cv::Point3f> bestP3D;
-    vector<bool> bestTriangulated;
+    std::vector<cv::Point3f> bestP3D;
+    std::vector<bool> bestTriangulated;
 
     // Instead of applying the visibility constraints proposed in the Faugeras' paper (which could fail for points seen with low parallax)
     // We reconstruct all hypotheses and check in terms of triangulated points and parallax
     for (size_t i = 0; i < 8; i++)
     {
         float parallaxi;
-        vector<cv::Point3f> vP3Di;
-        vector<bool> vbTriangulatedi;
+        std::vector<cv::Point3f> vP3Di;
+        std::vector<bool> vbTriangulatedi;
         int nGood = CheckRT(vR[i], vt[i], mvKeys1, mvKeys2, mvMatches12, vbMatchesInliers, K, vP3Di, 4.0 * mSigma2,
                             vbTriangulatedi, parallaxi);
 
@@ -740,8 +786,8 @@ bool TwoViewReconstruction::ReconstructH(vector<bool>& vbMatchesInliers, Eigen::
     return false;
 }
 
-void TwoViewReconstruction::Normalize(const vector<cv::KeyPoint>& vKeys, vector<cv::Point2f>& vNormalizedPoints,
-                                      Eigen::Matrix3f& T)
+void TwoViewReconstruction::Normalize(const std::vector<cv::KeyPoint>& vKeys,
+                                      std::vector<cv::Point2f>& vNormalizedPoints, Eigen::Matrix3f& T)
 {
     float meanX = 0;
     float meanY = 0;
@@ -791,10 +837,10 @@ void TwoViewReconstruction::Normalize(const vector<cv::KeyPoint>& vKeys, vector<
 }
 
 int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector3f& t,
-                                   const vector<cv::KeyPoint>& vKeys1, const vector<cv::KeyPoint>& vKeys2,
-                                   const vector<Match>& vMatches12, vector<bool>& vbMatchesInliers,
-                                   const Eigen::Matrix3f& K, vector<cv::Point3f>& vP3D, float th2, vector<bool>& vbGood,
-                                   float& parallax)
+                                   const std::vector<cv::KeyPoint>& vKeys1, const std::vector<cv::KeyPoint>& vKeys2,
+                                   const std::vector<Match>& vMatches12, std::vector<bool>& vbMatchesInliers,
+                                   const Eigen::Matrix3f& K, std::vector<cv::Point3f>& vP3D, float th2,
+                                   std::vector<bool>& vbGood, float& parallax)
 {
     // Calibration parameters
     const float fx = K(0, 0);
@@ -802,10 +848,10 @@ int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector
     const float cx = K(0, 2);
     const float cy = K(1, 2);
 
-    vbGood = vector<bool>(vKeys1.size(), false);
+    vbGood = std::vector<bool>(vKeys1.size(), false);
     vP3D.resize(vKeys1.size());
 
-    vector<float> vCosParallax;
+    std::vector<float> vCosParallax;
     vCosParallax.reserve(vKeys1.size());
 
     // Camera 1 Projection Matrix K[I|0]
@@ -829,8 +875,9 @@ int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector
     for (size_t i = 0, iend = vMatches12.size(); i < iend; i++)
     {
         if (!vbMatchesInliers[i])
+        {
             continue;
-
+        }
         const cv::KeyPoint& kp1 = vKeys1[vMatches12[i].first];
         const cv::KeyPoint& kp2 = vKeys2[vMatches12[i].second];
 
@@ -857,14 +904,16 @@ int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if (p3dC1(2) <= 0 && cosParallax < 0.99998)
+        {
             continue;
-
+        }
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         Eigen::Vector3f p3dC2 = R * p3dC1 + t;
 
         if (p3dC2(2) <= 0 && cosParallax < 0.99998)
+        {
             continue;
-
+        }
         // Check reprojection error in first image
         float im1x, im1y;
         float invZ1 = 1.0 / p3dC1(2);
@@ -874,8 +923,9 @@ int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector
         float squareError1 = (im1x - kp1.pt.x) * (im1x - kp1.pt.x) + (im1y - kp1.pt.y) * (im1y - kp1.pt.y);
 
         if (squareError1 > th2)
+        {
             continue;
-
+        }
         // Check reprojection error in second image
         float im2x, im2y;
         float invZ2 = 1.0 / p3dC2(2);
@@ -885,26 +935,30 @@ int TwoViewReconstruction::CheckRT(const Eigen::Matrix3f& R, const Eigen::Vector
         float squareError2 = (im2x - kp2.pt.x) * (im2x - kp2.pt.x) + (im2y - kp2.pt.y) * (im2y - kp2.pt.y);
 
         if (squareError2 > th2)
+        {
             continue;
-
+        }
         vCosParallax.push_back(cosParallax);
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1(0), p3dC1(1), p3dC1(2));
         nGood++;
 
         if (cosParallax < 0.99998)
+        {
             vbGood[vMatches12[i].first] = true;
+        }
     }
 
     if (nGood > 0)
     {
         sort(vCosParallax.begin(), vCosParallax.end());
 
-        size_t idx = min(50, int(vCosParallax.size() - 1));
+        size_t idx = std::min(50, int(vCosParallax.size() - 1));
         parallax = acos(vCosParallax[idx]) * 180 / CV_PI;
     }
     else
+    {
         parallax = 0;
-
+    }
     return nGood;
 }
 
@@ -928,11 +982,14 @@ void TwoViewReconstruction::DecomposeE(const Eigen::Matrix3f& E, Eigen::Matrix3f
 
     R1 = U * W * Vt;
     if (R1.determinant() < 0)
+    {
         R1 = -R1;
-
+    }
     R2 = U * W.transpose() * Vt;
     if (R2.determinant() < 0)
+    {
         R2 = -R2;
+    }
 }
 
 }  // namespace ORB_SLAM3
