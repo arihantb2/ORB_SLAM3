@@ -21,7 +21,6 @@ enum class StereoDebugMode
 {
     UNKNOWN = 0,
     METASHAPE_PINHOLE = 1,
-    FISHEYE = 2,
 };
 
 struct StereoMatchDebug

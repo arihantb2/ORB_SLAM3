@@ -478,73 +478,14 @@ void LocalMapping::CreateNewMapPoints()
                                           ? mpCurrentKeyFrame->mvKeys[idx1]
                                           : mpCurrentKeyFrame->mvKeysRight[idx1 - mpCurrentKeyFrame->NLeft];
             const float kp1_ur = mpCurrentKeyFrame->mvuRight[idx1];
-            bool bStereo1 = (!mpCurrentKeyFrame->mpCamera2 && kp1_ur >= 0);
-            const bool bRight1 = (mpCurrentKeyFrame->NLeft == -1 || idx1 < mpCurrentKeyFrame->NLeft) ? false : true;
+            bool bStereo1 = (kp1_ur >= 0);
 
             const cv::KeyPoint& kp2 = (pKF2->NLeft == -1)    ? pKF2->mvKeysUn[idx2]
                                       : (idx2 < pKF2->NLeft) ? pKF2->mvKeys[idx2]
                                                              : pKF2->mvKeysRight[idx2 - pKF2->NLeft];
 
             const float kp2_ur = pKF2->mvuRight[idx2];
-            bool bStereo2 = (!pKF2->mpCamera2 && kp2_ur >= 0);
-            const bool bRight2 = (pKF2->NLeft == -1 || idx2 < pKF2->NLeft) ? false : true;
-
-            if (mpCurrentKeyFrame->mpCamera2 && pKF2->mpCamera2)
-            {
-                if (bRight1 && bRight2)
-                {
-                    sophTcw1 = mpCurrentKeyFrame->GetRightPose();
-                    Ow1 = mpCurrentKeyFrame->GetRightCameraCenter();
-
-                    sophTcw2 = pKF2->GetRightPose();
-                    Ow2 = pKF2->GetRightCameraCenter();
-
-                    pCamera1 = mpCurrentKeyFrame->mpCamera2;
-                    pCamera2 = pKF2->mpCamera2;
-                }
-                else if (bRight1 && !bRight2)
-                {
-                    sophTcw1 = mpCurrentKeyFrame->GetRightPose();
-                    Ow1 = mpCurrentKeyFrame->GetRightCameraCenter();
-
-                    sophTcw2 = pKF2->GetPose();
-                    Ow2 = pKF2->GetCameraCenter();
-
-                    pCamera1 = mpCurrentKeyFrame->mpCamera2;
-                    pCamera2 = pKF2->mpCamera;
-                }
-                else if (!bRight1 && bRight2)
-                {
-                    sophTcw1 = mpCurrentKeyFrame->GetPose();
-                    Ow1 = mpCurrentKeyFrame->GetCameraCenter();
-
-                    sophTcw2 = pKF2->GetRightPose();
-                    Ow2 = pKF2->GetRightCameraCenter();
-
-                    pCamera1 = mpCurrentKeyFrame->mpCamera;
-                    pCamera2 = pKF2->mpCamera2;
-                }
-                else
-                {
-                    sophTcw1 = mpCurrentKeyFrame->GetPose();
-                    Ow1 = mpCurrentKeyFrame->GetCameraCenter();
-
-                    sophTcw2 = pKF2->GetPose();
-                    Ow2 = pKF2->GetCameraCenter();
-
-                    pCamera1 = mpCurrentKeyFrame->mpCamera;
-                    pCamera2 = pKF2->mpCamera;
-                }
-                eigTcw1 = sophTcw1.matrix3x4();
-                Rcw1 = eigTcw1.block<3, 3>(0, 0);
-                Rwc1 = Rcw1.transpose();
-                tcw1 = sophTcw1.translation();
-
-                eigTcw2 = sophTcw2.matrix3x4();
-                Rcw2 = eigTcw2.block<3, 3>(0, 0);
-                Rwc2 = Rcw2.transpose();
-                tcw2 = sophTcw2.translation();
-            }
+            bool bStereo2 = (kp2_ur >= 0);
 
             // Check parallax between rays
             Eigen::Vector3f xn1 = pCamera1->unprojectEig(kp1.pt);

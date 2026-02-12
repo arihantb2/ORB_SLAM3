@@ -1154,7 +1154,7 @@ int ORBextractor::operator()(cv::InputArray _image, cv::InputArray _mask, std::v
     _keypoints = std::vector<cv::KeyPoint>(nkeypoints);
 
     int offset = 0;
-    //Modified for speeding up stereo fisheye matching
+    //Modified for speeding up stereo split matching
     int monoIndex = 0, stereoIndex = nkeypoints - 1;
     for (int level = 0; level < nlevels; ++level)
     {

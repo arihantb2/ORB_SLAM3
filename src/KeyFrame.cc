@@ -85,7 +85,6 @@ KeyFrame::KeyFrame()
       mbCurrentPlaceRecognition(false),
       mnMergeCorrectedForKF(0),
       NLeft(0),
-      NRight(0),
       mnNumberOfOpt(0),
       mbHasVelocity(false)
 {
@@ -158,38 +157,22 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
       mNameFile(F.mNameFile),
       mnMergeCorrectedForKF(0),
       mpCamera(F.mpCamera),
-      mpCamera2(F.mpCamera2),
       mvLeftToRightMatch(F.mvLeftToRightMatch),
       mvRightToLeftMatch(F.mvRightToLeftMatch),
-      mTlr(F.GetRelativePoseTlr()),
       mvKeysRight(F.mvKeysRight),
       NLeft(F.Nleft),
-      NRight(F.Nright),
-      mTrl(F.GetRelativePoseTrl()),
       mnNumberOfOpt(0),
       mbHasVelocity(false)
 {
     mnId = nNextId++;
 
     mGrid.resize(mnGridCols);
-    if (F.Nleft != -1)
-    {
-        mGridRight.resize(mnGridCols);
-    }
     for (int i = 0; i < mnGridCols; i++)
     {
         mGrid[i].resize(mnGridRows);
-        if (F.Nleft != -1)
-        {
-            mGridRight[i].resize(mnGridRows);
-        }
         for (int j = 0; j < mnGridRows; j++)
         {
             mGrid[i][j] = F.mGrid[i][j];
-            if (F.Nleft != -1)
-            {
-                mGridRight[i][j] = F.mGridRight[i][j];
-            }
         }
     }
 
@@ -887,12 +870,10 @@ std::vector<size_t> KeyFrame::GetFeaturesInArea(const float& x, const float& y, 
     {
         for (int iy = nMinCellY; iy <= nMaxCellY; iy++)
         {
-            const std::vector<size_t> vCell = (!bRight) ? mGrid[ix][iy] : mGridRight[ix][iy];
+            const std::vector<size_t> vCell = mGrid[ix][iy];
             for (size_t j = 0, jend = vCell.size(); j < jend; j++)
             {
-                const cv::KeyPoint& kpUn = (NLeft == -1) ? mvKeysUn[vCell[j]]
-                                           : (!bRight)   ? mvKeys[vCell[j]]
-                                                         : mvKeysRight[vCell[j]];
+                const cv::KeyPoint& kpUn = mvKeysUn[vCell[j]];
                 const float distx = kpUn.pt.x - x;
                 const float disty = kpUn.pt.y - y;
 
@@ -1107,52 +1088,6 @@ bool KeyFrame::ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, f
     kp = cv::Point2f(u, v);
 
     return true;
-}
-
-Sophus::SE3f KeyFrame::GetRelativePoseTrl()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return mTrl;
-}
-
-Sophus::SE3f KeyFrame::GetRelativePoseTlr()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return mTlr;
-}
-
-Sophus::SE3<float> KeyFrame::GetRightPose()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-
-    return mTrl * mTcw;
-}
-
-Sophus::SE3<float> KeyFrame::GetRightPoseInverse()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-
-    return mTwc * mTlr;
-}
-
-Eigen::Vector3f KeyFrame::GetRightCameraCenter()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-
-    return (mTwc * mTlr).translation();
-}
-
-Eigen::Matrix<float, 3, 3> KeyFrame::GetRightRotation()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-
-    return (mTrl.so3() * mTcw.so3()).matrix();
-}
-
-Eigen::Vector3f KeyFrame::GetRightTranslation()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return (mTrl * mTcw).translation();
 }
 
 void KeyFrame::SetKeyFrameDatabase(KeyFrameDatabase* pKFDB)

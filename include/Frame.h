@@ -59,11 +59,6 @@ public:
           const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL),
           const IMU::Calib& ImuCalib = IMU::Calib());
 
-    Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
-          ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
-          const float& thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,
-          Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib& ImuCalib = IMU::Calib());
-
     // Constructor for Monocular cameras.
     Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
           GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth,
@@ -92,11 +87,6 @@ public:
     Eigen::Matrix<float, 3, 1> GetImuPosition() const;
     Eigen::Matrix<float, 3, 3> GetImuRotation();
     Sophus::SE3<float> GetImuPose();
-
-    Sophus::SE3f GetRelativePoseTrl();
-    Sophus::SE3f GetRelativePoseTlr();
-    Eigen::Matrix3f GetRelativePoseTlr_rotation();
-    Eigen::Vector3f GetRelativePoseTlr_translation();
 
     void SetNewBias(const IMU::Bias& b);
 
@@ -163,10 +153,6 @@ private:
     //Rcw_ not necessary as Sophus has a method for extracting the rotation matrix: Tcw_.rotationMatrix()
     //tcw_ not necessary as Sophus has a method for extracting the translation vector: Tcw_.translation()
     //Twc_ not necessary as Sophus has a method for easily computing the inverse pose: Tcw_.inverse()
-
-    Sophus::SE3<float> mTlr, mTrl;
-    Eigen::Matrix<float, 3, 3> mRlr;
-    Eigen::Vector3f mtlr;
 
     // IMU linear velocity
     Eigen::Vector3f mVw;
@@ -303,32 +289,13 @@ private:
     std::mutex* mpMutexImu;
 
 public:
-    GeometricCamera *mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera;
 
     //Number of KeyPoints extracted in the left and right images
-    int Nleft, Nright;
-    //Number of Non Lapping Keypoints
-    int monoLeft, monoRight;
+    int Nleft;
 
     //For stereo matching
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
-
-    //For stereo fisheye matching
-    static cv::BFMatcher BFmatcher;
-
-    //Triangulated stereo observations using as reference the left camera. These are
-    //computed during ComputeStereoFishEyeMatches
-    std::vector<Eigen::Vector3f> mvStereo3Dpoints;
-
-    //Grid for the right image
-    std::vector<std::size_t> mGridRight[FRAME_GRID_COLS][FRAME_GRID_ROWS];
-
-    //Stereo fisheye
-    void ComputeStereoFishEyeMatches();
-
-    bool isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight = false);
-
-    Eigen::Vector3f UnprojectStereoFishEye(const int& i);
 
     cv::Mat imgLeft, imgRight;
 

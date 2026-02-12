@@ -538,16 +538,16 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                     {
                         vpMapPointMatches[bestLeft.bestIdx] = pMP;
 
-                        const cv::KeyPoint& kp = (!pKF->mpCamera2)           ? pKF->mvKeysUn[realIdxKF]
+                        const cv::KeyPoint& kp = (pKF->NLeft == -1)           ? pKF->mvKeysUn[realIdxKF]
                                                  : (realIdxKF >= pKF->NLeft) ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
                                                                              : pKF->mvKeys[realIdxKF];
 
                         if (mbCheckOrientation)
                         {
-                            cv::KeyPoint& Fkp = (!pKF->mpCamera2 || F.Nleft == -1) ? F.mvKeys[bestLeft.bestIdx]
-                                                : (bestLeft.bestIdx >= F.Nleft)
-                                                    ? F.mvKeysRight[bestLeft.bestIdx - F.Nleft]
-                                                    : F.mvKeys[bestLeft.bestIdx];
+                            cv::KeyPoint& Fkp = (F.Nleft == -1) ? F.mvKeys[bestLeft.bestIdx]
+                                                                 : (bestLeft.bestIdx >= F.Nleft)
+                                                                       ? F.mvKeysRight[bestLeft.bestIdx - F.Nleft]
+                                                                       : F.mvKeys[bestLeft.bestIdx];
 
                             AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, kp.angle, Fkp.angle,
                                                    bestLeft.bestIdx);
@@ -561,17 +561,17 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                         {
                             vpMapPointMatches[bestRight.bestIdx] = pMP;
 
-                            const cv::KeyPoint& kp = (!pKF->mpCamera2) ? pKF->mvKeysUn[realIdxKF]
-                                                     : (realIdxKF >= pKF->NLeft)
-                                                         ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
-                                                         : pKF->mvKeys[realIdxKF];
+                            const cv::KeyPoint& kp = (pKF->NLeft == -1) ? pKF->mvKeysUn[realIdxKF]
+                                                                          : (realIdxKF >= pKF->NLeft)
+                                                                                ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
+                                                                                : pKF->mvKeys[realIdxKF];
 
                             if (mbCheckOrientation)
                             {
-                                cv::KeyPoint& Fkp = (!F.mpCamera2) ? F.mvKeys[bestRight.bestIdx]
-                                                    : (bestRight.bestIdx >= F.Nleft)
-                                                        ? F.mvKeysRight[bestRight.bestIdx - F.Nleft]
-                                                        : F.mvKeys[bestRight.bestIdx];
+                                cv::KeyPoint& Fkp = (F.Nleft == -1) ? F.mvKeys[bestRight.bestIdx]
+                                                                     : (bestRight.bestIdx >= F.Nleft)
+                                                                           ? F.mvKeysRight[bestRight.bestIdx - F.Nleft]
+                                                                           : F.mvKeys[bestRight.bestIdx];
 
                                 AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, kp.angle, Fkp.angle,
                                                        bestRight.bestIdx);
@@ -933,31 +933,14 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
 
     Eigen::Vector2f ep = pKF2->mpCamera->project(C2);
     Sophus::SE3f T12;
-    Sophus::SE3f Tll, Tlr, Trl, Trr;
     Eigen::Matrix3f R12;  // for fastest computation
     Eigen::Vector3f t12;  // for fastest computation
 
     GeometricCamera *pCamera1 = pKF1->mpCamera, *pCamera2 = pKF2->mpCamera;
 
-    if (!pKF1->mpCamera2 && !pKF2->mpCamera2)
-    {
-        T12 = T1w * Tw2;
-        R12 = T12.rotationMatrix();
-        t12 = T12.translation();
-    }
-    else
-    {
-        Sophus::SE3f Tr1w = pKF1->GetRightPose();
-        Sophus::SE3f Twr2 = pKF2->GetRightPoseInverse();
-        Tll = T1w * Tw2;
-        Tlr = T1w * Twr2;
-        Trl = Tr1w * Tw2;
-        Trr = Tr1w * Twr2;
-    }
-
-    Eigen::Matrix3f Rll = Tll.rotationMatrix(), Rlr = Tlr.rotationMatrix(), Rrl = Trl.rotationMatrix(),
-                    Rrr = Trr.rotationMatrix();
-    Eigen::Vector3f tll = Tll.translation(), tlr = Tlr.translation(), trl = Trl.translation(), trr = Trr.translation();
+    T12 = T1w * Tw2;
+    R12 = T12.rotationMatrix();
+    t12 = T12.translation();
 
     // Find matches between not tracked keypoints
     // Matching speed-up by ORB Vocabulary
@@ -990,7 +973,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
                     continue;
                 }
 
-                const bool bStereo1 = (!pKF1->mpCamera2 && pKF1->mvuRight[idx1] >= 0);
+                const bool bStereo1 = (pKF1->mvuRight[idx1] >= 0);
 
                 if (bOnlyStereo && !bStereo1)
                 {
@@ -999,8 +982,6 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
                 const cv::KeyPoint& kp1 = (pKF1->NLeft == -1)    ? pKF1->mvKeysUn[idx1]
                                           : (idx1 < pKF1->NLeft) ? pKF1->mvKeys[idx1]
                                                                  : pKF1->mvKeysRight[idx1 - pKF1->NLeft];
-
-                const bool bRight1 = (pKF1->NLeft == -1 || idx1 < pKF1->NLeft) ? false : true;
 
                 const cv::Mat& d1 = pKF1->mDescriptors.row(idx1);
 
@@ -1018,7 +999,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
                     {
                         continue;
                     }
-                    const bool bStereo2 = (!pKF2->mpCamera2 && pKF2->mvuRight[idx2] >= 0);
+                    const bool bStereo2 = (pKF2->mvuRight[idx2] >= 0);
 
                     if (bOnlyStereo && !bStereo2)
                     {
@@ -1035,55 +1016,13 @@ int ORBmatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
                     const cv::KeyPoint& kp2 = (pKF2->NLeft == -1)    ? pKF2->mvKeysUn[idx2]
                                               : (idx2 < pKF2->NLeft) ? pKF2->mvKeys[idx2]
                                                                      : pKF2->mvKeysRight[idx2 - pKF2->NLeft];
-                    const bool bRight2 = (pKF2->NLeft == -1 || idx2 < pKF2->NLeft) ? false : true;
-
-                    if (!bStereo1 && !bStereo2 && !pKF1->mpCamera2)
+                    if (!bStereo1 && !bStereo2)
                     {
                         const float distex = ep(0) - kp2.pt.x;
                         const float distey = ep(1) - kp2.pt.y;
                         if (distex * distex + distey * distey < 100 * pKF2->mvScaleFactors[kp2.octave])
                         {
                             continue;
-                        }
-                    }
-
-                    if (pKF1->mpCamera2 && pKF2->mpCamera2)
-                    {
-                        if (bRight1 && bRight2)
-                        {
-                            R12 = Rrr;
-                            t12 = trr;
-                            T12 = Trr;
-
-                            pCamera1 = pKF1->mpCamera2;
-                            pCamera2 = pKF2->mpCamera2;
-                        }
-                        else if (bRight1 && !bRight2)
-                        {
-                            R12 = Rrl;
-                            t12 = trl;
-                            T12 = Trl;
-
-                            pCamera1 = pKF1->mpCamera2;
-                            pCamera2 = pKF2->mpCamera;
-                        }
-                        else if (!bRight1 && bRight2)
-                        {
-                            R12 = Rlr;
-                            t12 = tlr;
-                            T12 = Tlr;
-
-                            pCamera1 = pKF1->mpCamera;
-                            pCamera2 = pKF2->mpCamera2;
-                        }
-                        else
-                        {
-                            R12 = Rll;
-                            t12 = tll;
-                            T12 = Tll;
-
-                            pCamera1 = pKF1->mpCamera;
-                            pCamera2 = pKF2->mpCamera;
                         }
                     }
 
@@ -1157,18 +1096,9 @@ int ORBmatcher::Fuse(KeyFrame* pKF, const std::vector<MapPoint*>& vpMapPoints, c
     Sophus::SE3f Tcw;
     Eigen::Vector3f Ow;
 
-    if (bRight)
-    {
-        Tcw = pKF->GetRightPose();
-        Ow = pKF->GetRightCameraCenter();
-        pCamera = pKF->mpCamera2;
-    }
-    else
-    {
-        Tcw = pKF->GetPose();
-        Ow = pKF->GetCameraCenter();
-        pCamera = pKF->mpCamera;
-    }
+    Tcw = pKF->GetPose();
+    Ow = pKF->GetCameraCenter();
+    pCamera = pKF->mpCamera;
 
     const float& fx = pKF->fx;
     const float& fy = pKF->fy;
@@ -1719,8 +1649,7 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFrame, 
                 }
                 if (CurrentFrame.Nleft != -1)
                 {
-                    Eigen::Vector3f x3Dr = CurrentFrame.GetRelativePoseTrl() * x3Dc;
-                    Eigen::Vector2f uv = CurrentFrame.mpCamera->project(x3Dr);
+                    Eigen::Vector2f uv = CurrentFrame.mpCamera->project(x3Dc);
 
                     int nLastOctave = (LastFrame.Nleft == -1 || i < LastFrame.Nleft)
                                           ? LastFrame.mvKeys[i].octave

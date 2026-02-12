@@ -20,7 +20,6 @@
 #define ATLAS_H
 
 #include "CameraModels/GeometricCamera.h"
-#include "CameraModels/KannalaBrandt8.h"
 #include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "KeyFrame.h"
@@ -38,7 +37,6 @@ class MapPoint;
 class KeyFrame;
 class KeyFrameDatabase;
 class Frame;
-class KannalaBrandt8;
 class Metashape;
 class Pinhole;
 

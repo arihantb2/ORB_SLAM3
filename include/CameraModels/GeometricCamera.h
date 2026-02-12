@@ -76,7 +76,6 @@ public:
     unsigned int GetType() { return mnType; }
 
     const static unsigned int CAM_PINHOLE = 0;
-    const static unsigned int CAM_FISHEYE = 1;
     const static unsigned int CAM_METASHAPE = 2;
 
     static long unsigned int nNextId;

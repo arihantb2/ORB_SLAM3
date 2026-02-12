@@ -59,7 +59,6 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
       mnInitialFrameId(0),
       mbCreatedMap(false),
       mnFirstFrameId(0),
-      mpCamera2(nullptr),
       mpLastKeyFrame(static_cast<KeyFrame*>(NULL)),
       mbAtlasNewMaps(newMaps)
 {
@@ -82,10 +81,6 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
         if (pCam->GetType() == GeometricCamera::CAM_PINHOLE)
         {
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is pinhole" << std::endl;
-        }
-        else if (pCam->GetType() == GeometricCamera::CAM_FISHEYE)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is fisheye" << std::endl;
         }
         else if (pCam->GetType() == GeometricCamera::CAM_METASHAPE)
         {
@@ -119,15 +114,6 @@ void Tracking::loadFromSettings(Settings* settings)
 
     mK = mpCamera->toK();
     mK_ = mpCamera->toK_();
-
-    if ((mSensor == System::STEREO || mSensor == System::IMU_STEREO) &&
-        settings->cameraType() == Settings::KannalaBrandt)
-    {
-        mpCamera2 = settings->camera2();
-        mpCamera2 = mpAtlas->AddCamera(mpCamera2);
-
-        mTlr = settings->Tlr();
-    }
 
     if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
     {
@@ -238,25 +224,15 @@ Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat&
         }
     }
 
-    if (mSensor == System::STEREO && !mpCamera2)
+    if (mSensor == System::STEREO)
     {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera);
     }
-    else if (mSensor == System::STEREO && mpCamera2)
-    {
-        mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
-                              mK, mDistCoef, mbf, mThDepth, mpCamera, mpCamera2, mTlr);
-    }
-    else if (mSensor == System::IMU_STEREO && !mpCamera2)
+    else if (mSensor == System::IMU_STEREO)
     {
         mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
                               mK, mDistCoef, mbf, mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
-    }
-    else if (mSensor == System::IMU_STEREO && mpCamera2)
-    {
-        mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
-                              mK, mDistCoef, mbf, mThDepth, mpCamera, mpCamera2, mTlr, &mLastFrame, *mpImuCalib);
     }
 
     Track();
@@ -917,50 +893,21 @@ void Tracking::StereoInitialization()
     mpAtlas->AddKeyFrame(pKFini);
 
     // Create MapPoints and asscoiate to KeyFrame
-    if (!mpCamera2)
+    for (int i = 0; i < mCurrentFrame.N; i++)
     {
-        for (int i = 0; i < mCurrentFrame.N; i++)
+        float z = mCurrentFrame.mvDepth[i];
+        if (z > 0)
         {
-            float z = mCurrentFrame.mvDepth[i];
-            if (z > 0)
-            {
-                Eigen::Vector3f x3D;
-                mCurrentFrame.UnprojectStereo(i, x3D);
-                MapPoint* pNewMP = new MapPoint(x3D, pKFini, mpAtlas->GetCurrentMap());
-                pNewMP->AddObservation(pKFini, i);
-                pKFini->AddMapPoint(pNewMP, i);
-                pNewMP->ComputeDistinctiveDescriptors();
-                pNewMP->UpdateNormalAndDepth();
-                mpAtlas->AddMapPoint(pNewMP);
+            Eigen::Vector3f x3D;
+            mCurrentFrame.UnprojectStereo(i, x3D);
+            MapPoint* pNewMP = new MapPoint(x3D, pKFini, mpAtlas->GetCurrentMap());
+            pNewMP->AddObservation(pKFini, i);
+            pKFini->AddMapPoint(pNewMP, i);
+            pNewMP->ComputeDistinctiveDescriptors();
+            pNewMP->UpdateNormalAndDepth();
+            mpAtlas->AddMapPoint(pNewMP);
 
-                mCurrentFrame.mvpMapPoints[i] = pNewMP;
-            }
-        }
-    }
-    else
-    {
-        for (int i = 0; i < mCurrentFrame.Nleft; i++)
-        {
-            int rightIndex = mCurrentFrame.mvLeftToRightMatch[i];
-            if (rightIndex != -1)
-            {
-                Eigen::Vector3f x3D = mCurrentFrame.mvStereo3Dpoints[i];
-
-                MapPoint* pNewMP = new MapPoint(x3D, pKFini, mpAtlas->GetCurrentMap());
-
-                pNewMP->AddObservation(pKFini, i);
-                pNewMP->AddObservation(pKFini, rightIndex + mCurrentFrame.Nleft);
-
-                pKFini->AddMapPoint(pNewMP, i);
-                pKFini->AddMapPoint(pNewMP, rightIndex + mCurrentFrame.Nleft);
-
-                pNewMP->ComputeDistinctiveDescriptors();
-                pNewMP->UpdateNormalAndDepth();
-                mpAtlas->AddMapPoint(pNewMP);
-
-                mCurrentFrame.mvpMapPoints[i] = pNewMP;
-                mCurrentFrame.mvpMapPoints[rightIndex + mCurrentFrame.Nleft] = pNewMP;
-            }
+            mCurrentFrame.mvpMapPoints[i] = pNewMP;
         }
     }
 
@@ -1413,14 +1360,7 @@ void Tracking::UpdateLastFrame()
         {
             Eigen::Vector3f x3D;
 
-            if (mLastFrame.Nleft == -1)
-            {
-                mLastFrame.UnprojectStereo(i, x3D);
-            }
-            else
-            {
-                x3D = mLastFrame.UnprojectStereoFishEye(i);
-            }
+            mLastFrame.UnprojectStereo(i, x3D);
 
             MapPoint* pNewMP = new MapPoint(x3D, mpAtlas->GetCurrentMap(), &mLastFrame, i);
             mLastFrame.mvpMapPoints[i] = pNewMP;
@@ -1711,10 +1651,6 @@ bool Tracking::NeedNewKeyFrame()
     {
         thRefRatio = (mnMatchesInliers > 350) ? 0.75f : 0.90f;  // Points tracked from the local map
     }
-    else if (mpCamera2)
-    {
-        thRefRatio = 0.75f;
-    }
     else if (mSensor == System::MONOCULAR)
     {
         thRefRatio = 0.9f;
@@ -1848,14 +1784,7 @@ void Tracking::CreateNewKeyFrame()
                 {
                     Eigen::Vector3f x3D;
 
-                    if (mCurrentFrame.Nleft == -1)
-                    {
-                        mCurrentFrame.UnprojectStereo(i, x3D);
-                    }
-                    else
-                    {
-                        x3D = mCurrentFrame.UnprojectStereoFishEye(i);
-                    }
+                    mCurrentFrame.UnprojectStereo(i, x3D);
 
                     MapPoint* pNewMP = new MapPoint(x3D, pKF, mpAtlas->GetCurrentMap());
                     pNewMP->AddObservation(pKF, i);
@@ -2525,56 +2454,9 @@ StereoDebugFrame Tracking::BuildStereoDebugFrameMetashapePinhole(const Frame& fr
     return debugFrame;
 }
 
-StereoDebugFrame Tracking::BuildStereoDebugFrameFisheye(const Frame& frame, const cv::Mat& leftRectified,
-                                                        const cv::Mat& rightRectified) const
-{
-    StereoDebugFrame debugFrame;
-    debugFrame.mode = StereoDebugMode::FISHEYE;
-    debugFrame.left_rectified = leftRectified.clone();
-    debugFrame.right_rectified = rightRectified.clone();
-    debugFrame.left_keypoints = frame.mvKeys;
-    debugFrame.right_keypoints = frame.mvKeysRight;
-
-    debugFrame.matches.reserve(frame.mvLeftToRightMatch.size());
-    debugFrame.match_lines.reserve(frame.mvLeftToRightMatch.size());
-    for (size_t i = 0; i < frame.mvLeftToRightMatch.size() && i < frame.mvKeys.size(); ++i)
-    {
-        const int rightIdx = frame.mvLeftToRightMatch[i];
-        if (rightIdx < 0 || static_cast<size_t>(rightIdx) >= frame.mvKeysRight.size())
-        {
-            continue;
-        }
-
-        StereoMatchDebug match;
-        match.left_idx = static_cast<int>(i);
-        match.right_idx = rightIdx;
-        match.left_point = frame.mvKeys[i].pt;
-        match.right_point = frame.mvKeysRight[rightIdx].pt;
-        match.disparity = match.left_point.x - match.right_point.x;
-        if (i < frame.mvDepth.size() && frame.mvDepth[i] > 0.0f)
-        {
-            match.depth = frame.mvDepth[i];
-            match.has_depth = true;
-        }
-        debugFrame.matches.push_back(match);
-        debugFrame.match_lines.emplace_back(match.left_point.x, match.left_point.y, match.right_point.x,
-                                            match.right_point.y);
-    }
-
-    return debugFrame;
-}
-
 void Tracking::UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified)
 {
-    StereoDebugFrame debugFrame;
-    if (mCurrentFrame.mpCamera2)
-    {
-        debugFrame = BuildStereoDebugFrameFisheye(mCurrentFrame, leftRectified, rightRectified);
-    }
-    else
-    {
-        debugFrame = BuildStereoDebugFrameMetashapePinhole(mCurrentFrame, leftRectified, rightRectified);
-    }
+    StereoDebugFrame debugFrame = BuildStereoDebugFrameMetashapePinhole(mCurrentFrame, leftRectified, rightRectified);
 
     std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
     mLastStereoDebugFrame = std::move(debugFrame);

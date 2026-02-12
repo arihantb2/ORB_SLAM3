@@ -276,10 +276,6 @@ protected:
     Eigen::Vector3f mVw;
     bool mbHasVelocity;
 
-    //Transformation matrix between cameras in stereo fisheye
-    Sophus::SE3<float> mTlr;
-    Sophus::SE3<float> mTrl;
-
     // Imu bias
     IMU::Bias mImuBias;
 
@@ -323,27 +319,15 @@ protected:
     std::mutex mMutexMap;
 
 public:
-    GeometricCamera *mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera;
 
     //Indexes of stereo observations correspondences
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
 
-    Sophus::SE3f GetRelativePoseTrl();
-    Sophus::SE3f GetRelativePoseTlr();
-
-    //KeyPoints in the right image (for stereo fisheye, coordinates are needed)
+    //KeyPoints in the right image (for stereo coordinates)
     const std::vector<cv::KeyPoint> mvKeysRight;
 
-    const int NLeft, NRight;
-
-    std::vector<std::vector<std::vector<size_t>>> mGridRight;
-
-    Sophus::SE3<float> GetRightPose();
-    Sophus::SE3<float> GetRightPoseInverse();
-
-    Eigen::Vector3f GetRightCameraCenter();
-    Eigen::Matrix<float, 3, 3> GetRightRotation();
-    Eigen::Vector3f GetRightTranslation();
+    const int NLeft;
 };
 
 }  // namespace ORB_SLAM3

@@ -19,7 +19,6 @@
 #include "Settings.h"
 
 #include "CameraModels/GeometricCamera.h"
-#include "CameraModels/KannalaBrandt8.h"
 #include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"
@@ -266,35 +265,6 @@ void Settings::readCamera1(cv::FileStorage& fSettings)
 
         //Rectified images are assumed to be ideal PinHole images (no distortion)
     }
-    else if (cameraModel == "KannalaBrandt8")
-    {
-        cameraType_ = KannalaBrandt;
-
-        //Read intrinsic parameters
-        float fx = readParameter<float>(fSettings, "Camera1.fx", found);
-        float fy = readParameter<float>(fSettings, "Camera1.fy", found);
-        float cx = readParameter<float>(fSettings, "Camera1.cx", found);
-        float cy = readParameter<float>(fSettings, "Camera1.cy", found);
-
-        float k0 = readParameter<float>(fSettings, "Camera1.k1", found);
-        float k1 = readParameter<float>(fSettings, "Camera1.k2", found);
-        float k2 = readParameter<float>(fSettings, "Camera1.k3", found);
-        float k3 = readParameter<float>(fSettings, "Camera1.k4", found);
-
-        vCalibration = {fx, fy, cx, cy, k0, k1, k2, k3};
-
-        calibration1_ = new KannalaBrandt8(vCalibration);
-        originalCalib1_ = new KannalaBrandt8(vCalibration);
-
-        if (sensor_ == System::STEREO || sensor_ == System::IMU_STEREO)
-        {
-            int colBegin = readParameter<int>(fSettings, "Camera1.overlappingBegin", found);
-            int colEnd = readParameter<int>(fSettings, "Camera1.overlappingEnd", found);
-            std::vector<int> vOverlapping = {colBegin, colEnd};
-
-            static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea = vOverlapping;
-        }
-    }
     else if (cameraModel == "Metashape")
     {
         cameraType_ = Metashape;
@@ -370,30 +340,6 @@ void Settings::readCamera2(cv::FileStorage& fSettings)
             vPinHoleDistorsion2_[2] = readParameter<float>(fSettings, "Camera2.p1", found);
             vPinHoleDistorsion2_[3] = readParameter<float>(fSettings, "Camera2.p2", found);
         }
-    }
-    else if (cameraType_ == KannalaBrandt)
-    {
-        //Read intrinsic parameters
-        float fx = readParameter<float>(fSettings, "Camera2.fx", found);
-        float fy = readParameter<float>(fSettings, "Camera2.fy", found);
-        float cx = readParameter<float>(fSettings, "Camera2.cx", found);
-        float cy = readParameter<float>(fSettings, "Camera2.cy", found);
-
-        float k0 = readParameter<float>(fSettings, "Camera1.k1", found);
-        float k1 = readParameter<float>(fSettings, "Camera1.k2", found);
-        float k2 = readParameter<float>(fSettings, "Camera1.k3", found);
-        float k3 = readParameter<float>(fSettings, "Camera1.k4", found);
-
-        vCalibration = {fx, fy, cx, cy, k0, k1, k2, k3};
-
-        calibration2_ = new KannalaBrandt8(vCalibration);
-        originalCalib2_ = new KannalaBrandt8(vCalibration);
-
-        int colBegin = readParameter<int>(fSettings, "Camera2.overlappingBegin", found);
-        int colEnd = readParameter<int>(fSettings, "Camera2.overlappingEnd", found);
-        std::vector<int> vOverlapping = {colBegin, colEnd};
-
-        static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea = vOverlapping;
     }
     else if (cameraType_ == Metashape)
     {
@@ -504,14 +450,6 @@ void Settings::readImageInfo(cv::FileStorage& fSettings)
                     calibration2_->setParameter(calibration2_->getParameter(10) * scaleColFactor, 10);
                 }
 
-                if (cameraType_ == KannalaBrandt)
-                {
-                    static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea[0] *= scaleColFactor;
-                    static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea[1] *= scaleColFactor;
-
-                    static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea[0] *= scaleColFactor;
-                    static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea[1] *= scaleColFactor;
-                }
             }
         }
     }
@@ -803,7 +741,7 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
     }
     else
     {
-        output << "Kannala-Brandt";
+        output << "Unknown";
     }
     output << ")" << ": [";
     for (size_t i = 0; i < settings.originalCalib1_->size(); i++)
@@ -835,7 +773,7 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
         }
         else
         {
-            output << "Kannala-Brandt";
+            output << "Unknown";
         }
         output << "" << ": [";
         for (size_t i = 0; i < settings.originalCalib2_->size(); i++)
@@ -878,16 +816,6 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
         }
         output << " ]" << std::endl;
 
-        if ((settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO) &&
-            settings.cameraType_ == Settings::KannalaBrandt)
-        {
-            output << "\t-Camera 2 parameters after resize: [ ";
-            for (size_t i = 0; i < settings.calibration2_->size(); i++)
-            {
-                output << " " << settings.calibration2_->getParameter(i);
-            }
-            output << " ]" << std::endl;
-        }
     }
 
     output << "\t-Sequence FPS: " << settings.fps_ << std::endl;
@@ -898,15 +826,6 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
         output << "\t-Stereo baseline: " << settings.b_ << std::endl;
         output << "\t-Stereo depth threshold : " << settings.thDepth_ << std::endl;
 
-        if (settings.cameraType_ == Settings::KannalaBrandt)
-        {
-            auto vOverlapping1 = static_cast<KannalaBrandt8*>(settings.calibration1_)->mvLappingArea;
-            auto vOverlapping2 = static_cast<KannalaBrandt8*>(settings.calibration2_)->mvLappingArea;
-            output << "\t-Camera 1 overlapping area: [ " << vOverlapping1[0] << " , " << vOverlapping1[1] << " ]"
-                   << std::endl;
-            output << "\t-Camera 2 overlapping area: [ " << vOverlapping2[0] << " , " << vOverlapping2[1] << " ]"
-                   << std::endl;
-        }
     }
 
     if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO)

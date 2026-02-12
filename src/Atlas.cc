@@ -144,14 +144,6 @@ GeometricCamera* Atlas::AddCamera(GeometricCamera* pCam)
                 index_cam = i;
             }
         }
-        else if (pCam->GetType() == GeometricCamera::CAM_FISHEYE)
-        {
-            if (((KannalaBrandt8*)pCam_i)->IsEqual(pCam))
-            {
-                bAlreadyInMap = true;
-                index_cam = i;
-            }
-        }
         else if (pCam->GetType() == GeometricCamera::CAM_METASHAPE)
         {
             if (((Metashape*)pCam_i)->IsEqual(pCam))

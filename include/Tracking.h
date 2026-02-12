@@ -285,11 +285,9 @@ protected:
 
     std::list<MapPoint*> mlpTemporalPoints;
 
-    GeometricCamera *mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera;
 
     int initID, lastID;
-
-    Sophus::SE3f mTlr;
 
     void loadFromSettings(Settings* settings);
 
@@ -298,8 +296,6 @@ protected:
 
     StereoDebugFrame BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
                                                            const cv::Mat& rightRectified) const;
-    StereoDebugFrame BuildStereoDebugFrameFisheye(const Frame& frame, const cv::Mat& leftRectified,
-                                                  const cv::Mat& rightRectified) const;
     void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
 
     mutable std::mutex mMutexMonocularDebugFrame;

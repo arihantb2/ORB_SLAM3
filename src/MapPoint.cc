@@ -139,18 +139,7 @@ MapPoint::MapPoint(const Eigen::Vector3f& Pos, Map* pMap, Frame* pFrame, const i
     SetWorldPos(Pos);
 
     Eigen::Vector3f Ow;
-    if (pFrame->Nleft == -1 || idxF < pFrame->Nleft)
-    {
-        Ow = pFrame->GetCameraCenter();
-    }
-    else
-    {
-        Eigen::Matrix3f Rwl = pFrame->GetRwc();
-        Eigen::Vector3f tlr = pFrame->GetRelativePoseTlr().translation();
-        Eigen::Vector3f twl = pFrame->GetOw();
-
-        Ow = Rwl * tlr + twl;
-    }
+    Ow = pFrame->GetCameraCenter();
     mNormalVector = mWorldPos - Ow;
     mNormalVector = mNormalVector / mNormalVector.norm();
 
@@ -222,7 +211,7 @@ void MapPoint::AddObservation(KeyFrame* pKF, int idx)
 
     mObservations[pKF] = indexes;
 
-    if (!pKF->mpCamera2 && pKF->mvuRight[idx] >= 0)
+    if (pKF->mvuRight[idx] >= 0)
     {
         nObs += 2;
     }
@@ -244,7 +233,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
             if (leftIndex != -1)
             {
-                if (!pKF->mpCamera2 && pKF->mvuRight[leftIndex] >= 0)
+                if (pKF->mvuRight[leftIndex] >= 0)
                 {
                     nObs -= 2;
                 }
@@ -560,7 +549,7 @@ void MapPoint::UpdateNormalAndDepth()
         }
         if (rightIndex != -1)
         {
-            Eigen::Vector3f Owi = pKF->GetRightCameraCenter();
+            Eigen::Vector3f Owi = pKF->GetCameraCenter();
             Eigen::Vector3f normali = Pos - Owi;
             normal = normal + normali / normali.norm();
             n++;
