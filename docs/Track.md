@@ -6,7 +6,7 @@ This documents the main `Tracking::Track()` function in `Tracking.cc` (line 472)
 
 ## High-Level Flow
 
-```
+```text
 Track()
   |
   v
@@ -44,7 +44,7 @@ Track()
 
 ### [1] Sanity Checks (lines 474-529)
 
-```
+```text
 Bad IMU flag set?
   +-- yes --> ResetActiveMap(), return
   |
@@ -76,7 +76,7 @@ State == NO_IMAGES_YET?
 
 Only for `IMU_MONOCULAR` or `IMU_STEREO`, and only if we didn't just create a new map:
 
-```
+```text
 IMU sensor AND !mbCreatedMap?
   +-- yes --> PreintegrateIMU()
 ```
@@ -87,7 +87,7 @@ Acquires `mMutexMapUpdate`. Checks if the map was modified by another thread (e.
 
 ### [4] Initialization (lines 557-578)
 
-```
+```text
 State == NOT_INITIALIZED?
   |
   +-- STEREO / IMU_STEREO --> StereoInitialization()
@@ -105,7 +105,7 @@ After successful initialization the function does NOT enter the tracking pipelin
 
 This is the core tracking step. It runs when the system is already initialized.
 
-```
+```text
 State == OK?
   |
   +-- yes:
@@ -130,6 +130,7 @@ State == OK?
 ```
 
 The pose estimation strategy is:
+
 1. **Motion model** (preferred when velocity is available): projects map points using predicted pose.
 2. **Reference keyframe** (fallback): matches against the reference keyframe via BoW.
 3. If both fail, the state transitions to `LOST`.
@@ -138,7 +139,7 @@ The pose estimation strategy is:
 
 Only runs if pose estimation succeeded (`bOK == true`):
 
-```
+```text
 bOK?
   +-- yes --> TrackLocalMap()
   |             |
@@ -151,7 +152,7 @@ bOK?
 
 ### [7] State Transition (lines 664-679)
 
-```
+```text
 bOK (after local map)?
   +-- yes --> mState = OK
   +-- no  --> was OK before?
@@ -162,7 +163,7 @@ bOK (after local map)?
 
 Only entered when `bOK == true`:
 
-```
+```text
 [8a] Update map drawer with current pose
 
 [8b] Update motion model
@@ -187,7 +188,7 @@ Only entered when `bOK == true`:
 
 ### [9] Lost Handling & Trajectory Storage (lines 764-814)
 
-```
+```text
 State == LOST?
   |
   +-- KFs in map <= LostResetMinKFs --> ResetActiveMap(), return
@@ -204,7 +205,7 @@ State == OK?
 
 The tracking states and their transitions:
 
-```
+```text
   NO_IMAGES_YET
        |
        v (first frame arrives)
@@ -230,20 +231,195 @@ The tracking states and their transitions:
 ## Configurable Parameters
 
 | YAML Key | Type | Default | Description |
-|---|---|---|---|
-| `Tracking.LostResetMinKFs` | int | 999999 | Min KFs in map before LOST triggers a map reset. High value = never reset, always reuse map. |
+| --- | --- | --- | --- |
+| Tracking.LostResetMinKFs | int | 999999 | Min KFs in map before LOST triggers a map reset. High value = never reset, always reuse map. |
 
 ## Key Functions Called
 
 | Function | Purpose | Called When |
-|---|---|---|
-| `StereoInitialization()` | Initialize map from stereo pair | `NOT_INITIALIZED`, stereo sensor |
-| `MonocularInitialization()` | Initialize map from two monocular frames | `NOT_INITIALIZED`, mono sensor |
-| `CheckReplacedInLastFrame()` | Update map points replaced by local mapper | State `OK`, before pose estimation |
-| `TrackWithMotionModel()` | Estimate pose using constant-velocity model | State `OK`, velocity available |
-| `TrackReferenceKeyFrame()` | Estimate pose via BoW matching to ref KF | State `OK`, no velocity or motion model failed |
-| `TrackLocalMap()` | Refine pose against local map points | Pose estimation succeeded |
-| `NeedNewKeyFrame()` | Decide whether to insert a keyframe | Tracking succeeded (see [KeyframeDecision.md](KeyframeDecision.md)) |
-| `CreateNewKeyFrame()` | Build and insert a new keyframe | `NeedNewKeyFrame()` returned true |
-| `PreintegrateIMU()` | Preintegrate IMU measurements | IMU sensor, before map lock |
-| `CreateMapInAtlas()` | Abandon current map, start fresh | Timestamp jump, or LOST with enough KFs |
+| --- | --- | --- |
+| StereoInitialization() | Initialize map from stereo pair | NOT_INITIALIZED, stereo sensor |
+| MonocularInitialization() | Initialize map from two monocular frames | NOT_INITIALIZED, mono sensor |
+| CheckReplacedInLastFrame() | Update map points replaced by local mapper | State OK, before pose estimation |
+| TrackWithMotionModel() | Estimate pose using constant-velocity model | State OK, velocity available |
+| TrackReferenceKeyFrame() | Estimate pose via BoW matching to ref KF | State OK, no velocity or motion model failed |
+| TrackLocalMap() | Refine pose against local map points | Pose estimation succeeded |
+| NeedNewKeyFrame() | Decide whether to insert a keyframe | Tracking succeeded (see KeyframeDecision.md) |
+| CreateNewKeyFrame() | Build and insert a new keyframe | NeedNewKeyFrame() returned true |
+| PreintegrateIMU() | Preintegrate IMU measurements | IMU sensor, before map lock |
+| CreateMapInAtlas() | Abandon current map, start fresh | Timestamp jump, or LOST with enough KFs |
+
+## TrackReferenceKeyFrame()
+
+**Purpose**: Estimate camera pose by matching the current frame against the reference keyframe using BoW, then optimizing.
+
+**Control flow**:
+
+```text
+TrackReferenceKeyFrame()
+  |
+  v
+[1] Compute BoW for current frame
+    mCurrentFrame.ComputeBoW()
+
+[2] Match against reference keyframe
+    ORBmatcher(mReferenceKeyframeNNRatio)
+    nmatches = SearchByBoW(refKF, currentFrame)
+
+[3] Check BoW match count
+    nmatches < mReferenceKeyframeMinBoWMatches ?
+      yes -> log failure, return false
+      no  -> continue
+
+[4] Initialize pose and associations
+    mCurrentFrame.mvpMapPoints = vpMapPointMatches
+    mCurrentFrame.SetPose(mLastFrame.GetPose())
+
+[5] Pose optimization
+    Optimizer::PoseOptimization(&mCurrentFrame)
+
+[6] Outlier removal & map-point stats
+    For each matched point:
+      if outlier:
+        - clear association in frame
+        - clear trackInView flag (left/right)
+        - decrement nmatches
+      else if Observations() > 0:
+        - increment nmatchesMap
+
+[7] Decision
+    IMU sensor?
+      yes -> return true
+      no:
+        nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches ?
+          yes -> log success, return true
+          no  -> log failure, return false
+```
+
+## TrackWithMotionModel()
+
+**Purpose**: Use a constant-velocity motion model to predict pose, project previous-frame points, and refine via optimization.
+
+**Control flow**:
+
+```text
+TrackWithMotionModel()
+  |
+  v
+[1] Prepare matcher
+    ORBmatcher(mMotionModelNNRatio, true)
+
+[2] Update last frame pose & VO points
+    UpdateLastFrame()
+
+[3] IMU-initialized fast path?
+    if mpAtlas->isImuInitialized():
+      PredictStateIMU()
+      return true
+    else:
+      mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose())
+
+[4] Clear current frame map-point associations
+    fill(mCurrentFrame.mvpMapPoints, NULL)
+
+[5] First projection search
+    th = (sensor == STEREO) ? mMotionModelProjectionSearchThStereo
+                            : mMotionModelProjectionSearchThMono
+    nmatches = SearchByProjection(current, last, th, isMonoLike)
+
+[6] Retry with wider window if few matches
+    thRetry = (sensor == STEREO) ? mMotionModelRetryProjectionSearchThStereo
+                                 : mMotionModelRetryProjectionSearchThMono
+    if nmatches < mMotionModelMinInitialMatches:
+      log low matches
+      clear associations
+      nmatches = SearchByProjection(current, last, thRetry, isMonoLike)
+
+[7] Minimum retry matches check
+    if nmatches < mMotionModelMinRetryMatches:
+      IMU sensor?
+        yes -> return true
+        no  -> log failure, return false
+
+[8] Pose optimization
+    Optimizer::PoseOptimization(&mCurrentFrame)
+
+[9] Outlier removal & inlier counting
+    For each matched point:
+      if outlier:
+        - clear association
+        - clear trackInView(L/R)
+        - decrement nmatches
+      else if Observations() > 0:
+        - nmatchesMap++
+
+[10] Final decision
+    IMU sensor?
+      yes -> return true
+      no:
+        nmatchesMap >= mMotionModelMinOptimizedMapMatches ?
+          yes -> log success, return true
+          no  -> log failure, return false
+```
+
+## TrackLocalMap()
+
+**Purpose**: Use the local map (nearby keyframes + map points) to refine the current pose and decide if tracking was successful.
+
+**Control flow**:
+
+```text
+TrackLocalMap()
+  |
+  v
+[1] Update local map context
+    UpdateLocalMap()
+    SearchLocalPoints()   // project & match local points into current frame
+
+[2] Pose optimization (visual or inertial)
+    if !mpAtlas->isImuInitialized():
+      Optimizer::PoseOptimization(&mCurrentFrame)
+    else:
+      if !mbMapUpdated:
+        inliers = PoseInertialOptimizationLastFrame(&mCurrentFrame)
+      else:
+        inliers = PoseInertialOptimizationLastKeyFrame(&mCurrentFrame)
+
+[3] Count inlier matches and update map-point stats
+    mnMatchesInliers = 0
+    for each feature i:
+      if has MapPoint:
+        if not outlier:
+          MapPoint->IncreaseFound()
+          if Observations() > 0:
+            mnMatchesInliers++
+        else if sensor == STEREO:
+          clear association (drop stereo outlier)
+
+[4] Expose inlier count to LocalMapping
+    mpLocalMapper->mnMatchesInliers = mnMatchesInliers
+
+[5] Generic success check
+    if mnMatchesInliers > mLocalMapGenericMinInliers:
+      return true
+
+[6] Mode-specific checks
+    if sensor == IMU_MONOCULAR:
+      if (mnMatchesInliers < 15 && imuInitialized) ||
+         (mnMatchesInliers < 50 && !imuInitialized):
+        return false
+      else:
+        return true
+
+    else if sensor == IMU_STEREO:
+      if mnMatchesInliers < 15:
+        return false
+      else:
+        return true
+
+    else (pure visual: MONO or STEREO/RGBD):
+      if mnMatchesInliers < mLocalMapVisualMinInliers:
+        log failure, return false
+      else:
+        return true
+```
