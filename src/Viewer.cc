@@ -45,12 +45,12 @@ Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, Sett
     {
         throw std::runtime_error("Viewer requires non-null Settings (File.version 1.0 config)");
     }
-    newParameterLoader(settings);
+    loadFromSettings(settings);
 
     mbStopTrack = false;
 }
 
-void Viewer::newParameterLoader(Settings* settings)
+void Viewer::loadFromSettings(Settings* settings)
 {
     mImageViewerScale = 1.f;
 

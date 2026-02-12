@@ -39,7 +39,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     MapDrawer(Atlas* pAtlas, Settings* settings);
 
-    void newParameterLoader(Settings* settings);
+    void loadFromSettings(Settings* settings);
 
     Atlas* mpAtlas;
 

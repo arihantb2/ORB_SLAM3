@@ -68,7 +68,7 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
     {
         throw std::runtime_error("Settings must be provided (File.version \"1.0\" format only).");
     }
-    newParameterLoader(settings);
+    loadFromSettings(settings);
 
     initID = 0;
     lastID = 0;
@@ -100,7 +100,7 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
 
 Tracking::~Tracking() {}
 
-void Tracking::newParameterLoader(Settings* settings)
+void Tracking::loadFromSettings(Settings* settings)
 {
     mpCamera = settings->camera1();
     mpCamera = mpAtlas->AddCamera(mpCamera);

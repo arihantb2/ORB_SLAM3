@@ -291,7 +291,7 @@ protected:
 
     Sophus::SE3f mTlr;
 
-    void newParameterLoader(Settings* settings);
+    void loadFromSettings(Settings* settings);
 
     MonocularDebugFrame BuildMonocularDebugFrame(const Frame& frame, const cv::Mat& image) const;
     void UpdateMonocularDebugFrame(const cv::Mat& image);

@@ -37,7 +37,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, Settings* settings);
 
-    void newParameterLoader(Settings* settings);
+    void loadFromSettings(Settings* settings);
 
     // Main thread function. Draw points, keyframes, the current camera pose and the last processed
     // frame. Drawing is refreshed according to the camera fps. We use Pangolin.

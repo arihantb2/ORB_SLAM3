@@ -35,10 +35,10 @@ MapDrawer::MapDrawer(Atlas* pAtlas, Settings* settings) : mpAtlas(pAtlas)
     {
         throw std::runtime_error("MapDrawer requires non-null Settings (File.version 1.0 config)");
     }
-    newParameterLoader(settings);
+    loadFromSettings(settings);
 }
 
-void MapDrawer::newParameterLoader(Settings* settings)
+void MapDrawer::loadFromSettings(Settings* settings)
 {
     mKeyFrameSize = settings->keyFrameSize();
     mKeyFrameLineWidth = settings->keyFrameLineWidth();
