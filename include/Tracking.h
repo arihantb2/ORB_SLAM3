@@ -175,8 +175,6 @@ protected:
     bool TrackWithMotionModel();
     bool PredictStateIMU();
 
-    bool Relocalization();
-
     void UpdateLocalMap();
     void UpdateLocalPoints();
     void UpdateLocalKeyFrames();
@@ -273,10 +271,9 @@ protected:
     // Current matches in frame
     int mnMatchesInliers;
 
-    // Last Frame, KeyFrame and Relocalisation Info
+    // Last Frame, KeyFrame Info
     KeyFrame* mpLastKeyFrame;
     unsigned int mnLastKeyFrameId;
-    unsigned int mnLastRelocFrameId;
     double mTimeStampLost;
 
     unsigned int mnFirstFrameId;

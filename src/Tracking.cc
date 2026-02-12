@@ -26,7 +26,6 @@
 #include "KeyFrameDatabase.h"
 #include "LocalMapping.h"
 #include "LoopClosing.h"
-#include "MLPnPsolver.h"
 #include "MapDrawer.h"
 #include "ORBVocabulary.h"
 #include "ORBmatcher.h"
@@ -59,7 +58,6 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
       mpViewer(NULL),
       mpMapDrawer(pMapDrawer),
       mpAtlas(pAtlas),
-      mnLastRelocFrameId(0),
       mnInitialFrameId(0),
       mbCreatedMap(false),
       mnFirstFrameId(0),
@@ -560,7 +558,7 @@ void Tracking::Track()
             // Local Mapping might have changed some MapPoints tracked in last frame
             CheckReplacedInLastFrame();
 
-            if ((!mbVelocity && !pCurrentMap->isImuInitialized()) || mCurrentFrame.mnId < mnLastRelocFrameId + 2)
+            if (!mbVelocity && !pCurrentMap->isImuInitialized())
             {
                 bOK = TrackReferenceKeyFrame();
                 if (!bOK)
@@ -646,8 +644,7 @@ void Tracking::Track()
         }
 
         // Save frame if recent relocalization, since they are used for IMU reset (as we are making copy, it shluld be once mCurrFrame is completely modified)
-        if ((mCurrentFrame.mnId < (mnLastRelocFrameId + mnFramesToResetIMU)) &&
-            (mCurrentFrame.mnId > mnFramesToResetIMU) &&
+        if ((mCurrentFrame.mnId > mnFramesToResetIMU) &&
             (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) && pCurrentMap->isImuInitialized())
         {
             // TODO check this situation
@@ -657,22 +654,6 @@ void Tracking::Track()
 
             // Load preintegration
             pF->mpImuPreintegratedFrame = new IMU::Preintegrated(mCurrentFrame.mpImuPreintegratedFrame);
-        }
-
-        if (pCurrentMap->isImuInitialized())
-        {
-            if (bOK)
-            {
-                if (mCurrentFrame.mnId == (mnLastRelocFrameId + mnFramesToResetIMU))
-                {
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "RESETING FRAME!!!" << endl;
-                    ResetFrameIMU();
-                }
-                else if (mCurrentFrame.mnId > (mnLastRelocFrameId + 30))
-                {
-                    mLastBias = mCurrentFrame.mImuBias;
-                }
-            }
         }
 
         // Update drawer
@@ -1380,7 +1361,7 @@ bool Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-    if (mpAtlas->isImuInitialized() && (mCurrentFrame.mnId > mnLastRelocFrameId + mnFramesToResetIMU))
+    if (mpAtlas->isImuInitialized())
     {
         // Predict state with IMU if it is initialized and it doesnt need reset
         PredictStateIMU();
@@ -1506,23 +1487,16 @@ bool Tracking::TrackLocalMap()
     }
     else
     {
-        if (mCurrentFrame.mnId <= mnLastRelocFrameId + mnFramesToResetIMU)
+        // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
+        if (!mbMapUpdated)  //  && (mnMatchesInliers>30))
         {
-            Optimizer::PoseOptimization(&mCurrentFrame);
+            inliers = Optimizer::PoseInertialOptimizationLastFrame(
+                &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
         }
         else
         {
-            // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
-            if (!mbMapUpdated)  //  && (mnMatchesInliers>30))
-            {
-                inliers = Optimizer::PoseInertialOptimizationLastFrame(
-                    &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            }
-            else
-            {
-                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(
-                    &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
-            }
+            inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(
+                &mCurrentFrame);  // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
         }
     }
 
@@ -1551,13 +1525,6 @@ bool Tracking::TrackLocalMap()
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
     mpLocalMapper->mnMatchesInliers = mnMatchesInliers;
-    if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers < 50)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP failed: recent reloc, inliers=" << mnMatchesInliers
-            << " < 50." << endl;
-        return false;
-    }
 
     if ((mnMatchesInliers > mLocalMapGenericMinInliers))
     {
@@ -1618,12 +1585,6 @@ bool Tracking::NeedNewKeyFrame()
     }
 
     const int nKFs = mpAtlas->KeyFramesInMap();
-
-    // Do not insert keyframes if not enough frames have passed from last relocalisation
-    if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && nKFs > mMaxFrames)
-    {
-        return false;
-    }
 
     // Tracked MapPoints in the reference keyframe
     const int nMinObs = (nKFs <= 2) ? 2 : 3;
@@ -1922,11 +1883,6 @@ void Tracking::SearchLocalPoints()
             th = 10;
         }
 
-        // If the camera has been relocalised recently, perform a coarser search
-        if (mCurrentFrame.mnId < mnLastRelocFrameId + 2)
-        {
-            th = 5;
-        }
         if (mState == LOST)
         {
             th = 15;  // 15
@@ -1982,7 +1938,7 @@ void Tracking::UpdateLocalKeyFrames()
 {
     // Each map point vote for the keyframes in which it has been observed
     map<KeyFrame*, int> keyframeCounter;
-    if (!mpAtlas->isImuInitialized() || (mCurrentFrame.mnId < mnLastRelocFrameId + 2))
+    if (!mpAtlas->isImuInitialized())
     {
         for (int i = 0; i < mCurrentFrame.N; i++)
         {
@@ -2146,193 +2102,6 @@ void Tracking::UpdateLocalKeyFrames()
     }
 }
 
-bool Tracking::Relocalization()
-{
-    Verbose::PrintMess("Starting relocalization", Verbose::VERBOSITY_DEBUG);
-    // Compute Bag of Words Vector
-    mCurrentFrame.ComputeBoW();
-
-    // Relocalization is performed when tracking is lost
-    // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
-    vector<KeyFrame*> vpCandidateKFs =
-        mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, mpAtlas->GetCurrentMap());
-
-    if (vpCandidateKFs.empty())
-    {
-        Verbose::PrintMess("There are not candidates", Verbose::VERBOSITY_DEBUG);
-        return false;
-    }
-
-    const int nKFs = vpCandidateKFs.size();
-
-    // We perform first an ORB matching with each candidate
-    // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(0.75, true);
-
-    vector<MLPnPsolver*> vpMLPnPsolvers;
-    vpMLPnPsolvers.resize(nKFs);
-
-    vector<vector<MapPoint*>> vvpMapPointMatches;
-    vvpMapPointMatches.resize(nKFs);
-
-    vector<bool> vbDiscarded;
-    vbDiscarded.resize(nKFs);
-
-    int nCandidates = 0;
-
-    for (int i = 0; i < nKFs; i++)
-    {
-        KeyFrame* pKF = vpCandidateKFs[i];
-        if (pKF->isBad())
-        {
-            vbDiscarded[i] = true;
-        }
-        else
-        {
-            int nmatches = matcher.SearchByBoW(pKF, mCurrentFrame, vvpMapPointMatches[i]);
-            if (nmatches < 15)
-            {
-                vbDiscarded[i] = true;
-                continue;
-            }
-            else
-            {
-                MLPnPsolver* pSolver = new MLPnPsolver(mCurrentFrame, vvpMapPointMatches[i]);
-                pSolver->SetRansacParameters(0.99, 10, 300, 6, 0.5, 5.991);  //This solver needs at least 6 points
-                vpMLPnPsolvers[i] = pSolver;
-                nCandidates++;
-            }
-        }
-    }
-
-    // Alternatively perform some iterations of P4P RANSAC
-    // Until we found a camera pose supported by enough inliers
-    bool bMatch = false;
-    ORBmatcher matcher2(0.9, true);
-
-    while (nCandidates > 0 && !bMatch)
-    {
-        for (int i = 0; i < nKFs; i++)
-        {
-            if (vbDiscarded[i])
-            {
-                continue;
-            }
-            // Perform 5 Ransac Iterations
-            vector<bool> vbInliers;
-            int nInliers;
-            bool bNoMore;
-
-            MLPnPsolver* pSolver = vpMLPnPsolvers[i];
-            Eigen::Matrix4f eigTcw;
-            bool bTcw = pSolver->iterate(5, bNoMore, vbInliers, nInliers, eigTcw);
-
-            // If Ransac reachs max. iterations discard keyframe
-            if (bNoMore)
-            {
-                vbDiscarded[i] = true;
-                nCandidates--;
-            }
-
-            // If a Camera Pose is computed, optimize
-            if (bTcw)
-            {
-                Sophus::SE3f Tcw(eigTcw);
-                mCurrentFrame.SetPose(Tcw);
-                // Tcw.copyTo(mCurrentFrame.mTcw);
-
-                set<MapPoint*> sFound;
-
-                const int np = vbInliers.size();
-
-                for (int j = 0; j < np; j++)
-                {
-                    if (vbInliers[j])
-                    {
-                        mCurrentFrame.mvpMapPoints[j] = vvpMapPointMatches[i][j];
-                        sFound.insert(vvpMapPointMatches[i][j]);
-                    }
-                    else
-                    {
-                        mCurrentFrame.mvpMapPoints[j] = NULL;
-                    }
-                }
-
-                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                if (nGood < 10)
-                {
-                    continue;
-                }
-                for (int io = 0; io < mCurrentFrame.N; io++)
-                {
-                    if (mCurrentFrame.mvbOutlier[io])
-                    {
-                        mCurrentFrame.mvpMapPoints[io] = static_cast<MapPoint*>(NULL);
-                    }
-                }
-                // If few inliers, search by projection in a coarse window and optimize again
-                if (nGood < 50)
-                {
-                    int nadditional = matcher2.SearchByProjection(mCurrentFrame, vpCandidateKFs[i], sFound, 10, 100);
-
-                    if (nadditional + nGood >= 50)
-                    {
-                        nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                        // If many inliers but still not enough, search by projection again in a narrower window
-                        // the camera has been already optimized with many points
-                        if (nGood > 30 && nGood < 50)
-                        {
-                            sFound.clear();
-                            for (int ip = 0; ip < mCurrentFrame.N; ip++)
-                            {
-                                if (mCurrentFrame.mvpMapPoints[ip])
-                                {
-                                    sFound.insert(mCurrentFrame.mvpMapPoints[ip]);
-                                }
-                            }
-                            nadditional = matcher2.SearchByProjection(mCurrentFrame, vpCandidateKFs[i], sFound, 3, 64);
-
-                            // Final optimization
-                            if (nGood + nadditional >= 50)
-                            {
-                                nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                                for (int io = 0; io < mCurrentFrame.N; io++)
-                                {
-                                    if (mCurrentFrame.mvbOutlier[io])
-                                    {
-                                        mCurrentFrame.mvpMapPoints[io] = NULL;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // If the pose is supported by enough inliers stop ransacs and continue
-                if (nGood >= 50)
-                {
-                    bMatch = true;
-                    break;
-                }
-            }
-        }
-    }
-
-    if (!bMatch)
-    {
-        return false;
-    }
-    else
-    {
-        mnLastRelocFrameId = mCurrentFrame.mnId;
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Relocalized!!" << endl;
-        return true;
-    }
-}
-
 void Tracking::Reset(bool bLocMap)
 {
     Verbose::PrintMess("System Reseting", Verbose::VERBOSITY_DEBUG);
@@ -2385,7 +2154,6 @@ void Tracking::Reset(bool bLocMap)
     mlFrameTimes.clear();
     mlbLost.clear();
     mCurrentFrame = Frame();
-    mnLastRelocFrameId = 0;
     mLastFrame = Frame();
     mpReferenceKF = static_cast<KeyFrame*>(NULL);
     mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
@@ -2472,7 +2240,6 @@ void Tracking::ResetActiveMap(bool bLocMap)
     mlbLost = lbLost;
 
     mnInitialFrameId = mCurrentFrame.mnId;
-    mnLastRelocFrameId = mCurrentFrame.mnId;
 
     mCurrentFrame = Frame();
     mLastFrame = Frame();

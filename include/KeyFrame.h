@@ -59,54 +59,16 @@ class KeyFrame
         ar & mnId;
         ar& const_cast<long unsigned int&>(mnFrameId);
         ar& const_cast<double&>(mTimeStamp);
+
         // Grid
         ar& const_cast<int&>(mnGridCols);
         ar& const_cast<int&>(mnGridRows);
         ar& const_cast<float&>(mfGridElementWidthInv);
         ar& const_cast<float&>(mfGridElementHeightInv);
 
-        // Variables of tracking
-        //ar & mnTrackReferenceForFrame;
-        //ar & mnFuseTargetForKF;
-        // Variables of local mapping
-        //ar & mnBALocalForKF;
-        //ar & mnBAFixedForKF;
-        //ar & mnNumberOfOpt;
-        // Variables used by KeyFrameDatabase
-        //ar & mnLoopQuery;
-        //ar & mnLoopWords;
-        //ar & mLoopScore;
-        //ar & mnRelocQuery;
-        //ar & mnRelocWords;
-        //ar & mRelocScore;
-        //ar & mnMergeQuery;
-        //ar & mnMergeWords;
-        //ar & mMergeScore;
-        //ar & mnPlaceRecognitionQuery;
-        //ar & mnPlaceRecognitionWords;
-        //ar & mPlaceRecognitionScore;
-        //ar & mbCurrentPlaceRecognition;
-        // Variables of loop closing
-        //serializeMatrix(ar,mTcwGBA,version);
-        //serializeMatrix(ar,mTcwBefGBA,version);
-        //serializeMatrix(ar,mVwbGBA,version);
-        //serializeMatrix(ar,mVwbBefGBA,version);
-        //ar & mBiasGBA;
-        //ar & mnBAGlobalForKF;
-        // Variables of Merging
-        //serializeMatrix(ar,mTcwMerge,version);
-        //serializeMatrix(ar,mTcwBefMerge,version);
-        //serializeMatrix(ar,mTwcBefMerge,version);
-        //serializeMatrix(ar,mVwbMerge,version);
-        //serializeMatrix(ar,mVwbBefMerge,version);
-        //ar & mBiasMerge;
-        //ar & mnMergeCorrectedForKF;
-        //ar & mnMergeForKF;
-        //ar & mfScaleMerge;
-        //ar & mnBALocalForMerge;
-
         // Scale
         ar & mfScale;
+
         // Calibration parameters
         ar& const_cast<float&>(fx);
         ar& const_cast<float&>(fy);
@@ -118,19 +80,24 @@ class KeyFrame
         ar& const_cast<float&>(mb);
         ar& const_cast<float&>(mThDepth);
         serializeMatrix(ar, mDistCoef, version);
+
         // Number of Keypoints
         ar& const_cast<int&>(N);
+
         // KeyPoints
         serializeVectorKeyPoints<Archive>(ar, mvKeys, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysUn, version);
         ar& const_cast<vector<float>&>(mvuRight);
         ar& const_cast<vector<float>&>(mvDepth);
         serializeMatrix<Archive>(ar, mDescriptors, version);
+
         // BOW
         ar & mBowVec;
         ar & mFeatVec;
+
         // Pose relative to parent
         serializeSophusSE3<Archive>(ar, mTcp, version);
+
         // Scale
         ar& const_cast<int&>(mnScaleLevels);
         ar& const_cast<float&>(mfScaleFactor);
@@ -138,26 +105,33 @@ class KeyFrame
         ar& const_cast<vector<float>&>(mvScaleFactors);
         ar& const_cast<vector<float>&>(mvLevelSigma2);
         ar& const_cast<vector<float>&>(mvInvLevelSigma2);
+
         // Image bounds and calibration
         ar& const_cast<int&>(mnMinX);
         ar& const_cast<int&>(mnMinY);
         ar& const_cast<int&>(mnMaxX);
         ar& const_cast<int&>(mnMaxY);
         ar& boost::serialization::make_array(mK_.data(), mK_.size());
+
         // Pose
         serializeSophusSE3<Archive>(ar, mTcw, version);
+
         // MapPointsId associated to keypoints
         ar & mvBackupMapPointsId;
+
         // Grid
         ar & mGrid;
+
         // Connected KeyFrameWeight
         ar & mBackupConnectedKeyFrameIdWeights;
+
         // Spanning Tree and Loop Edges
         ar & mbFirstConnection;
         ar & mBackupParentId;
         ar & mvBackupChildrensId;
         ar & mvBackupLoopEdgesId;
         ar & mvBackupMergeEdgesId;
+
         // Bad flags
         ar & mbNotErase;
         ar & mbToBeErased;
@@ -245,7 +219,7 @@ public:
 
     // Merge Edges
     void AddMergeEdge(KeyFrame* pKF);
-    set<KeyFrame*> GetMergeEdges();
+    std::set<KeyFrame*> GetMergeEdges();
 
     // MapPoint observation functions
     int GetNumberMPs();
@@ -294,9 +268,9 @@ public:
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
-    void PreSave(set<KeyFrame*>& spKF, set<MapPoint*>& spMP, set<GeometricCamera*>& spCam);
-    void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid,
-                  map<unsigned int, GeometricCamera*>& mpCamId);
+    void PreSave(std::set<KeyFrame*>& spKF, std::set<MapPoint*>& spMP, std::set<GeometricCamera*>& spCam);
+    void PostLoad(std::map<long unsigned int, KeyFrame*>& mpKFid, std::map<long unsigned int, MapPoint*>& mpMPid,
+                  std::map<unsigned int, GeometricCamera*>& mpCamId);
 
     void SetORBVocabulary(ORBVocabulary* pORBVoc);
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
@@ -332,9 +306,6 @@ public:
     long unsigned int mnLoopQuery;
     int mnLoopWords;
     float mLoopScore;
-    long unsigned int mnRelocQuery;
-    int mnRelocWords;
-    float mRelocScore;
     long unsigned int mnMergeQuery;
     int mnMergeWords;
     float mMergeScore;
@@ -529,13 +500,17 @@ public:
             if (mvpMapPoints[i])
             {
                 if (i < Nlim)
+                {
                     left++;
+                }
                 else
+                {
                     right++;
+                }
             }
         }
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << endl;
+            << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << std::endl;
     }
 };
 

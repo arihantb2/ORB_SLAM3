@@ -30,6 +30,12 @@
 #include <CameraModels/Pinhole.h>
 #include <thread>
 
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
 namespace ORB_SLAM3
 {
 
@@ -182,8 +188,8 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    thread threadLeft(&Frame::ExtractORB, this, true, imLeft, 0, 0);
-    thread threadRight(&Frame::ExtractORB, this, false, imRight, 0, 0);
+    std::thread threadLeft(&Frame::ExtractORB, this, true, imLeft, 0, 0);
+    std::thread threadRight(&Frame::ExtractORB, this, false, imRight, 0, 0);
     threadLeft.join();
     threadRight.join();
 
@@ -207,10 +213,10 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     }
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "[" << mnId << "] STEREO_PINHOLE_FRAME: stereo_inlier_matches=" << nStereoInliers << " (keypoints=" << N
-        << " ratio=" << (N > 0 ? static_cast<float>(nStereoInliers) / N : 0.f) << ")." << endl;
+        << " ratio=" << (N > 0 ? static_cast<float>(nStereoInliers) / N : 0.f) << ")." << std::endl;
 
-    mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
-    mvbOutlier = vector<bool>(N, false);
+    mvpMapPoints = std::vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
+    mvbOutlier = std::vector<bool>(N, false);
     mmProjectPoints.clear();
     mmMatchedInImage.clear();
 
@@ -251,9 +257,9 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     //Set no stereo fisheye information
     Nleft = -1;
     Nright = -1;
-    mvLeftToRightMatch = vector<int>(0);
-    mvRightToLeftMatch = vector<int>(0);
-    mvStereo3Dpoints = vector<Eigen::Vector3f>(0);
+    mvLeftToRightMatch = std::vector<int>(0);
+    mvRightToLeftMatch = std::vector<int>(0);
+    mvStereo3Dpoints = std::vector<Eigen::Vector3f>(0);
     monoLeft = -1;
     monoRight = -1;
 
@@ -301,8 +307,8 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    thread threadLeft(&Frame::ExtractORB, this, true, imLeft, 0, 0);
-    thread threadRight(&Frame::ExtractORB, this, false, imRight, 0, 0);
+    std::thread threadLeft(&Frame::ExtractORB, this, true, imLeft, 0, 0);
+    std::thread threadRight(&Frame::ExtractORB, this, false, imRight, 0, 0);
     threadLeft.join();
     threadRight.join();
 
@@ -346,8 +352,8 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     //Put all descriptors in the same matrix
     cv::vconcat(mDescriptors, mDescriptorsRight, mDescriptors);
 
-    mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(nullptr));
-    mvbOutlier = vector<bool>(N, false);
+    mvpMapPoints = std::vector<MapPoint*>(N, static_cast<MapPoint*>(nullptr));
+    mvbOutlier = std::vector<bool>(N, false);
 
     AssignFeaturesToGrid();
 
@@ -406,8 +412,8 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extra
     UndistortKeyPoints();
 
     // Set no stereo information
-    mvuRight = vector<float>(N, -1);
-    mvDepth = vector<float>(N, -1);
+    mvuRight = std::vector<float>(N, -1);
+    mvDepth = std::vector<float>(N, -1);
     mnCloseMPs = 0;
 
     mvpMapPoints = vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
@@ -537,7 +543,7 @@ void Frame::SetNewBias(const IMU::Bias& b)
     }
 }
 
-void Frame::SetVelocity(Eigen::Vector3f Vwb)
+void Frame::SetVelocity(const Eigen::Vector3f& Vwb)
 {
     mVw = Vwb;
     mbHasVelocity = true;
@@ -710,7 +716,7 @@ bool Frame::ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float&
     // Check positive depth
     if (PcZ < 0.0f)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Negative depth: " << PcZ << endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Negative depth: " << PcZ << std::endl;
         return false;
     }
 
@@ -776,25 +782,26 @@ vector<size_t> Frame::GetFeaturesInArea(const float& x, const float& y, const fl
     float factorX = r;
     float factorY = r;
 
-    const int nMinCellX = max(0, (int)floor((x - mnMinX - factorX) * mfGridElementWidthInv));
+    const int nMinCellX = std::max(0, (int)floor((x - mnMinX - factorX) * mfGridElementWidthInv));
     if (nMinCellX >= FRAME_GRID_COLS)
     {
         return vIndices;
     }
 
-    const int nMaxCellX = min((int)FRAME_GRID_COLS - 1, (int)ceil((x - mnMinX + factorX) * mfGridElementWidthInv));
+    const int nMaxCellX = std::min((int)FRAME_GRID_COLS - 1, (int)ceil((x - mnMinX + factorX) * mfGridElementWidthInv));
     if (nMaxCellX < 0)
     {
         return vIndices;
     }
 
-    const int nMinCellY = max(0, (int)floor((y - mnMinY - factorY) * mfGridElementHeightInv));
+    const int nMinCellY = std::max(0, (int)floor((y - mnMinY - factorY) * mfGridElementHeightInv));
     if (nMinCellY >= FRAME_GRID_ROWS)
     {
         return vIndices;
     }
 
-    const int nMaxCellY = min((int)FRAME_GRID_ROWS - 1, (int)ceil((y - mnMinY + factorY) * mfGridElementHeightInv));
+    const int nMaxCellY =
+        std::min((int)FRAME_GRID_ROWS - 1, (int)ceil((y - mnMinY + factorY) * mfGridElementHeightInv));
     if (nMaxCellY < 0)
     {
         return vIndices;
@@ -921,10 +928,10 @@ void Frame::ComputeImageBounds(const cv::Mat& imLeft)
         mat = mat.reshape(1);
 
         // Undistort corners
-        mnMinX = min(mat.at<float>(0, 0), mat.at<float>(2, 0));
-        mnMaxX = max(mat.at<float>(1, 0), mat.at<float>(3, 0));
-        mnMinY = min(mat.at<float>(0, 1), mat.at<float>(1, 1));
-        mnMaxY = max(mat.at<float>(2, 1), mat.at<float>(3, 1));
+        mnMinX = std::min(mat.at<float>(0, 0), mat.at<float>(2, 0));
+        mnMaxX = std::max(mat.at<float>(1, 0), mat.at<float>(3, 0));
+        mnMinY = std::min(mat.at<float>(0, 1), mat.at<float>(1, 1));
+        mnMaxY = std::max(mat.at<float>(2, 1), mat.at<float>(3, 1));
     }
     else
     {
@@ -937,15 +944,15 @@ void Frame::ComputeImageBounds(const cv::Mat& imLeft)
 
 void Frame::ComputeStereoMatches()
 {
-    mvuRight = vector<float>(N, -1.0f);
-    mvDepth = vector<float>(N, -1.0f);
+    mvuRight = std::vector<float>(N, -1.0f);
+    mvDepth = std::vector<float>(N, -1.0f);
 
     const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
     const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
     //Assign keypoints to row table
-    vector<vector<size_t>> vRowIndices(nRows, vector<size_t>());
+    std::vector<std::vector<size_t>> vRowIndices(nRows, std::vector<size_t>());
 
     for (int i = 0; i < nRows; i++)
     {
@@ -1150,34 +1157,34 @@ bool Frame::UnprojectStereo(const int& i, Eigen::Vector3f& x3D)
 
 bool Frame::imuIsPreintegrated()
 {
-    unique_lock<std::mutex> lock(*mpMutexImu);
+    std::unique_lock<std::mutex> lock(*mpMutexImu);
     return mbImuPreintegrated;
 }
 
 void Frame::setIntegrated()
 {
-    unique_lock<std::mutex> lock(*mpMutexImu);
+    std::unique_lock<std::mutex> lock(*mpMutexImu);
     mbImuPreintegrated = true;
 }
 
 void Frame::ComputeStereoFishEyeMatches()
 {
     //Speed it up by matching keypoints in the lapping area
-    vector<cv::KeyPoint> stereoLeft(mvKeys.begin() + monoLeft, mvKeys.end());
-    vector<cv::KeyPoint> stereoRight(mvKeysRight.begin() + monoRight, mvKeysRight.end());
+    std::vector<cv::KeyPoint> stereoLeft(mvKeys.begin() + monoLeft, mvKeys.end());
+    std::vector<cv::KeyPoint> stereoRight(mvKeysRight.begin() + monoRight, mvKeysRight.end());
 
     cv::Mat stereoDescLeft = mDescriptors.rowRange(monoLeft, mDescriptors.rows);
     cv::Mat stereoDescRight = mDescriptorsRight.rowRange(monoRight, mDescriptorsRight.rows);
 
-    mvLeftToRightMatch = vector<int>(Nleft, -1);
-    mvRightToLeftMatch = vector<int>(Nright, -1);
-    mvDepth = vector<float>(Nleft, -1.0f);
-    mvuRight = vector<float>(Nleft, -1);
-    mvStereo3Dpoints = vector<Eigen::Vector3f>(Nleft);
+    mvLeftToRightMatch = std::vector<int>(Nleft, -1);
+    mvRightToLeftMatch = std::vector<int>(Nright, -1);
+    mvDepth = std::vector<float>(Nleft, -1.0f);
+    mvuRight = std::vector<float>(Nleft, -1);
+    mvStereo3Dpoints = std::vector<Eigen::Vector3f>(Nleft);
     mnCloseMPs = 0;
 
     //Perform a brute force between Keypoint in the left and right image
-    vector<vector<cv::DMatch>> matches;
+    std::vector<std::vector<cv::DMatch>> matches;
 
     BFmatcher.knnMatch(stereoDescLeft, stereoDescRight, matches, 2);
 
@@ -1185,7 +1192,7 @@ void Frame::ComputeStereoFishEyeMatches()
     int descMatches = 0;
 
     //Check matches using Lowe's ratio
-    for (vector<vector<cv::DMatch>>::iterator it = matches.begin(); it != matches.end(); ++it)
+    for (std::vector<std::vector<cv::DMatch>>::iterator it = matches.begin(); it != matches.end(); ++it)
     {
         if ((*it).size() >= 2 && (*it)[0].distance < (*it)[1].distance * 0.7)
         {
