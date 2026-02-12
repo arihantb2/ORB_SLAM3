@@ -24,6 +24,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#define _GNU_SOURCE 1  /* vasprintf (glibc) */
 #include "string_tools.h"
 #include "os_specific.h"
 #include "macros.h"
@@ -37,7 +38,7 @@
 #include <iostream>
 #include <iterator>
 
-#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID)
+#ifdef __linux__
 #include <wordexp.h>
 #endif
 
@@ -123,7 +124,7 @@ int strPrintf(std::string& str, const char* fmt, ...)
 
 std::string strExpandFilename(const std::string& filename)
 {
-#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID)
+#ifdef __linux__
   string result = filename;
   wordexp_t p;
 

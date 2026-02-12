@@ -130,13 +130,8 @@ namespace g2o {
       std::string _name;
   };
 
-#if defined _MSC_VER && defined G2O_SHARED_LIBS
-#  define G2O_ROBUST_KERNEL_FACTORY_EXPORT __declspec(dllexport)
-#  define G2O_ROBUST_KERNEL_FACTORY_IMPORT __declspec(dllimport)
-#else
-#  define G2O_ROBUST_KERNEL_FACTORY_EXPORT
-#  define G2O_ROBUST_KERNEL_FACTORY_IMPORT
-#endif
+#define G2O_ROBUST_KERNEL_FACTORY_EXPORT
+#define G2O_ROBUST_KERNEL_FACTORY_IMPORT
 
   // These macros are used to automate registering of robust kernels and forcing linkage
 #define G2O_REGISTER_ROBUST_KERNEL(name, classname) \

@@ -1,15 +1,18 @@
-ADD_LIBRARY(solver_eigen ${G2O_LIB_TYPE}
+add_library(solver_eigen ${G2O_LIB_TYPE}
   solver_eigen.cpp
   linear_solver_eigen.h
 )
-SET_TARGET_PROPERTIES(solver_eigen PROPERTIES OUTPUT_NAME ${LIB_PREFIX}solver_eigen)
-TARGET_LINK_LIBRARIES(solver_eigen core)
 
-# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
-# INSTALL(TARGETS solver_eigen
-#   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-#   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-#   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-# )
-FILE(GLOB headers "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
-# INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/solvers/eigen)
+set_target_properties(solver_eigen PROPERTIES OUTPUT_NAME ${LIB_PREFIX}solver_eigen)
+
+target_include_directories(solver_eigen PUBLIC
+  $<BUILD_INTERFACE:${G2O_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${G2O_BUILD_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(solver_eigen PUBLIC core)
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/g2o/solvers/eigen
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)

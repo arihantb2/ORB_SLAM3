@@ -28,10 +28,6 @@
 #include "isometry3d_gradients.h"
 #include "isometry3d_mappings.h"
 
-#ifdef WINDOWS
-#include <windows.h>
-#endif
-
 using namespace std;
 
 namespace g2o {

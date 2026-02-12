@@ -30,23 +30,19 @@ add_library(${PROJECT_NAME} SHARED
     Settings.cc
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC 
+target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/Sophus>
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/g2o>
-    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/Thirdparty/g2o>
     $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/ORB_SLAM3>
     $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>
-    $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/g2o>
 )
-
 
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
     ${Pangolin_LIBRARIES}
-    ${G2O_LIBRARIES}
+    g2o_interface
     DBoW2::DBoW2
     -lcrypto
 )

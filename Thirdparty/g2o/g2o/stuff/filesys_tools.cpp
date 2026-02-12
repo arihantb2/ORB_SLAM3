@@ -39,18 +39,8 @@
 #include <cstdio>
 #include <iostream>
 
-#ifdef WINDOWS
-#include <windows.h>
-#include <winbase.h>
-#endif
-
-#if (defined (UNIX) || defined(CYGWIN)) && !defined(ANDROID)
+#ifdef __linux__
 #include <wordexp.h>
-#endif
-
-#ifdef __APPLE__
-//#include <chrono>
-//#include <thread>
 #endif
 
 using namespace ::std;
@@ -77,11 +67,7 @@ std::string getPureFilename(const std::string& filename)
 
 std::string getBasename(const std::string& filename)
 {
-#ifdef WINDOWS
-  std::string::size_type lastSlash = filename.find_last_of('\\');
-#else
   std::string::size_type lastSlash = filename.find_last_of('/');
-#endif
   if (lastSlash != std::string::npos)
     return filename.substr(lastSlash + 1);
   else
@@ -90,11 +76,7 @@ std::string getBasename(const std::string& filename)
 
 std::string getDirname(const std::string& filename)
 {
-#ifdef WINDOWS
-  std::string::size_type lastSlash = filename.find_last_of('\\');
-#else
   std::string::size_type lastSlash = filename.find_last_of('/');
-#endif
   if (lastSlash != std::string::npos)
     return filename.substr(0, lastSlash);
   else
@@ -123,39 +105,13 @@ std::vector<std::string> getFilesByPattern(const char* pattern)
 {
   std::vector<std::string> result;
 
-#ifdef WINDOWS
-
-  HANDLE hFind;
-  WIN32_FIND_DATA FData;
-  if ((hFind = FindFirstFile(pattern, &FData)) != INVALID_HANDLE_VALUE) {
-    do {
-      result.push_back(FData.cFileName);
-    } while (FindNextFile(hFind, &FData));
-    FindClose(hFind);
-  }
-  
-#elif (defined (UNIX) || defined (CYGWIN)) && !defined(ANDROID)
-
+#ifdef __linux__
   wordexp_t p;
   wordexp(pattern, &p, 0);
-
-  // For some reason, wordexp sometimes fails on an APPLE machine to
-  // return anything; therefore, run it several times until we do find
-  // something - or give up
-#ifdef __APPLE__
-  for (int k = 0; (k < 100) && (p.we_wordc == 0); k++) {
-    //chrono::milliseconds duration(20);
-    //this_thread::sleep_for(duration);
-    wordexp(pattern, &p, WRDE_APPEND);
-  }
-#endif
-
   result.reserve(p.we_wordc);
   for (size_t i = 0; i < p.we_wordc; ++i)
     result.push_back(p.we_wordv[i]);
-  
   wordfree(&p);
-
 #endif
 
   return result;

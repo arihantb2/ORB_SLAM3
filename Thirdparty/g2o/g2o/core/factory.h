@@ -154,13 +154,8 @@ namespace g2o {
       HyperGraphElementCreator<T>* _creator;
   };
 
-#if defined _MSC_VER && defined G2O_SHARED_LIBS
-#  define G2O_FACTORY_EXPORT __declspec(dllexport)
-#  define G2O_FACTORY_IMPORT __declspec(dllimport)
-#else
-#  define G2O_FACTORY_EXPORT
-#  define G2O_FACTORY_IMPORT
-#endif
+#define G2O_FACTORY_EXPORT
+#define G2O_FACTORY_IMPORT
 
   // These macros are used to automate registering types and forcing linkage
 #define G2O_REGISTER_TYPE(name, classname) \

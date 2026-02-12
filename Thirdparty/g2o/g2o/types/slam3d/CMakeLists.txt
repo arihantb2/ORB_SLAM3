@@ -1,4 +1,4 @@
-ADD_LIBRARY(types_slam3d ${G2O_LIB_TYPE}
+add_library(types_slam3d ${G2O_LIB_TYPE}
   dquat2mat.cpp dquat2mat.h
   isometry3d_mappings.h
   isometry3d_mappings.cpp
@@ -35,25 +35,24 @@ ADD_LIBRARY(types_slam3d ${G2O_LIB_TYPE}
   types_slam3d.h
 )
 
+set_target_properties(types_slam3d PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_slam3d)
 
-SET_TARGET_PROPERTIES(types_slam3d PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_slam3d)
-TARGET_LINK_LIBRARIES(types_slam3d core)
-IF(G2O_HAVE_OPENGL)
-  TARGET_LINK_LIBRARIES(types_slam3d opengl_helper ${OPENGL_gl_LIBRARY} )
-ENDIF()
+target_include_directories(types_slam3d PUBLIC
+  $<BUILD_INTERFACE:${G2O_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${G2O_BUILD_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(types_slam3d PUBLIC core)
 
-ADD_EXECUTABLE(test_isometry3d_mappings test_isometry3d_mappings.cpp)
-TARGET_LINK_LIBRARIES(test_isometry3d_mappings types_slam3d)
+if(BUILD_TESTING)
+  add_executable(test_isometry3d_mappings test_isometry3d_mappings.cpp)
+  target_link_libraries(test_isometry3d_mappings PRIVATE types_slam3d)
 
-ADD_EXECUTABLE(test_slam3d_jacobian test_slam3d_jacobian.cpp)
-TARGET_LINK_LIBRARIES(test_slam3d_jacobian types_slam3d)
+  add_executable(test_slam3d_jacobian test_slam3d_jacobian.cpp)
+  target_link_libraries(test_slam3d_jacobian PRIVATE types_slam3d)
+endif()
 
-# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
-# INSTALL(TARGETS types_slam3d
-#   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-#   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-#   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-# )
-
-FILE(GLOB headers "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
-# INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/types/slam3d)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/g2o/types/slam3d
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)

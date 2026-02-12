@@ -1,20 +1,19 @@
-ADD_LIBRARY(types_sba ${G2O_LIB_TYPE}
+add_library(types_sba ${G2O_LIB_TYPE}
   types_sba.h     types_six_dof_expmap.h
   types_sba.cpp   types_six_dof_expmap.cpp
   g2o_types_sba_api.h
 )
 
-SET_TARGET_PROPERTIES(types_sba PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_sba)
+set_target_properties(types_sba PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_sba)
 
-TARGET_LINK_LIBRARIES(types_sba core types_slam3d)
+target_include_directories(types_sba PUBLIC
+  $<BUILD_INTERFACE:${G2O_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${G2O_BUILD_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(types_sba PUBLIC core types_slam3d)
 
-# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
-# INSTALL(TARGETS types_sba
-#   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-#   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-#   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-# )
-
-FILE(GLOB headers "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
-
-# INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/types/sba)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/g2o/types/sba
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)

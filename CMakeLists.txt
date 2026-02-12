@@ -71,17 +71,8 @@ find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
 find_package(DBoW2 REQUIRED)
 
-# g2o is always built internally from Thirdparty/g2o
-# Set up g2o variables based on build tree
+# g2o is always built internally from Thirdparty/g2o; link via g2o::g2o
 message(STATUS "Using g2o from build tree (Thirdparty/g2o)")
-
-# Collect g2o libraries from targets (only those that exist, as some are conditionally built)
-set(G2O_LIBRARIES "")
-foreach(TARGET_NAME stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
-    if(TARGET ${TARGET_NAME})
-        list(APPEND G2O_LIBRARIES ${TARGET_NAME})
-    endif()
-endforeach()
 
 # Build the main library
 add_subdirectory(src)
@@ -93,36 +84,14 @@ add_subdirectory(src/CameraModels/tests)
 # ---------------
 # Installation instructions.
 # ---------------
-# Install g2o libraries from build tree
-# Note: Target names are without prefix, but OUTPUT_NAME includes g2o_ prefix
-# Collect only the targets that actually exist (some may be conditionally built)
-set(G2O_INSTALL_TARGETS "")
-foreach(TARGET_NAME stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
-    if(TARGET ${TARGET_NAME})
-        list(APPEND G2O_INSTALL_TARGETS ${TARGET_NAME})
-    endif()
-endforeach()
-
-if(G2O_INSTALL_TARGETS)
-    # Set up INTERFACE_INCLUDE_DIRECTORIES for all g2o targets
-    # This ensures consumers can use g2o targets directly with proper includes
-    foreach(TARGET_NAME ${G2O_INSTALL_TARGETS})
-        if(TARGET ${TARGET_NAME})
-            target_include_directories(${TARGET_NAME} INTERFACE
-                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/g2o>
-                $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/Thirdparty/g2o>
-                $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/g2o>
-            )
-        endif()
-    endforeach()
-    
-    install(TARGETS ${G2O_INSTALL_TARGETS}
-        EXPORT ORB_SLAM3Targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        COMPONENT library)
-endif()
+# Install g2o targets (g2o manages its own include paths; standard layout include/g2o/)
+set(G2O_INSTALL_TARGETS stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
+install(TARGETS ${G2O_INSTALL_TARGETS} g2o_interface
+    EXPORT ORB_SLAM3Targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT library)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3
@@ -136,12 +105,13 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
 
-# Install Thirdparty headers (g2o source headers)
+# Install Thirdparty headers (Sophus only; g2o installs itself to include/g2o/)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty
     COMPONENT library
     FILES_MATCHING REGEX ".*\\.h(pp)?"
-    PATTERN "Sophus" EXCLUDE)
+    PATTERN "Sophus" EXCLUDE
+    PATTERN "g2o" EXCLUDE)
 
 # Install Sophus headers to correct location
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
@@ -149,10 +119,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
     COMPONENT library
     FILES_MATCHING PATTERN "*.hpp")
 
-# Install generated g2o config.h to the correct location under ORB_SLAM3
-install(FILES ${CMAKE_BINARY_DIR}/Thirdparty/g2o/g2o/config.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/g2o/g2o
-    COMPONENT library)
+# g2o config.h and headers are installed by g2o itself to include/g2o/
 
 install(FILES ${PROJECT_SOURCE_DIR}/package.xml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/orb_slam3)

@@ -1,20 +1,18 @@
-ADD_LIBRARY(types_sim3 ${G2O_LIB_TYPE}
+add_library(types_sim3 ${G2O_LIB_TYPE}
   types_seven_dof_expmap.cpp
   types_seven_dof_expmap.h
 )
 
-SET_TARGET_PROPERTIES(types_sim3 PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_sim3)
+set_target_properties(types_sim3 PROPERTIES OUTPUT_NAME ${LIB_PREFIX}types_sim3)
 
-TARGET_LINK_LIBRARIES(types_sim3 types_sba)
+target_include_directories(types_sim3 PUBLIC
+  $<BUILD_INTERFACE:${G2O_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${G2O_BUILD_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(types_sim3 PUBLIC types_sba)
 
-# Installation is handled by the parent ORB_SLAM3 CMakeLists.txt
-# INSTALL(TARGETS types_sim3
-#   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-#   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-#   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-# )
-
-FILE(GLOB headers "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp")
-
-# INSTALL(FILES ${headers} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/g2o/types/sim3)
-
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/g2o/types/sim3
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
