@@ -11,7 +11,9 @@
 
   <depend>eigen3</depend>
   <depend>opencv4</depend>
+  <depend>pangolin</depend>
   <depend>dbow2</depend>
+  <depend>g2o</depend>
 
   <export>
     <build_type>cmake</build_type>

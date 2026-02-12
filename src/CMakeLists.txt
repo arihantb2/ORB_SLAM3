@@ -42,7 +42,7 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
     ${Pangolin_LIBRARIES}
-    g2o_interface
+    g2o::g2o_interface
     DBoW2::DBoW2
     -lcrypto
 )

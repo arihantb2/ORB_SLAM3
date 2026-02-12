@@ -20,12 +20,6 @@ else()
     add_compile_options(-Wall -O3 -march=native)
 endif()
 
-# ==============================================================================
-# Build dependencies as subdirectories
-# ==============================================================================
-message(STATUS "Configuring and building Thirdparty/g2o ...")
-add_subdirectory(Thirdparty/g2o)
-
 # Extract vocabulary if needed
 message(STATUS "Uncompress vocabulary ...")
 set(VOCABULARY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/Vocabulary/ORBvoc.txt)
@@ -70,9 +64,7 @@ find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
 find_package(DBoW2 REQUIRED)
-
-# g2o is always built internally from Thirdparty/g2o; link via g2o::g2o
-message(STATUS "Using g2o from build tree (Thirdparty/g2o)")
+find_package(g2o REQUIRED CONFIG)
 
 # Build the main library
 add_subdirectory(src)
@@ -84,15 +76,6 @@ add_subdirectory(src/CameraModels/tests)
 # ---------------
 # Installation instructions.
 # ---------------
-# Install g2o targets (g2o manages its own include paths; standard layout include/g2o/)
-set(G2O_INSTALL_TARGETS stuff core types_slam3d types_sba types_sim3 solver_dense solver_eigen)
-install(TARGETS ${G2O_INSTALL_TARGETS} g2o_interface
-    EXPORT ORB_SLAM3Targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    COMPONENT library)
-
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3
     COMPONENT library
