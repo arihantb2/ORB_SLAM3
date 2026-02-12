@@ -19,8 +19,6 @@
 #ifndef SERIALIZATION_UTILS_H
 #define SERIALIZATION_UTILS_H
 
-#include "Verbose.h"
-
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 

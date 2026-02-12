@@ -19,8 +19,6 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include "Verbose.h"
-
 #include <vector>
 
 #include "DBoW2/BowVector.h"
@@ -333,28 +331,6 @@ public:
     Eigen::Vector3f UnprojectStereoFishEye(const int& i);
 
     cv::Mat imgLeft, imgRight;
-
-    void PrintPointDistribution()
-    {
-        int left = 0, right = 0;
-        int Nlim = (Nleft != -1) ? Nleft : N;
-        for (int i = 0; i < N; i++)
-        {
-            if (mvpMapPoints[i] && !mvbOutlier[i])
-            {
-                if (i < Nlim)
-                {
-                    left++;
-                }
-                else
-                {
-                    right++;
-                }
-            }
-        }
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "Point distribution in Frame: left-> " << left << " --- right-> " << right << std::endl;
-    }
 
     Sophus::SE3<double> T_test;
 };

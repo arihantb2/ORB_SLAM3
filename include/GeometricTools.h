@@ -19,8 +19,6 @@
 #ifndef GEOMETRIC_TOOLS_H
 #define GEOMETRIC_TOOLS_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
@@ -47,18 +45,19 @@ public:
         const float epsilon = 1e-3;
         if (rows != cvMat.rows || cols != cvMat.cols)
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "wrong cvmat size\n";
             return false;
         }
         for (int i = 0; i < rows; i++)
+        {
             for (int j = 0; j < cols; j++)
+            {
                 if ((cvMat.at<float>(i, j) > (eigMat(i, j) + epsilon)) ||
                     (cvMat.at<float>(i, j) < (eigMat(i, j) - epsilon)))
                 {
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "cv mat:\n" << cvMat << std::endl;
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat:\n" << eigMat << std::endl;
                     return false;
                 }
+            }
+        }
         return true;
     }
 
@@ -67,13 +66,15 @@ public:
     {
         const float epsilon = 1e-3;
         for (int i = 0; i < rows; i++)
+        {
             for (int j = 0; j < cols; j++)
+            {
                 if ((eigMat1(i, j) > (eigMat2(i, j) + epsilon)) || (eigMat1(i, j) < (eigMat2(i, j) - epsilon)))
                 {
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat 1:\n" << eigMat1 << std::endl;
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "eig mat 2:\n" << eigMat2 << std::endl;
                     return false;
                 }
+            }
+        }
         return true;
     }
 };

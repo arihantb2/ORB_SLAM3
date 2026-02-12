@@ -19,8 +19,6 @@
 #ifndef CONVERTER_H
 #define CONVERTER_H
 
-#include "Verbose.h"
-
 #include <opencv2/core/core.hpp>
 
 #include <Eigen/Dense>

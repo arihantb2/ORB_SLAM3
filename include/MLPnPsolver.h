@@ -49,8 +49,6 @@
 #ifndef ORB_SLAM3_MLPNPSOLVER_H
 #define ORB_SLAM3_MLPNPSOLVER_H
 
-#include "Verbose.h"
-
 #include "Frame.h"
 #include "MapPoint.h"
 

@@ -19,15 +19,12 @@
 #ifndef IMUTYPES_H
 #define IMUTYPES_H
 
-#include "Verbose.h"
-
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
-#include <utility>
 #include <vector>
 
 #include "SerializationUtils.h"
@@ -205,16 +202,6 @@ public:
 
     Bias GetOriginalBias();
     Bias GetUpdatedBias();
-
-    void printMeasurements() const
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "pint meas:\n";
-        for (int i = 0; i < mvMeasurements.size(); i++)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "meas " << mvMeasurements[i].t << std::endl;
-        }
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "end pint meas:\n";
-    }
 
 public:
     float dT;

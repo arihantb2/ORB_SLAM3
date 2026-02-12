@@ -19,8 +19,6 @@
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
 
-#include "Verbose.h"
-
 #include <DBoW2/BowVector.h>
 #include <DBoW2/FeatureVector.h>
 #include "Frame.h"
@@ -488,28 +486,6 @@ public:
     Eigen::Vector3f GetRightCameraCenter();
     Eigen::Matrix<float, 3, 3> GetRightRotation();
     Eigen::Vector3f GetRightTranslation();
-
-    void PrintPointDistribution()
-    {
-        int left = 0, right = 0;
-        int Nlim = (NLeft != -1) ? NLeft : N;
-        for (int i = 0; i < N; i++)
-        {
-            if (mvpMapPoints[i])
-            {
-                if (i < Nlim)
-                {
-                    left++;
-                }
-                else
-                {
-                    right++;
-                }
-            }
-        }
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "Point distribution in KeyFrame: left-> " << left << " --- right-> " << right << std::endl;
-    }
 };
 
 }  // namespace ORB_SLAM3
