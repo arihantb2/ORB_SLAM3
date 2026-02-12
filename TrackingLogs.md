@@ -70,7 +70,7 @@ If you see `TRACK_REF_KF failed` or `TRACK_WITH_MOTION_MODEL failed` but never `
 
 **Detailed local map failure reasons:**
 
-- `TRACK_LOCAL_MAP failed: recent reloc, inliers=N < 50.` — Within a short window after relocalization, inliers are below the fixed threshold (50).
+- `TRACK_LOCAL_MAP failed: inliers=N < 50.` — Inliers below the fixed threshold (50) (IMU path).
 - `TRACK_LOCAL_MAP failed: inliers=N < VisualMinInliers=K.` — Inliers below `Tracking.LocalMap.VisualMinInliers` (visual, non-IMU path).
 
 ---
@@ -109,4 +109,10 @@ Relevant keys for tuning (see sample configs and `Settings.cc` / `Tracking.cc`):
 - **Motion model:** `Tracking.MotionModel.NNRatio`, `ProjectionSearchThStereo` / `ProjectionSearchThMono`, `MinInitialMatches`, `RetryProjectionSearchThStereo` / `RetryProjectionSearchThMono`, `MinRetryMatches`, `MinOptimizedMapMatches`
 - **Local map:** `Tracking.LocalMap.GenericMinInliers`, `Tracking.LocalMap.VisualMinInliers`
 
-Relocalization and IMU-only branches are not covered by this log set; the “recent reloc” inlier threshold (50) is hard-coded and not exposed.
+IMU-only branches are not fully covered by this log set; the inlier threshold 50 for the IMU path is hard-coded and not exposed.
+
+---
+
+## Tracking state and LOST handling (this fork)
+
+This fork does **not** implement a `RECENTLY_LOST` relocalization state or any place-recognition-based recovery when tracking is lost. Tracking states are only: `NO_IMAGES_YET`, `NOT_INITIALIZED`, `OK`, `LOST`. When `mState == LOST`, the system immediately resets the active map or creates a new map in the atlas; no relocalization attempt is made. `TrackReferenceKeyFrame()` is used only as an **OK-state fallback** when the motion model fails (BoW match to the current reference keyframe from the local map); it is not a lost-tracking recovery path.

@@ -1021,7 +1021,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage& fSettings)
     {
         fps = 30;
     }
-    // Max/Min Frames to insert keyframes and to check relocalisation
+    // Max/Min Frames to insert keyframes
     mMinFrames = 0;
     mMaxFrames = fps;
 

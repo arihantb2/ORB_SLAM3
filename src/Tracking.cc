@@ -547,7 +547,7 @@ void Tracking::Track()
         // System is initialized. Track Frame.
         bool bOK;
 
-        // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
+        // Initial camera pose estimation using motion model or reference-keyframe fallback when motion model fails
 
         // State OK
         // Local Mapping is activated. This is the normal behaviour, unless
@@ -643,7 +643,7 @@ void Tracking::Track()
             mTimeStampLost = mCurrentFrame.mTimeStamp;
         }
 
-        // Save frame if recent relocalization, since they are used for IMU reset (as we are making copy, it shluld be once mCurrFrame is completely modified)
+        // Save frame for IMU reset (copy made once mCurrentFrame is fully updated).
         if ((mCurrentFrame.mnId > mnFramesToResetIMU) &&
             (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) && pCurrentMap->isImuInitialized())
         {
@@ -1523,7 +1523,7 @@ bool Tracking::TrackLocalMap()
     }
 
     // Decide if the tracking was succesful
-    // More restrictive if there was a relocalization recently
+    // Inlier count is passed to LocalMapping for keyframe/point culling decisions.
     mpLocalMapper->mnMatchesInliers = mnMatchesInliers;
 
     if ((mnMatchesInliers > mLocalMapGenericMinInliers))

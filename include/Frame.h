@@ -181,7 +181,7 @@ private:
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    // Vocabulary used for relocalization.
+    // ORB vocabulary used for BoW and feature matching.
     ORBVocabulary* mpORBvocabulary;
 
     // Feature extractor. The right is used only in the stereo case.

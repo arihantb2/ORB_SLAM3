@@ -129,15 +129,14 @@ private:
     // ORB vocabulary used for place recognition and feature matching.
     ORBVocabulary* mpVocabulary;
 
-    // KeyFrame database for place recognition (relocalization and loop detection).
+    // KeyFrame database for place recognition (loop detection).
     KeyFrameDatabase* mpKeyFrameDatabase;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Atlas* mpAtlas;
 
     // Tracker. It receives a frame and computes the associated camera pose.
-    // It also decides when to insert a new keyframe, create some new MapPoints and
-    // performs relocalization if tracking fails.
+    // It also decides when to insert a new keyframe and create some new MapPoints.
     Tracking* mpTracker;
 
     // Local Mapper. It manages the local map and performs local bundle adjustment.
