@@ -25,13 +25,6 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/assume_abstract.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/export.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/vector.hpp>
-
 #include <sophus/se3.hpp>
 
 #include <Eigen/Geometry>
@@ -40,17 +33,6 @@ namespace ORB_SLAM3
 {
 class GeometricCamera
 {
-
-    friend class boost::serialization::access;
-
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int version)
-    {
-        ar & mnId;
-        ar & mnType;
-        ar & mvParameters;
-    }
-
 public:
     GeometricCamera() {}
     GeometricCamera(const std::vector<float>& _vParameters) : mvParameters(_vParameters) {}

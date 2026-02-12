@@ -785,14 +785,4 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame* pKF, std::vector<KeyFrame
     }
 }
 
-void KeyFrameDatabase::SetORBVocabulary(ORBVocabulary* pORBVoc)
-{
-    ORBVocabulary** ptr;
-    ptr = (ORBVocabulary**)(&mpVoc);
-    *ptr = pORBVoc;
-
-    mvInvertedFile.clear();
-    mvInvertedFile.resize(mpVoc->size());
-}
-
 }  // namespace ORB_SLAM3

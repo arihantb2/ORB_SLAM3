@@ -27,13 +27,8 @@
 #include "ORBVocabulary.h"
 
 #include "CameraModels/GeometricCamera.h"
-#include "SerializationUtils.h"
 
 #include <mutex>
-
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/vector.hpp>
 
 namespace ORB_SLAM3
 {
@@ -47,121 +42,6 @@ class GeometricCamera;
 
 class KeyFrame
 {
-    friend class boost::serialization::access;
-
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int version)
-    {
-        ar & mnId;
-        ar& const_cast<long unsigned int&>(mnFrameId);
-        ar& const_cast<double&>(mTimeStamp);
-
-        // Grid
-        ar& const_cast<int&>(mnGridCols);
-        ar& const_cast<int&>(mnGridRows);
-        ar& const_cast<float&>(mfGridElementWidthInv);
-        ar& const_cast<float&>(mfGridElementHeightInv);
-
-        // Scale
-        ar & mfScale;
-
-        // Calibration parameters
-        ar& const_cast<float&>(fx);
-        ar& const_cast<float&>(fy);
-        ar& const_cast<float&>(invfx);
-        ar& const_cast<float&>(invfy);
-        ar& const_cast<float&>(cx);
-        ar& const_cast<float&>(cy);
-        ar& const_cast<float&>(mbf);
-        ar& const_cast<float&>(mb);
-        ar& const_cast<float&>(mThDepth);
-        serializeMatrix(ar, mDistCoef, version);
-
-        // Number of Keypoints
-        ar& const_cast<int&>(N);
-
-        // KeyPoints
-        serializeVectorKeyPoints<Archive>(ar, mvKeys, version);
-        serializeVectorKeyPoints<Archive>(ar, mvKeysUn, version);
-        ar& const_cast<std::vector<float>&>(mvuRight);
-        ar& const_cast<std::vector<float>&>(mvDepth);
-        serializeMatrix<Archive>(ar, mDescriptors, version);
-
-        // BOW
-        ar & mBowVec;
-        ar & mFeatVec;
-
-        // Pose relative to parent
-        serializeSophusSE3<Archive>(ar, mTcp, version);
-
-        // Scale
-        ar& const_cast<int&>(mnScaleLevels);
-        ar& const_cast<float&>(mfScaleFactor);
-        ar& const_cast<float&>(mfLogScaleFactor);
-        ar& const_cast<std::vector<float>&>(mvScaleFactors);
-        ar& const_cast<std::vector<float>&>(mvLevelSigma2);
-        ar& const_cast<std::vector<float>&>(mvInvLevelSigma2);
-
-        // Image bounds and calibration
-        ar& const_cast<int&>(mnMinX);
-        ar& const_cast<int&>(mnMinY);
-        ar& const_cast<int&>(mnMaxX);
-        ar& const_cast<int&>(mnMaxY);
-        ar& boost::serialization::make_array(mK_.data(), mK_.size());
-
-        // Pose
-        serializeSophusSE3<Archive>(ar, mTcw, version);
-
-        // MapPointsId associated to keypoints
-        ar & mvBackupMapPointsId;
-
-        // Grid
-        ar & mGrid;
-
-        // Connected KeyFrameWeight
-        ar & mBackupConnectedKeyFrameIdWeights;
-
-        // Spanning Tree and Loop Edges
-        ar & mbFirstConnection;
-        ar & mBackupParentId;
-        ar & mvBackupChildrensId;
-        ar & mvBackupLoopEdgesId;
-        ar & mvBackupMergeEdgesId;
-
-        // Bad flags
-        ar & mbNotErase;
-        ar & mbToBeErased;
-        ar & mbBad;
-
-        ar & mHalfBaseline;
-
-        ar & mnOriginMapId;
-
-        // Camera variables
-        ar & mnBackupIdCamera;
-        ar & mnBackupIdCamera2;
-
-        // Fisheye variables
-        ar & mvLeftToRightMatch;
-        ar & mvRightToLeftMatch;
-        ar& const_cast<int&>(NLeft);
-        ar& const_cast<int&>(NRight);
-        serializeSophusSE3<Archive>(ar, mTlr, version);
-        serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
-        ar & mGridRight;
-
-        // Inertial variables
-        ar & mImuBias;
-        ar & mBackupImuPreintegrated;
-        ar & mImuCalib;
-        ar & mBackupPrevKFId;
-        ar & mBackupNextKFId;
-        ar & bImu;
-        ar& boost::serialization::make_array(mVw.data(), mVw.size());
-        ar& boost::serialization::make_array(mOwb.data(), mOwb.size());
-        ar & mbHasVelocity;
-    }
-
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     KeyFrame();
@@ -264,11 +144,6 @@ public:
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
-    void PreSave(std::set<KeyFrame*>& spKF, std::set<MapPoint*>& spMP, std::set<GeometricCamera*>& spCam);
-    void PostLoad(std::map<long unsigned int, KeyFrame*>& mpKFid, std::map<long unsigned int, MapPoint*>& mpMPid,
-                  std::map<unsigned int, GeometricCamera*>& mpCamId);
-
-    void SetORBVocabulary(ORBVocabulary* pORBVoc);
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
 
     bool bImu;
@@ -410,8 +285,6 @@ protected:
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;
-    // For save relation without pointer, this is necessary for save/load function
-    std::vector<long long int> mvBackupMapPointsId;
 
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;
@@ -423,8 +296,6 @@ protected:
     std::map<KeyFrame*, int> mConnectedKeyFrameWeights;
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
     std::vector<int> mvOrderedWeights;
-    // For save relation without pointer, this is necessary for save/load function
-    std::map<long unsigned int, int> mBackupConnectedKeyFrameIdWeights;
 
     // Spanning Tree and Loop Edges
     bool mbFirstConnection;
@@ -432,11 +303,6 @@ protected:
     std::set<KeyFrame*> mspChildrens;
     std::set<KeyFrame*> mspLoopEdges;
     std::set<KeyFrame*> mspMergeEdges;
-    // For save relation without pointer, this is necessary for save/load function
-    long long int mBackupParentId;
-    std::vector<long unsigned int> mvBackupChildrensId;
-    std::vector<long unsigned int> mvBackupLoopEdgesId;
-    std::vector<long unsigned int> mvBackupMergeEdgesId;
 
     // Bad flags
     bool mbNotErase;
@@ -446,14 +312,6 @@ protected:
     float mHalfBaseline;  // Only for visualization
 
     Map* mpMap;
-
-    // Backup variables for inertial
-    long long int mBackupPrevKFId;
-    long long int mBackupNextKFId;
-    IMU::Preintegrated mBackupImuPreintegrated;
-
-    // Backup for Cameras
-    unsigned int mnBackupIdCamera, mnBackupIdCamera2;
 
     // Calibration
     Eigen::Matrix3f mK_;

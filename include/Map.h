@@ -30,8 +30,6 @@
 
 #include "ORBVocabulary.h"
 
-#include <boost/serialization/base_object.hpp>
-
 namespace ORB_SLAM3
 {
 
@@ -43,31 +41,6 @@ class GeometricCamera;
 
 class Map
 {
-    friend class boost::serialization::access;
-
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int version)
-    {
-        ar & mnId;
-        ar & mnInitKFid;
-        ar & mnMaxKFid;
-        ar & mnBigChangeIdx;
-
-        // Save/load a set structure, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
-        ar & mvpBackupKeyFrames;
-        ar & mvpBackupMapPoints;
-
-        ar & mvBackupKeyFrameOriginsId;
-
-        ar & mnBackupKFinitialID;
-        ar & mnBackupKFlowerID;
-
-        ar & mbImuInitialized;
-        ar & mbIsInertial;
-        ar & mbIMU_BA1;
-        ar & mbIMU_BA2;
-    }
-
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Map();
@@ -131,16 +104,10 @@ public:
 
     unsigned int GetLowerKFID();
 
-    void PreSave(std::set<GeometricCamera*>& spCams);
-    void PostLoad(KeyFrameDatabase* pKFDB,
-                  ORBVocabulary* pORBVoc /*, std::map<long unsigned int, KeyFrame*>& mpKeyFrameId*/,
-                  std::map<unsigned int, GeometricCamera*>& mpCams);
-
     void printReprojectionError(std::list<KeyFrame*>& lpLocalWindowKFs, KeyFrame* mpCurrentKF, std::string& name,
                                 std::string& name_folder);
 
     std::vector<KeyFrame*> mvpKeyFrameOrigins;
-    std::vector<unsigned long int> mvBackupKeyFrameOriginsId;
     KeyFrame* mpFirstRegionKF;
     std::mutex mMutexMapUpdate;
 
@@ -165,15 +132,8 @@ protected:
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
 
-    // Save/load, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
-    std::vector<MapPoint*> mvpBackupMapPoints;
-    std::vector<KeyFrame*> mvpBackupKeyFrames;
-
     KeyFrame* mpKFinitial;
     KeyFrame* mpKFlowerID;
-
-    unsigned long int mnBackupKFinitialID;
-    unsigned long int mnBackupKFlowerID;
 
     std::vector<MapPoint*> mvpReferenceMapPoints;
 

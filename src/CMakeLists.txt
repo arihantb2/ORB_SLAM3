@@ -50,7 +50,6 @@ target_link_libraries(${PROJECT_NAME}
     ${Pangolin_LIBRARIES}
     ${G2O_LIBRARIES}
     DBoW2::DBoW2
-    -lboost_serialization
     -lcrypto
 )
 

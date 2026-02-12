@@ -18,10 +18,7 @@
 
 #include "CameraModels/Metashape.h"
 
-#include <boost/serialization/export.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
-
-//BOOST_CLASS_EXPORT_IMPLEMENT(ORB_SLAM3::Metashape)
 
 namespace ORB_SLAM3
 {

@@ -247,11 +247,6 @@ private:
     float imageViewerScale_;
 
     /*
-         * Save & load maps
-         */
-    std::string sLoadFrom_, sSaveto_;
-
-    /*
          * Other stuff
          */
     float thFarPoints_;

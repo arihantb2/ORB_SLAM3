@@ -18,10 +18,6 @@
 
 #include "CameraModels/Pinhole.h"
 
-#include <boost/serialization/export.hpp>
-
-//BOOST_CLASS_EXPORT_IMPLEMENT(ORB_SLAM3::Pinhole)
-
 namespace ORB_SLAM3
 {
 //BOOST_CLASS_EXPORT_GUID(Pinhole, "Pinhole")

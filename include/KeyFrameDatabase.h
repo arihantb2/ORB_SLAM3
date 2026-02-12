@@ -26,10 +26,6 @@
 
 #include "ORBVocabulary.h"
 
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/list.hpp>
-#include <boost/serialization/vector.hpp>
-
 #include <mutex>
 
 namespace ORB_SLAM3
@@ -41,14 +37,6 @@ class Map;
 
 class KeyFrameDatabase
 {
-    friend class boost::serialization::access;
-
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int version)
-    {
-        ar & mvBackupInvertedFileId;
-    }
-
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -73,19 +61,12 @@ public:
     void DetectNBestCandidates(KeyFrame* pKF, std::vector<KeyFrame*>& vpLoopCand, std::vector<KeyFrame*>& vpMergeCand,
                                int nNumCandidates);
 
-    void PreSave();
-    void PostLoad(std::map<long unsigned int, KeyFrame*> mpKFid);
-    void SetORBVocabulary(ORBVocabulary* pORBVoc);
-
 protected:
     // Associated vocabulary
     const ORBVocabulary* mpVoc;
 
     // Inverted file
     std::vector<std::list<KeyFrame*>> mvInvertedFile;
-
-    // For save relation without pointer, this is necessary for save/load function
-    std::vector<std::list<long unsigned int>> mvBackupInvertedFileId;
 
     // Mutex
     std::mutex mMutex;

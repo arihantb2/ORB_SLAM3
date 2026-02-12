@@ -23,14 +23,8 @@
 #include "KeyFrame.h"
 #include "Map.h"
 
-#include "SerializationUtils.h"
-
 #include <mutex>
 #include <opencv2/core/core.hpp>
-
-#include <boost/serialization/array.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/serialization.hpp>
 
 #include <set>
 
@@ -43,31 +37,6 @@ class Frame;
 
 class MapPoint
 {
-
-    friend class boost::serialization::access;
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int version)
-    {
-        ar & mnId;
-        ar & mnFirstKFid;
-        ar & mnFirstFrame;
-        ar & nObs;
-
-        // Protected variables
-        ar& boost::serialization::make_array(mWorldPos.data(), mWorldPos.size());
-        ar& boost::serialization::make_array(mNormalVector.data(), mNormalVector.size());
-        ar & mBackupObservationsId1;
-        ar & mBackupObservationsId2;
-        serializeMatrix(ar, mDescriptor, version);
-        ar & mBackupRefKFId;
-
-        ar & mbBad;
-        ar & mBackupReplacedId;
-
-        ar & mfMinDistance;
-        ar & mfMaxDistance;
-    }
-
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     MapPoint();
@@ -119,9 +88,6 @@ public:
     void UpdateMap(Map* pMap);
 
     void PrintObservations();
-
-    void PreSave(std::set<KeyFrame*>& spKF, std::set<MapPoint*>& spMP);
-    void PostLoad(std::map<long unsigned int, KeyFrame*>& mpKFid, std::map<long unsigned int, MapPoint*>& mpMPid);
 
 public:
     long unsigned int mnId;
@@ -175,9 +141,6 @@ protected:
 
     // Keyframes observing the point and associated index in keyframe
     std::map<KeyFrame*, std::tuple<int, int>> mObservations;
-    // For save relation without pointer, this is necessary for save/load function
-    std::map<long unsigned int, int> mBackupObservationsId1;
-    std::map<long unsigned int, int> mBackupObservationsId2;
 
     // Mean viewing direction
     Eigen::Vector3f mNormalVector;
@@ -187,7 +150,6 @@ protected:
 
     // Reference KeyFrame
     KeyFrame* mpRefKF;
-    long unsigned int mBackupRefKFId;
 
     // Tracking counters
     int mnVisible;
@@ -196,8 +158,6 @@ protected:
     // Bad flag (we do not currently erase MapPoint from memory)
     bool mbBad;
     MapPoint* mpReplaced;
-    // For save relation without pointer, this is necessary for save/load function
-    long long int mBackupReplacedId;
 
     // Scale invariance distances
     float mfMinDistance;

@@ -21,14 +21,6 @@
 
 #include <openssl/md5.h>
 #include <pangolin/pangolin.h>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/xml_iarchive.hpp>
-#include <boost/archive/xml_oarchive.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/string.hpp>
 #include <chrono>
 #include <thread>
 #include "Atlas.h"
