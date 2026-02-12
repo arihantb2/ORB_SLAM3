@@ -90,13 +90,6 @@ add_subdirectory(src)
 enable_testing()
 add_subdirectory(src/CameraModels/tests)
 
-# Build examples
-# Examples and Examples_old directories have their own CMakeLists.txt files
-# that collect their respective subdirectories
-
-# find_package(realsense2)
-# add_subdirectory(Examples)
-
 # ---------------
 # Installation instructions.
 # ---------------
