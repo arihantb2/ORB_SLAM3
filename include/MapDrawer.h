@@ -22,7 +22,6 @@
 #include <pangolin/pangolin.h>
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
-#include <string>
 
 #include <mutex>
 
@@ -38,7 +37,7 @@ class MapDrawer
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    MapDrawer(Atlas* pAtlas, const std::string& strSettingPath, Settings* settings);
+    MapDrawer(Atlas* pAtlas, Settings* settings);
 
     void newParameterLoader(Settings* settings);
 

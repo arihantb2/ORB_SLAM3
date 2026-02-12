@@ -22,7 +22,6 @@
 #include <Eigen/Core>
 #include <mutex>
 #include <opencv2/core/core.hpp>
-#include <string>
 
 namespace ORB_SLAM3
 {
@@ -36,8 +35,7 @@ class Viewer
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, const std::string& strSettingPath,
-           Settings* settings);
+    Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, Settings* settings);
 
     void newParameterLoader(Settings* settings);
 

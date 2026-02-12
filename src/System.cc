@@ -138,7 +138,7 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
     }
 
     //Create Drawers. These are used by the Viewer
-    mpMapDrawer = new MapDrawer(mpAtlas, strSettingsFile, settings_);
+    mpMapDrawer = new MapDrawer(mpAtlas, settings_);
 
     //Initialize the Tracking thread
     mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
@@ -184,7 +184,7 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
     //Initialize the Viewer thread and launch
     if (bUseViewer)
     {
-        mpViewer = new Viewer(this, mpMapDrawer, mpTracker, strSettingsFile, settings_);
+        mpViewer = new Viewer(this, mpMapDrawer, mpTracker, settings_);
         mptViewer = new std::thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;

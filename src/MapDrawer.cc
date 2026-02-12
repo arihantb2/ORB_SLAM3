@@ -29,7 +29,7 @@
 namespace ORB_SLAM3
 {
 
-MapDrawer::MapDrawer(Atlas* pAtlas, const std::string& strSettingPath, Settings* settings) : mpAtlas(pAtlas)
+MapDrawer::MapDrawer(Atlas* pAtlas, Settings* settings) : mpAtlas(pAtlas)
 {
     if (!settings)
     {

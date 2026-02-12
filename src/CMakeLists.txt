@@ -3,7 +3,6 @@
 add_library(${PROJECT_NAME} SHARED
     System.cc
     Tracking.cc
-    ParseParams.cc
     LocalMapping.cc
     LoopClosing.cc
     ORBextractor.cc
@@ -28,7 +27,6 @@ add_library(${PROJECT_NAME} SHARED
     MLPnPsolver.cpp
     GeometricTools.cc
     TwoViewReconstruction.cc
-    Config.cc
     Settings.cc
 )
 

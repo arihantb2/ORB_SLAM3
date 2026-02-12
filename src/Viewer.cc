@@ -31,8 +31,7 @@
 namespace ORB_SLAM3
 {
 
-Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, const std::string& strSettingPath,
-               Settings* settings)
+Viewer::Viewer(System* pSystem, MapDrawer* pMapDrawer, Tracking* pTracking, Settings* settings)
     : both(false),
       mpSystem(pSystem),
       mpMapDrawer(pMapDrawer),
