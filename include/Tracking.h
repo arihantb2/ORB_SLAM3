@@ -100,19 +100,18 @@ public:
     Frame mCurrentFrame;
     Frame mLastFrame;
 
-    cv::Mat mImGray;
-
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
     std::vector<int> mvIniMatches;
     std::vector<cv::Point2f> mvbPrevMatched;
     std::vector<cv::Point3f> mvIniP3D;
     Frame mInitialFrame;
+
+    // Intialization and Tracking Parameters
     int mMonocularInitMinKeypoints = 100;
     float mMonocularInitNNRatio = 0.9f;
     int mMonocularInitSearchWindowSize = 100;
     int mMonocularInitMinMatches = 100;
-
     int mStereoInitMinKeypoints = 500;
     float mReferenceKeyframeNNRatio = 0.7f;
     int mReferenceKeyframeMinBoWMatches = 15;
@@ -135,22 +134,10 @@ public:
     std::list<double> mlFrameTimes;
     std::list<bool> mlbLost;
 
-    // frames with estimated pose
-    int mTrackedFr;
-
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
 
-    float mMeanTrack;
-    bool mbInitWith3KFs;
-    double t0;     // time-stamp of first read frame
-    double t0vis;  // time-stamp of first inserted keyframe
-    double t0IMU;  // time-stamp of IMU initialization
-    bool mFastInit = false;
-
     std::vector<MapPoint*> GetLocalMapMPS();
-
-    bool mbWriteStats;
 
 protected:
     // Main tracking function. It is independent of the input sensor.
@@ -250,6 +237,19 @@ protected:
     // New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
+
+    // New KeyFrame decision thresholds
+    int mNewKFMinTrackedClosePoints;
+    int mNewKFMinNonTrackedClosePoints;
+    float mNewKFRefRatioMono;
+    float mNewKFRefRatioStereoFewKFs;
+    float mNewKFRefRatioStereo;
+    float mNewKFWeakTrackingRatio;
+    int mNewKFMinInliers;
+    int mNewKFMaxKFsInQueue;
+
+    // Minimum KFs in map before LOST triggers reset (instead of reusing map)
+    int mLostResetMinKFs;
 
     int mnFirstImuFrameId;
     int mnFramesToResetIMU;

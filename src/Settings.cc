@@ -638,6 +638,54 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     {
         localMapVisualMinInliers_ = 30;
     }
+
+    newKFMinTrackedClosePoints_ = readParameter<int>(fSettings, "Tracking.NewKF.MinTrackedClosePoints", found, false);
+    if (!found)
+    {
+        newKFMinTrackedClosePoints_ = 100;
+    }
+    newKFMinNonTrackedClosePoints_ =
+        readParameter<int>(fSettings, "Tracking.NewKF.MinNonTrackedClosePoints", found, false);
+    if (!found)
+    {
+        newKFMinNonTrackedClosePoints_ = 70;
+    }
+    newKFRefRatioMono_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioMono", found, false);
+    if (!found)
+    {
+        newKFRefRatioMono_ = 0.9f;
+    }
+    newKFRefRatioStereoFewKFs_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereoFewKFs", found, false);
+    if (!found)
+    {
+        newKFRefRatioStereoFewKFs_ = 0.4f;
+    }
+    newKFRefRatioStereo_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereo", found, false);
+    if (!found)
+    {
+        newKFRefRatioStereo_ = 0.75f;
+    }
+    newKFWeakTrackingRatio_ = readParameter<float>(fSettings, "Tracking.NewKF.WeakTrackingRatio", found, false);
+    if (!found)
+    {
+        newKFWeakTrackingRatio_ = 0.25f;
+    }
+    newKFMinInliers_ = readParameter<int>(fSettings, "Tracking.NewKF.MinInliers", found, false);
+    if (!found)
+    {
+        newKFMinInliers_ = 15;
+    }
+    newKFMaxKFsInQueue_ = readParameter<int>(fSettings, "Tracking.NewKF.MaxKFsInQueue", found, false);
+    if (!found)
+    {
+        newKFMaxKFsInQueue_ = 3;
+    }
+
+    lostResetMinKFs_ = readParameter<int>(fSettings, "Tracking.LostResetMinKFs", found, false);
+    if (!found)
+    {
+        lostResetMinKFs_ = 999999;
+    }
 }
 
 void Settings::precomputeRectificationMaps()

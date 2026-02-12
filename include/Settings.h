@@ -144,6 +144,17 @@ public:
     int localMapGenericMinInliers() { return localMapGenericMinInliers_; }
     int localMapVisualMinInliers() { return localMapVisualMinInliers_; }
 
+    int newKFMinTrackedClosePoints() { return newKFMinTrackedClosePoints_; }
+    int newKFMinNonTrackedClosePoints() { return newKFMinNonTrackedClosePoints_; }
+    float newKFRefRatioMono() { return newKFRefRatioMono_; }
+    float newKFRefRatioStereoFewKFs() { return newKFRefRatioStereoFewKFs_; }
+    float newKFRefRatioStereo() { return newKFRefRatioStereo_; }
+    float newKFWeakTrackingRatio() { return newKFWeakTrackingRatio_; }
+    int newKFMinInliers() { return newKFMinInliers_; }
+    int newKFMaxKFsInQueue() { return newKFMaxKFsInQueue_; }
+
+    int lostResetMinKFs() { return lostResetMinKFs_; }
+
     cv::Mat M1l() { return M1l_; }
     cv::Mat M2l() { return M2l_; }
     cv::Mat M1r() { return M1r_; }
@@ -268,6 +279,17 @@ private:
     int motionModelMinOptimizedMapMatches_;
     int localMapGenericMinInliers_;
     int localMapVisualMinInliers_;
+
+    int newKFMinTrackedClosePoints_;
+    int newKFMinNonTrackedClosePoints_;
+    float newKFRefRatioMono_;
+    float newKFRefRatioStereoFewKFs_;
+    float newKFRefRatioStereo_;
+    float newKFWeakTrackingRatio_;
+    int newKFMinInliers_;
+    int newKFMaxKFsInQueue_;
+
+    int lostResetMinKFs_;
 };
 };  // namespace ORB_SLAM3
 

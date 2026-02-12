@@ -109,8 +109,6 @@ public:
     bool mbNotBA2;
     bool mbBadImu;
 
-    bool mbWriteStats;
-
     // not consider far points (clouds)
     bool mbFarPoints;
     float mThFarPoints;

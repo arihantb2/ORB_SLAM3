@@ -47,7 +47,6 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
                    const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
-      mTrackedFr(0),
       mbMapUpdated(false),
       mpORBVocabulary(pVoc),
       mpKeyFrameDB(pKFDB),
@@ -71,7 +70,6 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
 
     initID = 0;
     lastID = 0;
-    mbInitWith3KFs = false;
 
     std::vector<GeometricCamera*> vpCams = mpAtlas->GetAllCameras();
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
@@ -143,14 +141,22 @@ void Tracking::loadFromSettings(Settings* settings)
     {
         mpIniORBextractor = new ORBextractor(nInitFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
     }
+
+    // Monocular initialization thresholds
     mMonocularInitSearchWindowSize = settings->monocularInitSearchWindowSize();
     mMonocularInitMinKeypoints = settings->monocularInitMinKeypoints();
     mMonocularInitNNRatio = settings->monocularInitNNRatio();
     mMonocularInitMinMatches = settings->monocularInitMinMatches();
+
+    // Stereo initialization thresholds
     mStereoInitMinKeypoints = settings->stereoInitMinKeypoints();
+
+    // Reference keyframe tracking thresholds
     mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
     mReferenceKeyframeMinBoWMatches = settings->referenceKeyframeMinBoWMatches();
     mReferenceKeyframeMinOptimizedMapMatches = settings->referenceKeyframeMinOptimizedMapMatches();
+
+    // Motion model tracking thresholds
     mMotionModelNNRatio = settings->motionModelNNRatio();
     mMotionModelProjectionSearchThStereo = settings->motionModelProjectionSearchThStereo();
     mMotionModelProjectionSearchThMono = settings->motionModelProjectionSearchThMono();
@@ -159,9 +165,23 @@ void Tracking::loadFromSettings(Settings* settings)
     mMotionModelRetryProjectionSearchThMono = settings->motionModelRetryProjectionSearchThMono();
     mMotionModelMinRetryMatches = settings->motionModelMinRetryMatches();
     mMotionModelMinOptimizedMapMatches = settings->motionModelMinOptimizedMapMatches();
+
+    // Local map tracking success thresholds
     mLocalMapGenericMinInliers = settings->localMapGenericMinInliers();
     mLocalMapVisualMinInliers = settings->localMapVisualMinInliers();
-    //IMU parameters
+
+    // New keyframe decision thresholds
+    mNewKFMinTrackedClosePoints = settings->newKFMinTrackedClosePoints();
+    mNewKFMinNonTrackedClosePoints = settings->newKFMinNonTrackedClosePoints();
+    mNewKFRefRatioMono = settings->newKFRefRatioMono();
+    mNewKFRefRatioStereoFewKFs = settings->newKFRefRatioStereoFewKFs();
+    mNewKFRefRatioStereo = settings->newKFRefRatioStereo();
+    mNewKFWeakTrackingRatio = settings->newKFWeakTrackingRatio();
+    mNewKFMinInliers = settings->newKFMinInliers();
+    mNewKFMaxKFsInQueue = settings->newKFMaxKFsInQueue();
+    mLostResetMinKFs = settings->lostResetMinKFs();
+
+    // IMU parameters
     Sophus::SE3f Tbc = settings->Tbc();
     mInsertKFsLost = settings->insertKFsWhenLost();
     mImuFreq = settings->imuFrequency();
@@ -192,79 +212,39 @@ void Tracking::SetViewer(Viewer* pViewer)
     mpViewer = pViewer;
 }
 
-Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp)
+Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat& imageRight, const double& timestamp)
 {
-    mImGray = imRectLeft;
-    cv::Mat imGrayRight = imRectRight;
-
-    if (mImGray.channels() == 3)
+    if (imageLeft.channels() != 1)
     {
-        if (mbRGB)
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_RGB2GRAY);
-            cvtColor(imGrayRight, imGrayRight, cv::COLOR_RGB2GRAY);
-        }
-        else
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_BGR2GRAY);
-            cvtColor(imGrayRight, imGrayRight, cv::COLOR_BGR2GRAY);
-        }
+        throw std::runtime_error("[Tracking::GrabImageStereo]: Input image must be grayscale");
     }
-    else if (mImGray.channels() == 4)
+    if (imageRight.channels() != 1)
     {
-        if (mbRGB)
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_RGBA2GRAY);
-            cvtColor(imGrayRight, imGrayRight, cv::COLOR_RGBA2GRAY);
-        }
-        else
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_BGRA2GRAY);
-            cvtColor(imGrayRight, imGrayRight, cv::COLOR_BGRA2GRAY);
-        }
+        throw std::runtime_error("[Tracking::GrabImageStereo]: Input image must be grayscale");
     }
 
     if (mSensor == System::STEREO)
     {
-        mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
-                              mK, mDistCoef, mbf, mThDepth, mpCamera);
+        mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpORBextractorLeft, mpORBextractorRight,
+                              mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera);
     }
     else if (mSensor == System::IMU_STEREO)
     {
-        mCurrentFrame = Frame(mImGray, imGrayRight, timestamp, mpORBextractorLeft, mpORBextractorRight, mpORBVocabulary,
-                              mK, mDistCoef, mbf, mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
+        mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpORBextractorLeft, mpORBextractorRight,
+                              mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
     }
 
     Track();
-    UpdateStereoDebugFrame(mImGray, imGrayRight);
+    UpdateStereoDebugFrame(imageLeft, imageRight);
 
     return mCurrentFrame.GetPose();
 }
 
-Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& timestamp)
+Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& image, const double& timestamp)
 {
-    mImGray = im;
-    if (mImGray.channels() == 3)
+    if (image.channels() != 1)
     {
-        if (mbRGB)
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_RGB2GRAY);
-        }
-        else
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_BGR2GRAY);
-        }
-    }
-    else if (mImGray.channels() == 4)
-    {
-        if (mbRGB)
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_RGBA2GRAY);
-        }
-        else
-        {
-            cvtColor(mImGray, mImGray, cv::COLOR_BGRA2GRAY);
-        }
+        throw std::runtime_error("[Tracking::GrabImageMonocular]: Input image must be grayscale");
     }
 
     if (mSensor == System::MONOCULAR)
@@ -272,36 +252,31 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat& im, const double& times
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
         {
             mCurrentFrame =
-                Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+                Frame(image, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
         }
         else
         {
             mCurrentFrame =
-                Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+                Frame(image, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
         }
     }
     else if (mSensor == System::IMU_MONOCULAR)
     {
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
         {
-            mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf,
+            mCurrentFrame = Frame(image, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf,
                                   mThDepth, &mLastFrame, *mpImuCalib);
         }
         else
         {
-            mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf,
+            mCurrentFrame = Frame(image, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf,
                                   mThDepth, &mLastFrame, *mpImuCalib);
         }
     }
 
-    if (mState == NO_IMAGES_YET)
-    {
-        t0 = timestamp;
-    }
-
     lastID = mCurrentFrame.mnId;
     Track();
-    UpdateMonocularDebugFrame(mImGray);
+    UpdateMonocularDebugFrame(image);
 
     return mCurrentFrame.GetPose();
 }
@@ -650,7 +625,7 @@ void Tracking::Track()
         }
         else if (mState == LOST)
         {
-            if (pCurrentMap->KeyFramesInMap() < 10)
+            if (pCurrentMap->KeyFramesInMap() <= mLostResetMinKFs)
             {
                 mpSystem->ResetActiveMap();
             }
@@ -790,7 +765,7 @@ void Tracking::Track()
         // Reset if the camera get lost soon after initialization
         if (mState == LOST)
         {
-            if (pCurrentMap->KeyFramesInMap() <= 10)
+            if (pCurrentMap->KeyFramesInMap() <= mLostResetMinKFs)
             {
                 mpSystem->ResetActiveMap();
                 return;
@@ -858,8 +833,7 @@ void Tracking::StereoInitialization()
             return;
         }
 
-        if (!mFastInit &&
-            (mCurrentFrame.mpImuPreintegratedFrame->avgA - mLastFrame.mpImuPreintegratedFrame->avgA).norm() < 0.5)
+        if ((mCurrentFrame.mpImuPreintegratedFrame->avgA - mLastFrame.mpImuPreintegratedFrame->avgA).norm() < 0.5)
         {
             Verbose::Print(Verbose::VERBOSITY_DEBUG) << "not enough acceleration" << std::endl;
             return;
@@ -1500,10 +1474,6 @@ bool Tracking::TrackWithMotionModel()
 bool Tracking::TrackLocalMap()
 {
 
-    // We have an estimation of the camera pose and some map points tracked in the frame.
-    // We retrieve the local map and try to find matches to points in the local map.
-    mTrackedFr++;
-
     UpdateLocalMap();
     SearchLocalPoints();
 
@@ -1643,7 +1613,8 @@ bool Tracking::NeedNewKeyFrame()
         }
     }
 
-    const bool bNeedToInsertClose = (nTrackedClose < 100) && (nNonTrackedClose > 70);
+    const bool bNeedToInsertClose =
+        (nTrackedClose < mNewKFMinTrackedClosePoints) && (nNonTrackedClose > mNewKFMinNonTrackedClosePoints);
 
     // Thresholds
     float thRefRatio;
@@ -1653,11 +1624,11 @@ bool Tracking::NeedNewKeyFrame()
     }
     else if (mSensor == System::MONOCULAR)
     {
-        thRefRatio = 0.9f;
+        thRefRatio = mNewKFRefRatioMono;
     }
     else
     {
-        thRefRatio = (nKFs < 2) ? 0.4f : 0.75f;
+        thRefRatio = (nKFs < 2) ? mNewKFRefRatioStereoFewKFs : mNewKFRefRatioStereo;
     }
 
     // More than "MaxFrames" have passed from last keyframe insertion
@@ -1668,10 +1639,12 @@ bool Tracking::NeedNewKeyFrame()
 
     // Tracking is weak
     const bool c1c = mSensor != System::MONOCULAR && mSensor != System::IMU_MONOCULAR &&
-                     mSensor != System::IMU_STEREO && (mnMatchesInliers < nRefMatches * 0.25 || bNeedToInsertClose);
+                     mSensor != System::IMU_STEREO &&
+                     (mnMatchesInliers < nRefMatches * mNewKFWeakTrackingRatio || bNeedToInsertClose);
 
     // Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
-    const bool c2 = (((mnMatchesInliers < nRefMatches * thRefRatio || bNeedToInsertClose)) && mnMatchesInliers > 15);
+    const bool c2 =
+        (((mnMatchesInliers < nRefMatches * thRefRatio || bNeedToInsertClose)) && mnMatchesInliers > mNewKFMinInliers);
 
     // Temporal condition for Inertial cases
     const bool c3 = (mpLastKeyFrame) && (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) &&
@@ -1697,7 +1670,7 @@ bool Tracking::NeedNewKeyFrame()
     {
         return false;
     }
-    return (mpLocalMapper->KeyframesInQueue() < 3);
+    return (mpLocalMapper->KeyframesInQueue() < mNewKFMaxKFsInQueue);
 }
 
 void Tracking::CreateNewKeyFrame()
