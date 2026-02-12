@@ -25,7 +25,7 @@ This document describes the **VERBOSITY_QUIET** tracking and frame-construction 
 |-----|------|--------|
 | `[id] STEREO_PINHOLE_FRAME: stereo_inlier_matches=N (keypoints=K ratio=R).` | After left-right matching in the stereo pinhole constructor | N left keypoints got a valid stereo match (depth); K is total left keypoints; R = N/K. Low R or declining N/K over time can indicate matching or calibration issues. |
 
-*(Fisheye / two-camera stereo paths do not emit these logs.)*
+*(All supported stereo paths in this fork use this log format.)*
 
 ---
 

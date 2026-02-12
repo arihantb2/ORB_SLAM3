@@ -1,6 +1,10 @@
 # ORB-SLAM3
 Details of changes between the different versions.
 
+### Fork note (current workspace)
+
+- Fisheye/Kannala-Brandt support has been removed in this fork.
+
 ### V1.0, 22th December 2021
 
 - OpenCV static matrices changed to Eigen matrices. The average code speed-up is 16% in tracking and 19% in mapping, w.r.t. times reported in the ORB-SLAM3 paper.
@@ -44,6 +48,6 @@ Initial release. It has these capabilities:
 
 - Inertial sensor: the IMU initialization takes 2 seconds to achieve a scale error less than 5\% and it is reffined in the next 10 seconds until it is around 1\%. Inertial measures are integrated at frame rate to estimate the scale, gravity and velocity in order to improve the visual features detection and make the system robust to temporal occlusions.
 
-- Fisheye cameras: cameras with wide-angle and fisheye lenses are now fully supported in monocular and stereo. 
+- Fisheye cameras: cameras with wide-angle and fisheye lenses are now fully supported in monocular and stereo (upstream note; not applicable to this fork).
 
 

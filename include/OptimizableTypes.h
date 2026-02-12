@@ -58,38 +58,6 @@ public:
     GeometricCamera* pCamera;
 };
 
-class EdgeSE3ProjectXYZOnlyPoseToBody : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, g2o::VertexSE3Expmap>
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    EdgeSE3ProjectXYZOnlyPoseToBody() {}
-
-    bool read(std::istream& is);
-
-    bool write(std::ostream& os) const;
-
-    void computeError()
-    {
-        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-        Eigen::Vector2d obs(_measurement);
-        _error = obs - pCamera->project((mTrl * v1->estimate()).map(Xw));
-    }
-
-    bool isDepthPositive()
-    {
-        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
-        return ((mTrl * v1->estimate()).map(Xw))(2) > 0.0;
-    }
-
-    virtual void linearizeOplus();
-
-    Eigen::Vector3d Xw;
-    GeometricCamera* pCamera;
-
-    g2o::SE3Quat mTrl;
-};
-
 class EdgeSE3ProjectXYZ : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>
 {
 public:
@@ -119,39 +87,6 @@ public:
     virtual void linearizeOplus();
 
     GeometricCamera* pCamera;
-};
-
-class EdgeSE3ProjectXYZToBody
-    : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    EdgeSE3ProjectXYZToBody();
-
-    bool read(std::istream& is);
-
-    bool write(std::ostream& os) const;
-
-    void computeError()
-    {
-        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
-        Eigen::Vector2d obs(_measurement);
-        _error = obs - pCamera->project((mTrl * v1->estimate()).map(v2->estimate()));
-    }
-
-    bool isDepthPositive()
-    {
-        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
-        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
-        return ((mTrl * v1->estimate()).map(v2->estimate()))(2) > 0.0;
-    }
-
-    virtual void linearizeOplus();
-
-    GeometricCamera* pCamera;
-    g2o::SE3Quat mTrl;
 };
 
 class VertexSim3Expmap : public g2o::BaseVertex<7, g2o::Sim3>
