@@ -1,8 +1,15 @@
 # Track() Control Flow
 
-This documents the main `Tracking::Track()` function in `Tracking.cc` (line 472).
+This documents the main `Tracking::Track()` function in `Tracking.cc`.
 
 `Track()` is the top-level per-frame entry point. It handles initialization, pose estimation, local map tracking, state transitions, and keyframe insertion.
+
+`Track()` delegates most of its work to a few small helpers:
+
+- `PrepareFrameForTracking()` – state/bias setup and IMU preintegration
+- `UpdateMapChangeState()` – map-change detection under the map mutex
+- `InitializeIfNeeded()` – stereo/mono initialization and first-frame bookkeeping
+- `UpdateAfterTracking(bool bOK)` – motion model, cleanup, and keyframe decision
 
 ## High-Level Flow
 
@@ -42,7 +49,7 @@ Track()
 
 ## Detailed Breakdown
 
-### [1] Sanity Checks (lines 474-529)
+### [1] Sanity Checks
 
 ```text
 Bad IMU flag set?
@@ -72,20 +79,22 @@ State == NO_IMAGES_YET?
   +-- yes --> mState = NOT_INITIALIZED
 ```
 
-### [2] IMU Preintegration (lines 538-542)
+### [2] IMU Preintegration
 
-Only for `IMU_MONOCULAR` or `IMU_STEREO`, and only if we didn't just create a new map:
+Handled inside `PrepareFrameForTracking()`. Only for `IMU_MONOCULAR` or `IMU_STEREO`, and only if we didn't just create a new map:
 
 ```text
 IMU sensor AND !mbCreatedMap?
   +-- yes --> PreintegrateIMU()
 ```
 
-### [3] Map Lock & Change Detection (lines 544-555)
+### [3] Map Lock & Change Detection
 
-Acquires `mMutexMapUpdate`. Checks if the map was modified by another thread (e.g. local mapper, loop closer) since last frame and sets `mbMapUpdated`.
+Acquires `mMutexMapUpdate`, then calls `UpdateMapChangeState(pCurrentMap)`. This checks if the map was modified by another thread (e.g. local mapper, loop closer) since last frame and sets `mbMapUpdated`.
 
-### [4] Initialization (lines 557-578)
+### [4] Initialization
+
+Initialization is now encapsulated in `InitializeIfNeeded()`, but the behavior is unchanged:
 
 ```text
 State == NOT_INITIALIZED?
@@ -96,12 +105,12 @@ State == NOT_INITIALIZED?
   v
   mState == OK? (initialization succeeded?)
     +-- no  --> save frame, return
-    +-- yes --> record first frame ID, continue to post-tracking
+    +-- yes --> record first frame ID (if first map), continue
 ```
 
 After successful initialization the function does NOT enter the tracking pipeline below -- it skips directly to trajectory storage at the end.
 
-### [5] Pose Estimation (lines 579-643)
+### [5] Pose Estimation
 
 This is the core tracking step. It runs when the system is already initialized.
 
@@ -135,7 +144,7 @@ The pose estimation strategy is:
 2. **Reference keyframe** (fallback): matches against the reference keyframe via BoW.
 3. If both fail, the state transitions to `LOST`.
 
-### [6] Track Local Map (lines 648-662)
+### [6] Track Local Map
 
 Only runs if pose estimation succeeded (`bOK == true`):
 
@@ -150,7 +159,7 @@ bOK?
 
 `TrackLocalMap()` refines the pose by matching against the local map (nearby keyframes and their map points). This is where `mnMatchesInliers` is set.
 
-### [7] State Transition (lines 664-679)
+### [7] State Transition
 
 ```text
 bOK (after local map)?
@@ -159,9 +168,9 @@ bOK (after local map)?
                 +-- yes --> mState = LOST, record mTimeStampLost
 ```
 
-### [8] Post-Tracking: Success Path (lines 694-761)
+### [8] Post-Tracking: Success Path
 
-Only entered when `bOK == true`:
+Only entered when `bOK == true`. The logic below now lives in `UpdateAfterTracking(bOK)`, but the behavior is the same:
 
 ```text
 [8a] Update map drawer with current pose
@@ -186,7 +195,7 @@ Only entered when `bOK == true`:
        Remove map points flagged as outliers by optimization
 ```
 
-### [9] Lost Handling & Trajectory Storage (lines 764-814)
+### [9] Lost Handling & Trajectory Storage
 
 ```text
 State == LOST?
@@ -381,9 +390,9 @@ TrackLocalMap()
       Optimizer::PoseOptimization(&mCurrentFrame)
     else:
       if !mbMapUpdated:
-        inliers = PoseInertialOptimizationLastFrame(&mCurrentFrame)
+        PoseInertialOptimizationLastFrame(&mCurrentFrame)
       else:
-        inliers = PoseInertialOptimizationLastKeyFrame(&mCurrentFrame)
+        PoseInertialOptimizationLastKeyFrame(&mCurrentFrame)
 
 [3] Count inlier matches and update map-point stats
     mnMatchesInliers = 0

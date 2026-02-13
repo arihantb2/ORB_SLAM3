@@ -24,6 +24,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Frame.h"
@@ -171,6 +172,14 @@ protected:
 
     // Reset IMU biases and compute frame velocity
     void ResetFrameIMU();
+
+    // Internal helpers to keep Track logic simpler
+    void PrepareFrameForTracking();
+    void UpdateMapChangeState(Map* pCurrentMap);
+    bool Initialize();
+    void UpdateAfterTracking(bool bOK);
+    int DiscardOutliersAndCountInliers(Frame& frame, int& nmatches, bool clearTrackInViewFlag);
+    void BuildDepthIndex(const Frame& frame, int N, std::vector<std::pair<float, int>>& vDepthIdx) const;
 
     bool mbMapUpdated;
 
