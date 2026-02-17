@@ -65,6 +65,10 @@ public:
                            const std::vector<KeyFrame*>& vpPointsKFs, std::vector<MapPoint*>& vpMatched,
                            std::vector<KeyFrame*>& vpMatchedKF, int th, float ratioHamming = 1.0);
 
+    // Search matches in quad frames (previous left, right and current left right frames)
+    int SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::vector<int>& temporalMatches, int nmatch_radius = 150);
+    int SearchByQuadKeyFrame(KeyFrame* pKF, Frame& F, std::vector<MapPoint*> vpMapPointsKF, int nmatch_radius = 240);
+
     // Search matches between MapPoints in a KeyFrame and ORB in a Frame.
     // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
     int SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpMapPointMatches);

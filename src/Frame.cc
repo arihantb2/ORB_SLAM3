@@ -80,6 +80,7 @@ Frame::Frame(const Frame& frame)
       mFeatVec(frame.mFeatVec),
       mDescriptors(frame.mDescriptors.clone()),
       mDescriptorsRight(frame.mDescriptorsRight.clone()),
+      vDescIndex(frame.vDescIndex),
       mvpMapPoints(frame.mvpMapPoints),
       mvbOutlier(frame.mvbOutlier),
       mImuCalib(frame.mImuCalib),
@@ -775,6 +776,7 @@ void Frame::ComputeStereoMatches()
 {
     mvuRight = std::vector<float>(N, -1.0f);
     mvDepth = std::vector<float>(N, -1.0f);
+    vDescIndex = std::vector<int>(N, -1);
 
     const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
@@ -864,6 +866,11 @@ void Frame::ComputeStereoMatches()
                     bestIdxR = iR;
                 }
             }
+        }
+
+        if (bestIdxR != 0)
+        {
+            vDescIndex[iL] = bestIdxR;
         }
 
         // Subpixel match by correlation
@@ -961,6 +968,7 @@ void Frame::ComputeStereoMatches()
         {
             mvuRight[vDistIdx[i].second] = -1;
             mvDepth[vDistIdx[i].second] = -1;
+            vDescIndex[vDistIdx[i].second] = -1; // new added
         }
     }
 }

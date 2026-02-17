@@ -22,6 +22,7 @@
 #include "KeyFrame.h"
 #include "MapPoint.h"
 
+#include <algorithm>
 #include <limits.h>
 #include <utility>
 
@@ -80,6 +81,34 @@ inline void ApplyRotationConsistency(std::vector<int>* rotHist, const int histoL
             removeMatch(rotHist[i][j]);
         }
     }
+}
+
+struct QuadSearchWindow
+{
+    float u_min1, u_max1, v_min1, v_max1, u_min2, u_max2;
+};
+
+inline QuadSearchWindow MakeQuadSearchWindow(float x, float y, float uR, float maxX, float maxY, float radius)
+{
+    QuadSearchWindow w;
+    w.u_min1 = std::max(0.f, x - radius);
+    w.u_max1 = std::min(maxX, x + radius);
+    w.v_min1 = std::max(0.f, y - radius);
+    w.v_max1 = std::min(maxY, y + radius);
+    w.u_min2 = std::max(0.f, uR - radius);
+    w.u_max2 = std::min(maxX, uR + radius);
+    return w;
+}
+
+inline bool InQuadSearchBounds(float x, float y, float uRight, float u_min1, float u_max1, float v_min1,
+                               float v_max1, float u_min2, float u_max2)
+{
+    return x > u_min1 && x < u_max1 && y > v_min1 && y < v_max1 && uRight > u_min2 && uRight < u_max2;
+}
+
+inline bool InQuadSearchBounds(float x, float y, float uRight, const QuadSearchWindow& w)
+{
+    return InQuadSearchBounds(x, y, uRight, w.u_min1, w.u_max1, w.v_min1, w.v_max1, w.u_min2, w.u_max2);
 }
 
 enum class ProjectionStatus
@@ -538,16 +567,16 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                     {
                         vpMapPointMatches[bestLeft.bestIdx] = pMP;
 
-                        const cv::KeyPoint& kp = (pKF->NLeft == -1)           ? pKF->mvKeysUn[realIdxKF]
+                        const cv::KeyPoint& kp = (pKF->NLeft == -1)          ? pKF->mvKeysUn[realIdxKF]
                                                  : (realIdxKF >= pKF->NLeft) ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
                                                                              : pKF->mvKeys[realIdxKF];
 
                         if (mbCheckOrientation)
                         {
                             cv::KeyPoint& Fkp = (F.Nleft == -1) ? F.mvKeys[bestLeft.bestIdx]
-                                                                 : (bestLeft.bestIdx >= F.Nleft)
-                                                                       ? F.mvKeysRight[bestLeft.bestIdx - F.Nleft]
-                                                                       : F.mvKeys[bestLeft.bestIdx];
+                                                : (bestLeft.bestIdx >= F.Nleft)
+                                                    ? F.mvKeysRight[bestLeft.bestIdx - F.Nleft]
+                                                    : F.mvKeys[bestLeft.bestIdx];
 
                             AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, kp.angle, Fkp.angle,
                                                    bestLeft.bestIdx);
@@ -562,16 +591,16 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpM
                             vpMapPointMatches[bestRight.bestIdx] = pMP;
 
                             const cv::KeyPoint& kp = (pKF->NLeft == -1) ? pKF->mvKeysUn[realIdxKF]
-                                                                          : (realIdxKF >= pKF->NLeft)
-                                                                                ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
-                                                                                : pKF->mvKeys[realIdxKF];
+                                                     : (realIdxKF >= pKF->NLeft)
+                                                         ? pKF->mvKeysRight[realIdxKF - pKF->NLeft]
+                                                         : pKF->mvKeys[realIdxKF];
 
                             if (mbCheckOrientation)
                             {
                                 cv::KeyPoint& Fkp = (F.Nleft == -1) ? F.mvKeys[bestRight.bestIdx]
-                                                                     : (bestRight.bestIdx >= F.Nleft)
-                                                                           ? F.mvKeysRight[bestRight.bestIdx - F.Nleft]
-                                                                           : F.mvKeys[bestRight.bestIdx];
+                                                    : (bestRight.bestIdx >= F.Nleft)
+                                                        ? F.mvKeysRight[bestRight.bestIdx - F.Nleft]
+                                                        : F.mvKeys[bestRight.bestIdx];
 
                                 AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, kp.angle, Fkp.angle,
                                                        bestRight.bestIdx);
@@ -696,6 +725,232 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw, cons
             vpMatchedKF[bestMatch.bestIdx] = pKFi;
             nmatches++;
         }
+    }
+
+    return nmatches;
+}
+
+int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::vector<int>& temporalMatches, int nmatch_radius)
+{
+
+    int nmatches = 0, count = 0;
+    std::vector<int> vCandidate;
+
+    // Rotation Histogram (to check rotation consistency)
+    std::vector<int> rotHist[HISTO_LENGTH];
+    const float factor = InitRotationHistogram(rotHist, HISTO_LENGTH);
+
+    // Main loop
+    for (int i = 0; i < lastFrame.N; i++)
+    {
+
+        if (lastFrame.vDescIndex[i] == -1)
+        {
+            continue;
+        }
+        MapPoint* pMP = lastFrame.mvpMapPoints[i];
+
+        if (pMP)
+        {
+
+            if (!lastFrame.mvbOutlier[i])
+            {
+
+                int nLastOctave = lastFrame.mvKeys[i].octave;
+
+                count = count + 1;
+
+                const float x = lastFrame.mvKeys[i].pt.x;
+                const float y = lastFrame.mvKeys[i].pt.y;
+                const float uR = lastFrame.mvuRight[i];
+                const float maxX = static_cast<float>(currentFrame.mnMaxX);
+                const float maxY = static_cast<float>(currentFrame.mnMaxY);
+                const QuadSearchWindow win =
+                    MakeQuadSearchWindow(x, y, uR, maxX, maxY, static_cast<float>(nmatch_radius));
+
+                for (int j = 0; j < currentFrame.N; j++)
+                {
+                    if (currentFrame.vDescIndex[j] == -1)
+                    {
+                        continue;
+                    }
+                    if (currentFrame.mvKeys[i].octave < nLastOctave - 1)
+                    {
+                        continue;
+                    }
+                    if (nLastOctave + 1 >= 0)
+                    {
+                        if (currentFrame.mvKeys[i].octave > nLastOctave + 1)
+                        {
+                            continue;
+                        }
+                    }
+                    if (InQuadSearchBounds(currentFrame.mvKeys[j].pt.x, currentFrame.mvKeys[j].pt.y,
+                                          currentFrame.mvuRight[j], win))
+                    {
+                        vCandidate.push_back(j);
+                    }
+                }
+
+                if (!vCandidate.size())
+                {
+                    continue;
+                }
+
+                int bestDist1 = 1000000, bestDist2 = 1000000;
+                int bestIdx1 = -1, bestIdx2 = -1;
+
+                for (int j = 0; j < vCandidate.size(); j++)
+                {
+                    const int dist1 =
+                        DescriptorDistance(lastFrame.mDescriptors.row(i), currentFrame.mDescriptors.row(vCandidate[j]));
+                    const int dist2 =
+                        DescriptorDistance(lastFrame.mDescriptorsRight.row(lastFrame.vDescIndex[i]),
+                                           currentFrame.mDescriptorsRight.row(currentFrame.vDescIndex[vCandidate[j]]));
+                    if (dist1 < bestDist1)
+                    {
+                        bestDist1 = dist1;
+                        bestIdx1 = vCandidate[j];
+                    }
+                    if (dist2 < bestDist2)
+                    {
+                        bestDist2 = dist2;
+                        bestIdx2 = vCandidate[j];
+                    }
+                }
+
+                if (bestIdx2 == bestIdx1 && bestIdx1 != -1 && bestDist1 <= TH_HIGH && bestDist2 <= TH_HIGH)
+                {
+
+                    currentFrame.mvpMapPoints[bestIdx2] = pMP;
+                    temporalMatches[bestIdx2] = i;
+                    nmatches++;
+
+                    if (mbCheckOrientation)
+                    {
+                        AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, lastFrame.mvKeysUn[i].angle,
+                                               currentFrame.mvKeysUn[bestIdx2].angle, bestIdx2);
+                    }
+                }
+            }
+        }
+
+        vCandidate.clear();
+    }
+
+    if (mbCheckOrientation)
+    {
+        ApplyRotationConsistency(
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx) {
+                currentFrame.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
+                temporalMatches[idx] = -1;
+                nmatches--;
+            });
+    }
+
+    return nmatches;
+}
+
+int ORBmatcher::SearchByQuadKeyFrame(KeyFrame* pKF, Frame& F, std::vector<MapPoint*> vpMapPointsKF, int nmatch_radius)
+{
+
+    int nmatches = 0, count = 0;
+    std::vector<int> vCandidate;
+
+    // Rotation Histogram (to check rotation consistency)
+    std::vector<int> rotHist[HISTO_LENGTH];
+    const float factor = InitRotationHistogram(rotHist, HISTO_LENGTH);
+
+    // Main loop
+    for (int i = 0; i < pKF->N; i++)
+    {
+
+        if (pKF->vDescIndex[i] == -1)
+        {
+            continue;
+        }
+        MapPoint* pMP = vpMapPointsKF[i];
+
+        if (pMP)
+        {
+
+            count = count + 1;
+
+            const float x = pKF->mvKeys[i].pt.x;
+            const float y = pKF->mvKeys[i].pt.y;
+            const float uR = pKF->mvuRight[i];
+            const float maxX = static_cast<float>(F.mnMaxX);
+            const float maxY = static_cast<float>(F.mnMaxY);
+            const QuadSearchWindow win =
+                MakeQuadSearchWindow(x, y, uR, maxX, maxY, static_cast<float>(nmatch_radius));
+
+            for (int j = 0; j < F.N; j++)
+            {
+                if (F.vDescIndex[j] == -1)
+                {
+                    continue;
+                }
+                if (InQuadSearchBounds(F.mvKeys[j].pt.x, F.mvKeys[j].pt.y, F.mvuRight[j], win))
+                {
+                    vCandidate.push_back(j);
+                }
+            }
+
+            // cout << "candidate: " << vCandidate.size() << endl;
+            if (!vCandidate.size())
+            {
+                continue;
+            }
+            int bestDist1 = 1000000, bestDist2 = 1000000;
+            int bestIdx1 = -1, bestIdx2 = -1;
+
+            for (int j = 0; j < vCandidate.size(); j++)
+            {
+                const int dist1 = DescriptorDistance(pKF->mDescriptors.row(i), F.mDescriptors.row(vCandidate[j]));
+                const int dist2 = DescriptorDistance(pKF->mDescriptorsRight.row(pKF->vDescIndex[i]),
+                                                     F.mDescriptorsRight.row(F.vDescIndex[vCandidate[j]]));
+                if (dist1 < bestDist1)
+                {
+                    bestDist1 = dist1;
+                    bestIdx1 = vCandidate[j];
+                }
+                if (dist2 < bestDist2)
+                {
+                    bestDist2 = dist2;
+                    bestIdx2 = vCandidate[j];
+                }
+            }
+
+            if (bestIdx2 == bestIdx1 && bestIdx1 != -1 && bestDist1 <= TH_HIGH && bestDist2 <= TH_HIGH)
+            {  // && bestDist1<=TH_HIGH && bestDist2<=TH_HIGH
+
+                F.mvpMapPoints[bestIdx2] = pMP;
+                nmatches++;
+
+                if (mbCheckOrientation)
+                {
+                    AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, pKF->mvKeysUn[i].angle,
+                                           F.mvKeysUn[bestIdx2].angle, bestIdx2);
+                }
+            }
+        }
+
+        vCandidate.clear();
+    }
+
+    // cout << "Quad matching features: " << count << endl;
+
+    if (mbCheckOrientation)
+    {
+        ApplyRotationConsistency(
+            rotHist, HISTO_LENGTH,
+            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
+            [&](int idx) {
+                F.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
+                nmatches--;
+            });
     }
 
     return nmatches;
