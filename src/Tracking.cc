@@ -545,6 +545,13 @@ void Tracking::UpdateAfterTracking(bool bOK)
     {
         Sophus::SE3f currentTwc = mCurrentFrame.GetPose().inverse();
         mVelocity = mLastFrame.GetPose() * currentTwc;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "Velocity (delta position): " << mVelocity.translation().transpose()
+            << " m, dt: " << std::fixed << std::setprecision(6) << mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp
+            << " s" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "Velocity norm: " << mVelocity.translation().norm() << " m"
+            << std::endl;
         mbVelocity = true;
     }
     else
