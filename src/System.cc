@@ -38,11 +38,16 @@ namespace ORB_SLAM3
 
 std::atomic<Verbose::eLevel> Verbose::th{Verbose::VERBOSITY_NORMAL};
 std::mutex Verbose::cout_mutex;
+std::unique_ptr<std::ofstream> Verbose::log_file_;
+std::atomic<bool> Verbose::console_enabled{false};
 
 System::System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const bool bTurnOffLC)
+               const bool bUseViewer, const bool bTurnOffLC, const std::string& strLogFile,
+               const bool bVerboseConsole)
     : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
+    Verbose::SetLogFile(strLogFile);
+    Verbose::SetConsole(bVerboseConsole);
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 

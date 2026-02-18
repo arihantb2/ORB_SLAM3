@@ -647,7 +647,6 @@ int MapPoint::PredictScale(const float& currentDist, Frame* pF)
 
 void MapPoint::PrintObservations()
 {
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "MP_OBS: MP " << mnId << std::endl;
     for (std::map<KeyFrame*, std::tuple<int, int>>::iterator mit = mObservations.begin(), mend = mObservations.end();
          mit != mend; mit++)
     {

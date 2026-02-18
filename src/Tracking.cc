@@ -72,21 +72,21 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
     lastID = 0;
 
     std::vector<GeometricCamera*> vpCams = mpAtlas->GetAllCameras();
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
     for (GeometricCamera* pCam : vpCams)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Camera " << pCam->GetId();
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Camera " << pCam->GetId();
         if (pCam->GetType() == GeometricCamera::CAM_PINHOLE)
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is pinhole" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is pinhole" << std::endl;
         }
         else if (pCam->GetType() == GeometricCamera::CAM_METASHAPE)
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is metashape" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is metashape" << std::endl;
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is unknown" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is unknown" << std::endl;
         }
     }
 }
@@ -299,7 +299,6 @@ void Tracking::PreintegrateIMU()
 {
     if (!mCurrentFrame.mpPrevFrame)
     {
-        Verbose::PrintMess("non prev frame ", Verbose::VERBOSITY_DEBUG);
         mCurrentFrame.setIntegrated();
         return;
     }
@@ -308,7 +307,6 @@ void Tracking::PreintegrateIMU()
     mvImuFromLastFrame.reserve(mlQueueImuData.size());
     if (mlQueueImuData.size() == 0)
     {
-        Verbose::PrintMess("Not IMU data in mlQueueImuData!!", Verbose::VERBOSITY_DEBUG);
         mCurrentFrame.setIntegrated();
         return;
     }
@@ -343,7 +341,6 @@ void Tracking::PreintegrateIMU()
     const int n = mvImuFromLastFrame.size() - 1;
     if (n == 0)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Empty IMU measurements vector!!!\n";
         return;
     }
 
@@ -390,11 +387,6 @@ void Tracking::PreintegrateIMU()
             angVel = mvImuFromLastFrame[i].w;
             tstep = mCurrentFrame.mTimeStamp - mCurrentFrame.mpPrevFrame->mTimeStamp;
         }
-
-        if (!mpImuPreintegratedFromLastKF)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "mpImuPreintegratedFromLastKF does not exist" << std::endl;
-        }
         mpImuPreintegratedFromLastKF->IntegrateNewMeasurement(acc, angVel, tstep);
         pImuPreintegratedFromLastFrame->IntegrateNewMeasurement(acc, angVel, tstep);
     }
@@ -410,7 +402,6 @@ bool Tracking::PredictStateIMU()
 {
     if (!mCurrentFrame.mpPrevFrame)
     {
-        Verbose::PrintMess("No last frame", Verbose::VERBOSITY_DEBUG);
         return false;
     }
 
@@ -455,10 +446,6 @@ bool Tracking::PredictStateIMU()
         mCurrentFrame.mImuBias = mLastFrame.mImuBias;
         mCurrentFrame.mPredBias = mCurrentFrame.mImuBias;
         return true;
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "not IMU prediction!!" << std::endl;
     }
 
     return false;
@@ -607,8 +594,6 @@ void Tracking::Track()
 {
     if (mpLocalMapper->mbBadImu)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "TRACK: Reset map because local mapper set the bad imu flag " << std::endl;
         mpSystem->ResetActiveMap();
         return;
     }
@@ -616,7 +601,7 @@ void Tracking::Track()
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if (!pCurrentMap)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "ERROR: There is not an active map in the atlas" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "ERROR: There is not an active map in the atlas" << std::endl;
     }
 
     if (mState != NO_IMAGES_YET)
@@ -728,7 +713,6 @@ void Tracking::Track()
             {
                 mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
             }
-            Verbose::PrintMess("done", Verbose::VERBOSITY_DEBUG);
 
             return;
         }
@@ -775,7 +759,6 @@ void Tracking::Track()
             (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO) && pCurrentMap->isImuInitialized())
         {
             // TODO check this situation
-            Verbose::PrintMess("Saving pointer to frame. imu needs reset...", Verbose::VERBOSITY_DEBUG);
             Frame* pF = new Frame(mCurrentFrame);
             pF->mpPrevFrame = new Frame(mLastFrame);
 
@@ -797,7 +780,6 @@ void Tracking::Track()
             {
                 if (!pCurrentMap->isImuInitialized())
                 {
-                    Verbose::PrintMess("Track lost before IMU initialisation, reseting...", Verbose::VERBOSITY_QUIET);
                     mpSystem->ResetActiveMap();
                     return;
                 }
@@ -852,13 +834,11 @@ void Tracking::StereoInitialization()
     {
         if (!mCurrentFrame.mpImuPreintegrated || !mLastFrame.mpImuPreintegrated)
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "not IMU meas" << std::endl;
             return;
         }
 
         if ((mCurrentFrame.mpImuPreintegratedFrame->avgA - mLastFrame.mpImuPreintegratedFrame->avgA).norm() < 0.5)
         {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "not enough acceleration" << std::endl;
             return;
         }
 
@@ -1172,7 +1152,6 @@ void Tracking::CreateMapInAtlas()
 
     // Restart the variable with information about the last KF
     mbVelocity = false;
-    Verbose::PrintMess("First frame id in map: " + std::to_string(mnLastInitFrameId + 1), Verbose::VERBOSITY_DEBUG);
     if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
     {
         mbReadyToInitializate = false;
@@ -1750,10 +1729,6 @@ void Tracking::CreateNewKeyFrame()
         pKF->mPrevKF = mpLastKeyFrame;
         mpLastKeyFrame->mNextKF = pKF;
     }
-    else
-    {
-        Verbose::PrintMess("No last KF in KF creation!!", Verbose::VERBOSITY_DEBUG);
-    }
     // Reset preintegration from last KF (Create new object)
     if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
     {
@@ -2135,7 +2110,6 @@ void Tracking::UpdateLocalKeyFrames()
 void Tracking::Reset(bool bLocMap)
 {
     Verbose::PrintMess("System Reseting", Verbose::VERBOSITY_DEBUG);
-
     if (mpViewer)
     {
         mpViewer->RequestStop();
