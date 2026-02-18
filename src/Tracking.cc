@@ -745,7 +745,7 @@ void Tracking::Track()
     else
     {
         // System is initialized. Track Frame.
-        bool bOK;
+        bool bOK = false;
         if (mState == OK)
         {
             // Local Mapping might have changed some MapPoints tracked in last frame
@@ -1377,6 +1377,7 @@ void Tracking::UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF)
             MapPoint* pNewMP = new MapPoint(x3D, mpReferenceKF, mpAtlas->GetCurrentMap());
 
             vpMapPointsKF[i] = pNewMP;
+            mlpTemporalPoints.push_back(pNewMP);
 
             nPoints++;
         }

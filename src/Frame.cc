@@ -870,13 +870,8 @@ void Frame::ComputeStereoMatches()
             }
         }
 
-        if (bestIdxR != static_cast<size_t>(-1))
-        {
-            vDescIndex[iL] = static_cast<int>(bestIdxR);
-        }
-
         // Subpixel match by correlation
-        if (bestDist < thOrbDist)
+        if (bestDist < thOrbDist && bestIdxR != static_cast<size_t>(-1))
         {
             // coordinates in image pyramid at keypoint scale
             const float uR0 = mvKeysRight[bestIdxR].pt.x;
@@ -951,6 +946,7 @@ void Frame::ComputeStereoMatches()
                 }
                 mvDepth[iL] = mbf / disparity;
                 mvuRight[iL] = bestuR;
+                vDescIndex[iL] = static_cast<int>(bestIdxR);
                 vDistIdx.push_back(std::pair<int, int>(bestDist, iL));
             }
         }
