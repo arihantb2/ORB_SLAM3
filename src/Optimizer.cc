@@ -228,7 +228,6 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
                 vpEdgeKFStereo.push_back(pKF);
                 vpMapPointEdgeStereo.push_back(pMP);
             }
-
         }
 
         if (nEdges == 0)
@@ -673,7 +672,6 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
 
                     optimizer.addEdge(e);
                 }
-
             }
         }
 
@@ -983,6 +981,14 @@ int Optimizer::PoseOptimization(Frame* pFrame)
         }
     }
 
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nInitialCorrespondences=" << nInitialCorrespondences
+        << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nMatches= " << nInitialCorrespondences - nBad << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nOutliers=" << nBad << std::endl;
+
     // Recover optimized pose and return number of inliers
     g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
@@ -1248,7 +1254,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
 
                     nEdges++;
                 }
-
             }
         }
     }
@@ -2668,7 +2673,6 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                     vpEdgeKFStereo.push_back(pKFi);
                     vpMapPointEdgeStereo.push_back(pMP);
                 }
-
             }
         }
     }

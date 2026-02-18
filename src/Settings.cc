@@ -449,7 +449,6 @@ void Settings::readImageInfo(cv::FileStorage& fSettings)
                 {
                     calibration2_->setParameter(calibration2_->getParameter(10) * scaleColFactor, 10);
                 }
-
             }
         }
     }
@@ -581,6 +580,20 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
         referenceKeyframeMinOptimizedMapMatches_ = 10;
     }
 
+    referenceKeyframeQuadSearchWindowSize_ =
+        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.QuadSearchWindowSize", found, false);
+    if (!found)
+    {
+        referenceKeyframeQuadSearchWindowSize_ = 500;
+    }
+
+    stereoUseQuadMatchingReferenceKeyFrame_ =
+        static_cast<bool>(readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.UseQuadMatching", found, false));
+    if (!found)
+    {
+        stereoUseQuadMatchingReferenceKeyFrame_ = true;
+    }
+
     motionModelNNRatio_ = readParameter<float>(fSettings, "Tracking.MotionModel.NNRatio", found, false);
     if (!found)
     {
@@ -604,6 +617,20 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     {
         motionModelMinInitialMatches_ = 20;
     }
+
+    motionModelQuadSearchWindowSize_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.QuadSearchWindowSize", found, false);
+    if (!found)
+    {
+        motionModelQuadSearchWindowSize_ = 250;
+    }
+
+    stereoUseQuadMatchingMotionModel_ =
+        static_cast<bool>(readParameter<int>(fSettings, "Tracking.MotionModel.UseQuadMatching", found, false));
+    if (!found)
+    {
+        stereoUseQuadMatchingMotionModel_ = true;
+    }
     motionModelRetryProjectionSearchThStereo_ =
         readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThStereo", found, false);
     if (!found)
@@ -620,6 +647,13 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     if (!found)
     {
         motionModelMinRetryMatches_ = 20;
+    }
+
+    motionModelQuadSearchWindowSizeRetry_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.QuadSearchWindowSizeRetry", found, false);
+    if (!found)
+    {
+        motionModelQuadSearchWindowSizeRetry_ = 500;
     }
     motionModelMinOptimizedMapMatches_ =
         readParameter<int>(fSettings, "Tracking.MotionModel.MinOptimizedMapMatches", found, false);
@@ -863,7 +897,6 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
             output << " " << settings.calibration1_->getParameter(i);
         }
         output << " ]" << std::endl;
-
     }
 
     output << "\t-Sequence FPS: " << settings.fps_ << std::endl;
@@ -873,7 +906,6 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
     {
         output << "\t-Stereo baseline: " << settings.b_ << std::endl;
         output << "\t-Stereo depth threshold : " << settings.thDepth_ << std::endl;
-
     }
 
     if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO)

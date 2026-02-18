@@ -133,13 +133,18 @@ public:
     float referenceKeyframeNNRatio() { return referenceKeyframeNNRatio_; }
     int referenceKeyframeMinBoWMatches() { return referenceKeyframeMinBoWMatches_; }
     int referenceKeyframeMinOptimizedMapMatches() { return referenceKeyframeMinOptimizedMapMatches_; }
+    int referenceKeyframeQuadSearchWindowSize() { return referenceKeyframeQuadSearchWindowSize_; }
+    bool stereoUseQuadMatchingReferenceKeyFrame() { return stereoUseQuadMatchingReferenceKeyFrame_; }
     float motionModelNNRatio() { return motionModelNNRatio_; }
     int motionModelProjectionSearchThStereo() { return motionModelProjectionSearchThStereo_; }
     int motionModelProjectionSearchThMono() { return motionModelProjectionSearchThMono_; }
     int motionModelMinInitialMatches() { return motionModelMinInitialMatches_; }
+    int motionModelQuadSearchWindowSize() { return motionModelQuadSearchWindowSize_; }
+    bool stereoUseQuadMatchingMotionModel() { return stereoUseQuadMatchingMotionModel_; }
     int motionModelRetryProjectionSearchThStereo() { return motionModelRetryProjectionSearchThStereo_; }
     int motionModelRetryProjectionSearchThMono() { return motionModelRetryProjectionSearchThMono_; }
     int motionModelMinRetryMatches() { return motionModelMinRetryMatches_; }
+    int motionModelQuadSearchWindowSizeRetry() { return motionModelQuadSearchWindowSizeRetry_; }
     int motionModelMinOptimizedMapMatches() { return motionModelMinOptimizedMapMatches_; }
     int localMapGenericMinInliers() { return localMapGenericMinInliers_; }
     int localMapVisualMinInliers() { return localMapVisualMinInliers_; }
@@ -269,13 +274,18 @@ private:
     float referenceKeyframeNNRatio_;
     int referenceKeyframeMinBoWMatches_;
     int referenceKeyframeMinOptimizedMapMatches_;
+    int referenceKeyframeQuadSearchWindowSize_;
+    bool stereoUseQuadMatchingReferenceKeyFrame_;
     float motionModelNNRatio_;
     int motionModelProjectionSearchThStereo_;
     int motionModelProjectionSearchThMono_;
     int motionModelMinInitialMatches_;
+    int motionModelQuadSearchWindowSize_;
+    bool stereoUseQuadMatchingMotionModel_;
     int motionModelRetryProjectionSearchThStereo_;
     int motionModelRetryProjectionSearchThMono_;
     int motionModelMinRetryMatches_;
+    int motionModelQuadSearchWindowSizeRetry_;
     int motionModelMinOptimizedMapMatches_;
     int localMapGenericMinInliers_;
     int localMapVisualMinInliers_;

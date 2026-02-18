@@ -80,6 +80,7 @@ Frame::Frame(const Frame& frame)
       mFeatVec(frame.mFeatVec),
       mDescriptors(frame.mDescriptors.clone()),
       mDescriptorsRight(frame.mDescriptorsRight.clone()),
+      vDescIndex(frame.vDescIndex),
       mvpMapPoints(frame.mvpMapPoints),
       mvbOutlier(frame.mvbOutlier),
       mImuCalib(frame.mImuCalib),
@@ -131,6 +132,9 @@ Frame::Frame(const Frame& frame)
 
     mmProjectPoints = frame.mmProjectPoints;
     mmMatchedInImage = frame.mmMatchedInImage;
+    mDebugFrame2FrameMatches = frame.mDebugFrame2FrameMatches;
+    mDebugFrame2RefKfMatches = frame.mDebugFrame2RefKfMatches;
+    mDebugFrame2LocalMapMatches = frame.mDebugFrame2LocalMapMatches;
 }
 
 Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
@@ -774,6 +778,7 @@ void Frame::ComputeStereoMatches()
 {
     mvuRight = std::vector<float>(N, -1.0f);
     mvDepth = std::vector<float>(N, -1.0f);
+    vDescIndex = std::vector<int>(N, -1);
 
     const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
@@ -835,7 +840,7 @@ void Frame::ComputeStereoMatches()
         }
 
         int bestDist = ORBmatcher::TH_HIGH;
-        size_t bestIdxR = 0;
+        size_t bestIdxR = static_cast<size_t>(-1);  // sentinel: no match
 
         const cv::Mat& dL = mDescriptors.row(iL);
 
@@ -866,7 +871,7 @@ void Frame::ComputeStereoMatches()
         }
 
         // Subpixel match by correlation
-        if (bestDist < thOrbDist)
+        if (bestDist < thOrbDist && bestIdxR != static_cast<size_t>(-1))
         {
             // coordinates in image pyramid at keypoint scale
             const float uR0 = mvKeysRight[bestIdxR].pt.x;
@@ -941,6 +946,7 @@ void Frame::ComputeStereoMatches()
                 }
                 mvDepth[iL] = mbf / disparity;
                 mvuRight[iL] = bestuR;
+                vDescIndex[iL] = static_cast<int>(bestIdxR);
                 vDistIdx.push_back(std::pair<int, int>(bestDist, iL));
             }
         }
@@ -960,6 +966,7 @@ void Frame::ComputeStereoMatches()
         {
             mvuRight[vDistIdx[i].second] = -1;
             mvDepth[vDistIdx[i].second] = -1;
+            vDescIndex[vDistIdx[i].second] = -1;  // new added
         }
     }
 }

@@ -117,13 +117,18 @@ public:
     float mReferenceKeyframeNNRatio = 0.7f;
     int mReferenceKeyframeMinBoWMatches = 15;
     int mReferenceKeyframeMinOptimizedMapMatches = 10;
+    int mReferenceKeyframeQuadSearchWindowSize = 500;
+    bool mbUseQuadMatchingReferenceKeyFrame = true;
     float mMotionModelNNRatio = 0.9f;
     int mMotionModelProjectionSearchThStereo = 7;
     int mMotionModelProjectionSearchThMono = 30;
     int mMotionModelMinInitialMatches = 20;
+    int mMotionModelQuadSearchWindowSize = 250;
+    bool mbUseQuadMatchingMotionModel = true;
     int mMotionModelRetryProjectionSearchThStereo = 14;
     int mMotionModelRetryProjectionSearchThMono = 60;
     int mMotionModelMinRetryMatches = 20;
+    int mMotionModelQuadSearchWindowSizeRetry = 500;
     int mMotionModelMinOptimizedMapMatches = 10;
     int mLocalMapGenericMinInliers = 10;
     int mLocalMapVisualMinInliers = 30;
@@ -143,6 +148,8 @@ public:
 protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
+    bool TrackStereo();
+    bool TrackMonocular();
 
     // Stereo Initialization
     void StereoInitialization();
@@ -152,10 +159,13 @@ protected:
     void CreateInitialMapMonocular();
 
     void CheckReplacedInLastFrame();
-    bool TrackReferenceKeyFrame();
+    bool TrackReferenceKeyFrameWithBoW();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
     bool PredictStateIMU();
+
+    bool TrackQuadReferenceKeyFrame();
+    bool TrackQuadWithMotionModel();
 
     void UpdateLocalMap();
     void UpdateLocalPoints();
@@ -221,6 +231,14 @@ protected:
     KeyFrame* mpReferenceKF;
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
+
+    // Store the last frame image
+    cv::Mat mImGrayLast;
+
+    // Store temperal matching feature index
+    bool mbFrame2Frame;
+    std::vector<int> mvTemporalMatches;
+    std::vector<cv::KeyPoint> mvKeysLastFrame;
 
     // System
     System* mpSystem;
@@ -304,8 +322,14 @@ protected:
     void UpdateMonocularDebugFrame(const cv::Mat& image);
 
     StereoDebugFrame BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
-                                                           const cv::Mat& rightRectified) const;
+                                                           const cv::Mat& rightRectified,
+                                                           const Frame* pLastFrame = nullptr,
+                                                           const cv::Mat* pLastLeftRectified = nullptr,
+                                                           const cv::Mat* pLastRightRectified = nullptr) const;
     void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
+
+    // Update the reference keyframe
+    void UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF);
 
     mutable std::mutex mMutexMonocularDebugFrame;
     MonocularDebugFrame mLastMonocularDebugFrame;

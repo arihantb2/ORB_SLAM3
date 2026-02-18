@@ -52,7 +52,6 @@ ImuCamPose::ImuCamPose(KeyFrame* pKF) : its(0)
     pCamera[0] = pKF->mpCamera;
     bf = pKF->mbf;
 
-
     // For posegraph 4DoF
     Rwb0 = Rwb;
     DR.setIdentity();
@@ -84,7 +83,6 @@ ImuCamPose::ImuCamPose(Frame* pF) : its(0)
     tbc[0] = pF->mImuCalib.mTbc.translation().cast<double>();
     pCamera[0] = pF->mpCamera;
     bf = pF->mbf;
-
 
     // For posegraph 4DoF
     Rwb0 = Rwb;
