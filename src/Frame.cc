@@ -132,6 +132,9 @@ Frame::Frame(const Frame& frame)
 
     mmProjectPoints = frame.mmProjectPoints;
     mmMatchedInImage = frame.mmMatchedInImage;
+    mDebugFrame2FrameMatches = frame.mDebugFrame2FrameMatches;
+    mDebugFrame2RefKfMatches = frame.mDebugFrame2RefKfMatches;
+    mDebugFrame2LocalMapMatches = frame.mDebugFrame2LocalMapMatches;
 }
 
 Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
@@ -968,7 +971,7 @@ void Frame::ComputeStereoMatches()
         {
             mvuRight[vDistIdx[i].second] = -1;
             mvDepth[vDistIdx[i].second] = -1;
-            vDescIndex[vDistIdx[i].second] = -1; // new added
+            vDescIndex[vDistIdx[i].second] = -1;  // new added
         }
     }
 }

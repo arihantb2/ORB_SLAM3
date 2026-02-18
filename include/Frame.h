@@ -128,6 +128,14 @@ public:
     std::map<long unsigned int, cv::Point2f> mmProjectPoints;
     std::map<long unsigned int, cv::Point2f> mmMatchedInImage;
 
+    // Debug: 2D correspondences for visualization (current frame vs various sources).
+    // (last_frame_point, current_frame_point)
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> mDebugFrame2FrameMatches;
+    // (ref_keyframe_point, current_frame_point)
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> mDebugFrame2RefKfMatches;
+    // (local_map_point, current_frame_point)
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> mDebugFrame2LocalMapMatches;
+
     std::string mNameFile;
     int mnDataset;
 

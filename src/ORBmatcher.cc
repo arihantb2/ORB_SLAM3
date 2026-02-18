@@ -22,8 +22,8 @@
 #include "KeyFrame.h"
 #include "MapPoint.h"
 
-#include <algorithm>
 #include <limits.h>
+#include <algorithm>
 #include <utility>
 
 #include <opencv2/core/core.hpp>
@@ -100,8 +100,8 @@ inline QuadSearchWindow MakeQuadSearchWindow(float x, float y, float uR, float m
     return w;
 }
 
-inline bool InQuadSearchBounds(float x, float y, float uRight, float u_min1, float u_max1, float v_min1,
-                               float v_max1, float u_min2, float u_max2)
+inline bool InQuadSearchBounds(float x, float y, float uRight, float u_min1, float u_max1, float v_min1, float v_max1,
+                               float u_min2, float u_max2)
 {
     return x > u_min1 && x < u_max1 && y > v_min1 && y < v_max1 && uRight > u_min2 && uRight < u_max2;
 }
@@ -730,7 +730,8 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw, cons
     return nmatches;
 }
 
-int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::vector<int>& temporalMatches, int nmatch_radius)
+int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::vector<int>& temporalMatches,
+                             int nmatch_radius)
 {
 
     int nmatches = 0, count = 0;
@@ -786,7 +787,7 @@ int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::v
                         }
                     }
                     if (InQuadSearchBounds(currentFrame.mvKeys[j].pt.x, currentFrame.mvKeys[j].pt.y,
-                                          currentFrame.mvuRight[j], win))
+                                           currentFrame.mvuRight[j], win))
                     {
                         vCandidate.push_back(j);
                     }
@@ -843,7 +844,8 @@ int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::v
         ApplyRotationConsistency(
             rotHist, HISTO_LENGTH,
             [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
-            [&](int idx) {
+            [&](int idx)
+            {
                 currentFrame.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
                 temporalMatches[idx] = -1;
                 nmatches--;
@@ -883,8 +885,7 @@ int ORBmatcher::SearchByQuadKeyFrame(KeyFrame* pKF, Frame& F, std::vector<MapPoi
             const float uR = pKF->mvuRight[i];
             const float maxX = static_cast<float>(F.mnMaxX);
             const float maxY = static_cast<float>(F.mnMaxY);
-            const QuadSearchWindow win =
-                MakeQuadSearchWindow(x, y, uR, maxX, maxY, static_cast<float>(nmatch_radius));
+            const QuadSearchWindow win = MakeQuadSearchWindow(x, y, uR, maxX, maxY, static_cast<float>(nmatch_radius));
 
             for (int j = 0; j < F.N; j++)
             {
@@ -947,7 +948,8 @@ int ORBmatcher::SearchByQuadKeyFrame(KeyFrame* pKF, Frame& F, std::vector<MapPoi
         ApplyRotationConsistency(
             rotHist, HISTO_LENGTH,
             [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
-            [&](int idx) {
+            [&](int idx)
+            {
                 F.mvpMapPoints[idx] = static_cast<MapPoint*>(NULL);
                 nmatches--;
             });

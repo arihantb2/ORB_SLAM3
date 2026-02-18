@@ -15,6 +15,12 @@ struct MonocularDebugFrame
     std::vector<cv::KeyPoint> keypoints_detected;
     std::vector<cv::KeyPoint> keypoints_inlier;
     std::vector<cv::KeyPoint> keypoints_outlier;
+    // (last_frame_point, current_frame_point) in image coordinates for temporal tracking.
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> frame_to_frame_matches;
+    // (ref_keyframe_point, current_frame_point) for matches coming from the reference keyframe.
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> frame_to_ref_kf_matches;
+    // (local_map_point, current_frame_point) for matches coming from the local map (but not ref keyframe / frame-to-frame).
+    std::vector<std::pair<cv::Point2f, cv::Point2f>> frame_to_local_map_matches;
 };
 
 enum class StereoDebugMode
