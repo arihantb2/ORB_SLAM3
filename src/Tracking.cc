@@ -1343,7 +1343,7 @@ void Tracking::CheckReplacedInLastFrame()
     }
 }
 
-void Tracking::UpdateRefKeyFrame(std::vector<MapPoint*> vpMapPointsKF)
+void Tracking::UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF)
 {
     // We sort points according to their measured depth by the stereo/RGB-D sensor
     std::vector<std::pair<float, int>> vDepthIdx;
@@ -1504,12 +1504,18 @@ bool Tracking::TrackQuadWithMotionModel()
     mbFrame2Frame = true;
     ORBmatcher matcher(mMotionModelNNRatio, true);
 
-    // Save temperal matches for visualization
-    mvTemporalMatches = std::vector<int>(mCurrentFrame.N, -1);
-
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
+
+    if (mpAtlas->isImuInitialized())
+    {
+        PredictStateIMU();
+        return true;
+    }
+
+    // Save temperal matches for visualization
+    mvTemporalMatches = std::vector<int>(mCurrentFrame.N, -1);
 
     Sophus::SE3f iniTcw = mVelocity * mLastFrame.GetPose();
 
@@ -1526,7 +1532,9 @@ bool Tracking::TrackQuadWithMotionModel()
 
     if (nmatches < mMotionModelMinInitialMatches)
     {
-        // Retry with wider window
+        // Retry with wider window: reset match state so retry is consistent
+        std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
+        std::fill(mvTemporalMatches.begin(), mvTemporalMatches.end(), -1);
         nmatches =
             matcher.SearchByQuad(mCurrentFrame, mLastFrame, mvTemporalMatches, mMotionModelQuadSearchWindowSizeRetry);
 

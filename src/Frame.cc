@@ -840,7 +840,7 @@ void Frame::ComputeStereoMatches()
         }
 
         int bestDist = ORBmatcher::TH_HIGH;
-        size_t bestIdxR = 0;
+        size_t bestIdxR = static_cast<size_t>(-1);  // sentinel: no match
 
         const cv::Mat& dL = mDescriptors.row(iL);
 
@@ -870,9 +870,9 @@ void Frame::ComputeStereoMatches()
             }
         }
 
-        if (bestIdxR != 0)
+        if (bestIdxR != static_cast<size_t>(-1))
         {
-            vDescIndex[iL] = bestIdxR;
+            vDescIndex[iL] = static_cast<int>(bestIdxR);
         }
 
         // Subpixel match by correlation

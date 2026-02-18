@@ -751,7 +751,7 @@ int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::v
         }
         MapPoint* pMP = lastFrame.mvpMapPoints[i];
 
-        if (pMP)
+        if (pMP && !pMP->isBad())
         {
 
             if (!lastFrame.mvbOutlier[i])
@@ -775,13 +775,13 @@ int ORBmatcher::SearchByQuad(Frame& currentFrame, const Frame& lastFrame, std::v
                     {
                         continue;
                     }
-                    if (currentFrame.mvKeys[i].octave < nLastOctave - 1)
+                    if (currentFrame.mvKeys[j].octave < nLastOctave - 1)
                     {
                         continue;
                     }
                     if (nLastOctave + 1 >= 0)
                     {
-                        if (currentFrame.mvKeys[i].octave > nLastOctave + 1)
+                        if (currentFrame.mvKeys[j].octave > nLastOctave + 1)
                         {
                             continue;
                         }
@@ -875,7 +875,7 @@ int ORBmatcher::SearchByQuadKeyFrame(KeyFrame* pKF, Frame& F, std::vector<MapPoi
         }
         MapPoint* pMP = vpMapPointsKF[i];
 
-        if (pMP)
+        if (pMP && !pMP->isBad())
         {
 
             count = count + 1;

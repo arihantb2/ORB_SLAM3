@@ -329,7 +329,7 @@ protected:
     void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
 
     // Update the reference keyframe
-    void UpdateRefKeyFrame(std::vector<MapPoint*> vpMapPointsKF);
+    void UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF);
 
     mutable std::mutex mMutexMonocularDebugFrame;
     MonocularDebugFrame mLastMonocularDebugFrame;
