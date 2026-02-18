@@ -73,6 +73,7 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
     lastID = 0;
 
     std::vector<GeometricCamera*> vpCams = mpAtlas->GetAllCameras();
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
     for (GeometricCamera* pCam : vpCams)
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Camera " << pCam->GetId();
@@ -404,7 +405,6 @@ void Tracking::PreintegrateIMU()
             angVel = mvImuFromLastFrame[i].w;
             tstep = mCurrentFrame.mTimeStamp - mCurrentFrame.mpPrevFrame->mTimeStamp;
         }
-
         mpImuPreintegratedFromLastKF->IntegrateNewMeasurement(acc, angVel, tstep);
         pImuPreintegratedFromLastFrame->IntegrateNewMeasurement(acc, angVel, tstep);
     }
@@ -695,6 +695,10 @@ void Tracking::Track()
     }
 
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
+    if (!pCurrentMap)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "ERROR: There is not an active map in the atlas" << std::endl;
+    }
 
     if (mState != NO_IMAGES_YET)
     {
@@ -2425,6 +2429,7 @@ void Tracking::UpdateLocalKeyFrames()
 
 void Tracking::Reset(bool bLocMap)
 {
+    Verbose::PrintMess("System Reseting", Verbose::VERBOSITY_DEBUG);
     if (mpViewer)
     {
         mpViewer->RequestStop();

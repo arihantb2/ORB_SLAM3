@@ -69,7 +69,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
     System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
-           const bool bUseViewer = true, const bool bTurnOffLC = false);
+           const bool bUseViewer = true, const bool bTurnOffLC = false,
+           const std::string& strLogFile = "", const bool bVerboseConsole = false);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.

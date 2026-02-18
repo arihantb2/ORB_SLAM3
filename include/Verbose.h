@@ -1,7 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -21,6 +23,31 @@ public:
 
     static std::atomic<eLevel> th;
     static std::mutex cout_mutex;
+    static std::unique_ptr<std::ofstream> log_file_;
+    static std::atomic<bool> console_enabled;
+
+    static const char* LevelToString(eLevel lev)
+    {
+        switch (lev)
+        {
+            case VERBOSITY_QUIET: return "QUIET";
+            case VERBOSITY_NORMAL: return "NORMAL";
+            case VERBOSITY_DEBUG: return "DEBUG";
+        }
+        return "UNKNOWN";
+    }
+
+    static void SetLogFile(const std::string& path)
+    {
+        std::lock_guard<std::mutex> lock(cout_mutex);
+        log_file_.reset();
+        if (!path.empty())
+        {
+            log_file_ = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::trunc);
+        }
+    }
+
+    static void SetConsole(bool enabled) { console_enabled.store(enabled, std::memory_order_relaxed); }
 
 public:
     class VerboseStream
@@ -33,19 +60,12 @@ public:
         template <typename T>
         VerboseStream& operator<<(const T& value)
         {
-            if (level <= th.load(std::memory_order_relaxed))
-            {
-                buffer << value;
-            }
+            buffer << value;
             return *this;
         }
 
         VerboseStream& operator<<(std::ostream& (*manip)(std::ostream&))
         {
-            if (level > th.load(std::memory_order_relaxed))
-            {
-                return *this;
-            }
             manip(buffer);
             if (manip == static_cast<std::ostream& (*)(std::ostream&)>(std::endl) ||
                 manip == static_cast<std::ostream& (*)(std::ostream&)>(std::flush))
@@ -58,23 +78,32 @@ public:
     private:
         void Flush()
         {
-            if (level > th.load(std::memory_order_relaxed))
+            const std::string out = buffer.str();
+            if (out.empty())
             {
                 return;
             }
-            const std::string out = buffer.str();
-            if (!out.empty())
+            std::lock_guard<std::mutex> lock(cout_mutex);
+            if (log_file_ && *log_file_)
             {
-                std::lock_guard<std::mutex> lock(cout_mutex);
+                *log_file_ << "[" << LevelToString(level) << "] " << out;
+                if (out.back() != '\n')
+                {
+                    *log_file_ << '\n';
+                }
+                log_file_->flush();
+            }
+            if (console_enabled.load(std::memory_order_relaxed) && level <= th.load(std::memory_order_relaxed))
+            {
                 std::cout << out;
                 if (out.back() != '\n')
                 {
                     std::cout << '\n';
                 }
                 std::cout.flush();
-                buffer.str("");
-                buffer.clear();
             }
+            buffer.str("");
+            buffer.clear();
         }
 
         eLevel level;
@@ -85,9 +114,14 @@ public:
 
     static void PrintMess(const std::string& str, eLevel lev)
     {
-        if (lev <= th.load(std::memory_order_relaxed))
+        std::lock_guard<std::mutex> lock(cout_mutex);
+        if (log_file_ && *log_file_)
         {
-            std::lock_guard<std::mutex> lock(cout_mutex);
+            *log_file_ << "[" << LevelToString(lev) << "] " << str << std::endl;
+            log_file_->flush();
+        }
+        if (console_enabled.load(std::memory_order_relaxed) && lev <= th.load(std::memory_order_relaxed))
+        {
             std::cout << str << std::endl;
         }
     }

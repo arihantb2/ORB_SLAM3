@@ -124,14 +124,6 @@ GeometricCamera* Atlas::AddCamera(GeometricCamera* pCam)
     for (size_t i = 0; i < mvpCameras.size(); ++i)
     {
         GeometricCamera* pCam_i = mvpCameras[i];
-        if (!pCam)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Not pCam" << std::endl;
-        }
-        if (!pCam_i)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Not pCam_i" << std::endl;
-        }
         if (pCam->GetType() != pCam_i->GetType())
         {
             continue;
