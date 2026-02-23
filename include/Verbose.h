@@ -30,9 +30,12 @@ public:
     {
         switch (lev)
         {
-            case VERBOSITY_QUIET: return "QUIET";
-            case VERBOSITY_NORMAL: return "NORMAL";
-            case VERBOSITY_DEBUG: return "DEBUG";
+            case VERBOSITY_QUIET:
+                return "QUIET";
+            case VERBOSITY_NORMAL:
+                return "NORMAL";
+            case VERBOSITY_DEBUG:
+                return "DEBUG";
         }
         return "UNKNOWN";
     }

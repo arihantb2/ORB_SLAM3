@@ -42,8 +42,7 @@ std::unique_ptr<std::ofstream> Verbose::log_file_;
 std::atomic<bool> Verbose::console_enabled{false};
 
 System::System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const bool bTurnOffLC, const std::string& strLogFile,
-               const bool bVerboseConsole)
+               const bool bUseViewer, const bool bTurnOffLC, const std::string& strLogFile, const bool bVerboseConsole)
     : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     Verbose::SetLogFile(strLogFile);
@@ -196,8 +195,8 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
     }
 }
 
-Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
-                                 const std::vector<IMU::Point>& vImuMeas)
+TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
+                                   const std::vector<IMU::Point>& vImuMeas)
 {
     if (mSensor != STEREO && mSensor != IMU_STEREO)
     {
@@ -250,27 +249,19 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, 
         }
     }
 
-    Sophus::SE3f Tcw = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp);
+    TrackingResult tracking_result = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mMonocularDebugFrame = MonocularDebugFrame();
     mStereoDebugFrame = mpTracker->GetStereoDebugFrame();
 
-    return Tcw;
+    return tracking_result;
 }
 
-Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, const std::vector<IMU::Point>& vImuMeas)
+TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp,
+                                      const std::vector<IMU::Point>& vImuMeas)
 {
-
-    {
-        std::unique_lock<std::mutex> lock(mMutexReset);
-        if (mbShutDown)
-        {
-            return Sophus::SE3f();
-        }
-    }
-
     if (mSensor != MONOCULAR && mSensor != IMU_MONOCULAR)
     {
         throw std::runtime_error(
@@ -310,14 +301,14 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp, 
         }
     }
 
-    Sophus::SE3f Tcw = mpTracker->GrabImageMonocular(imToFeed, timestamp);
+    TrackingResult tracking_result = mpTracker->GrabImageMonocular(imToFeed, timestamp);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mMonocularDebugFrame = mpTracker->GetMonocularDebugFrame();
     mStereoDebugFrame = StereoDebugFrame();
 
-    return Tcw;
+    return tracking_result;
 }
 
 bool System::MapChanged()

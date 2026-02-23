@@ -49,6 +49,94 @@ class MapPoint;
 class ORBextractor;
 class GeometricCamera;
 
+struct MotionModelTrackingResult
+{
+    bool success = false;
+    bool used_quad_matching = false;
+    bool retry = false;
+
+    // Initial pose
+    Sophus::SE3f initial_pose;
+
+    // Number of matches before optimization
+    int num_matches = 0;
+    int num_matches_retry = 0;
+
+    // Matches before optimization
+    std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches;
+
+    // Number of matches after optimization
+    int num_matches_optimized = 0;
+
+    // Inliers after optimization
+    std::vector<cv::KeyPoint> keypoints_inliers_optimized;
+    // Outliers after optimization
+    std::vector<cv::KeyPoint> keypoints_outliers_optimized;
+    // Matches after optimization
+    std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches_optimized;
+
+    // Optimized Pose
+    Sophus::SE3f pose;
+};
+
+struct RefKeyFrameTrackingResult
+{
+    bool success = false;
+    bool used_quad_matching = false;
+
+    // Number of matches before optimization
+    int num_matches = 0;
+
+    // Matches before optimization
+    std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches;
+
+    // Number of matches after optimization
+    int num_matches_optimized = 0;
+
+    // Inliers after optimization
+    std::vector<cv::KeyPoint> keypoints_inliers_optimized;
+    // Outliers after optimization
+    std::vector<cv::KeyPoint> keypoints_outliers_optimized;
+    // Matches after optimization
+    std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches_optimized;
+
+    // Optimized Pose
+    Sophus::SE3f pose;
+};
+
+struct LocalMapTrackingResult
+{
+    bool success = false;
+    int num_matches = 0;
+
+    // Inliers
+    std::vector<cv::KeyPoint> keypoints_inliers;
+
+    // Outliers
+    std::vector<cv::KeyPoint> keypoints_outliers;
+
+    // Matches
+    std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches;
+
+    // Pose
+    Sophus::SE3f pose;
+};
+
+struct TrackingResult
+{
+    bool ref_keyframe_tracking_primary = false;
+    bool motion_model_tracking_primary = false;
+    bool ref_keyframe_tracking_fallback = false;
+
+    bool success = false;
+
+    RefKeyFrameTrackingResult ref_key_frame_result;
+    MotionModelTrackingResult motion_model_result;
+    LocalMapTrackingResult local_map_result;
+
+    Sophus::SE3f pose;
+};
+
 class Tracking
 {
 
@@ -60,8 +148,8 @@ public:
     ~Tracking();
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    Sophus::SE3f GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp);
-    Sophus::SE3f GrabImageMonocular(const cv::Mat& im, const double& timestamp);
+    TrackingResult GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp);
+    TrackingResult GrabImageMonocular(const cv::Mat& im, const double& timestamp);
 
     void GrabImuData(const IMU::Point& imuMeasurement);
 
@@ -147,9 +235,9 @@ public:
 
 protected:
     // Main tracking function. It is independent of the input sensor.
-    void Track();
-    bool TrackStereo();
-    bool TrackMonocular();
+    TrackingResult Track();
+    void TrackStereo(TrackingResult& tracking_result);
+    void TrackMonocular(TrackingResult& tracking_result);
 
     // Stereo Initialization
     void StereoInitialization();
@@ -159,19 +247,20 @@ protected:
     void CreateInitialMapMonocular();
 
     void CheckReplacedInLastFrame();
-    bool TrackReferenceKeyFrameWithBoW();
     void UpdateLastFrame();
-    bool TrackWithMotionModel();
     bool PredictStateIMU();
 
-    bool TrackQuadReferenceKeyFrame();
-    bool TrackQuadWithMotionModel();
+    RefKeyFrameTrackingResult TrackReferenceKeyFrameWithBoW();
+    MotionModelTrackingResult TrackWithMotionModel();
+
+    RefKeyFrameTrackingResult TrackQuadReferenceKeyFrame();
+    MotionModelTrackingResult TrackQuadWithMotionModel();
 
     void UpdateLocalMap();
     void UpdateLocalPoints();
     void UpdateLocalKeyFrames();
 
-    bool TrackLocalMap();
+    LocalMapTrackingResult TrackLocalMap();
     void SearchLocalPoints();
 
     bool NeedNewKeyFrame();
