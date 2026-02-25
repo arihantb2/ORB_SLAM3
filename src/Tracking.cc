@@ -36,10 +36,9 @@
 #include "Viewer.h"
 
 #include <algorithm>
-#include <unordered_set>
-#include <utility>
-
 #include <mutex>
+#include <optional>
+#include <utility>
 
 namespace ORB_SLAM3
 {
@@ -218,7 +217,8 @@ void Tracking::SetViewer(Viewer* pViewer)
     mpViewer = pViewer;
 }
 
-TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat& imageRight, const double& timestamp)
+TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat& imageRight, const double& timestamp,
+                                         const std::optional<Sophus::SE3f>& posePrior)
 {
     if (imageLeft.channels() != 1)
     {
@@ -247,8 +247,12 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
                               mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera, &mLastFrame, *mpImuCalib);
     }
 
+    if (posePrior.has_value())
+    {
+        mCurrentFrame.setPosePrior(posePrior.value());
+    }
+
     TrackingResult result = Track();
-    UpdateStereoDebugFrame(imageLeft, imageRight);
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
@@ -256,7 +260,8 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
     return result;
 }
 
-TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& timestamp)
+TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& timestamp,
+                                            const std::optional<Sophus::SE3f>& posePrior)
 {
     if (image.channels() != 1)
     {
@@ -270,6 +275,7 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
+
     if (mSensor == System::MONOCULAR)
     {
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
@@ -297,9 +303,13 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
         }
     }
 
+    if (posePrior.has_value())
+    {
+        mCurrentFrame.setPosePrior(posePrior.value());
+    }
+
     lastID = mCurrentFrame.mnId;
     TrackingResult result = Track();
-    UpdateMonocularDebugFrame(image);
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
@@ -549,23 +559,36 @@ void Tracking::UpdateAfterTracking(bool bOK)
     // Update motion model
     if (mLastFrame.isSet() && mCurrentFrame.isSet())
     {
-        const Sophus::SE3f& Tcw_last = mLastFrame.GetPose();
-        const Sophus::SE3f& Tcw_cur = mCurrentFrame.GetPose();
+        const Sophus::SE3f& T_cLastw = mLastFrame.GetPose();
+        const Sophus::SE3f& T_cCurrw = mCurrentFrame.GetPose();
+
+        // takes points in cLast frame and moves them to the cCurr frame
+        const Sophus::SE3f& T_cCurrcLast = T_cCurrw * T_cLastw.inverse();
 
         // Relative motion (last camera -> current camera) in Tcw convention
-        mVelocity = Tcw_cur * Tcw_last.inverse();
+        mVelocity = T_cCurrcLast;
 
         // Delta position in world frame
-        Eigen::Vector3f twc_last = Tcw_last.inverse().translation();
-        Eigen::Vector3f twc_cur = Tcw_cur.inverse().translation();
-        Eigen::Vector3f delta_w = twc_cur - twc_last;
+        const Eigen::Vector3f& p_wcLast = T_cLastw.inverse().translation();
+        const Eigen::Vector3f& p_wcCurr = T_cCurrw.inverse().translation();
+
+        // motion from frame cLast to frame cCurr as seen in the world frame
+        const Eigen::Vector3f& p_cLastcCurr_w = p_wcCurr - p_wcLast;
+
+        // motion from frane cLast to frame cCurr as seen in the cLast frame
+        const auto R_cLastw = T_cLastw.rotationMatrix();
+        const Eigen::Vector3f& p_cLastcCurr_cLast = R_cLastw * p_cLastcCurr_w;
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "Velocity (delta position): " << delta_w.transpose()
-            << " m, dt: " << std::fixed << std::setprecision(6) << mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp
-            << " s" << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "p_cLastcCurr_w: " << p_cLastcCurr_w.transpose() << " m"
+            << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "Velocity norm: " << delta_w.norm() << " m" << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "p_cLastcCurr_cLast: " << p_cLastcCurr_cLast.transpose() << " m"
+            << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "Quantity of motion: " << p_cLastcCurr_w.norm() << " m"
+            << std::endl;
+
         mbVelocity = true;
     }
     else
@@ -695,6 +718,33 @@ void Tracking::TrackMonocular(TrackingResult& tracking_result)
         tracking_result.ref_key_frame_result.success || tracking_result.motion_model_result.success;
 }
 
+void Tracking::ComputeVelocityFromPriors()
+{
+    if (mCurrentFrame.hasPosePrior() && mLastFrame.hasPosePrior())
+    {
+        const auto& T_wcLastPrior = mLastFrame.mPosePrior.value();
+        const auto& T_cCurrwPrior = mCurrentFrame.mPosePrior.value().inverse();
+        const auto& T_cLastPriorcCurrPrior = T_cCurrwPrior * T_wcLastPrior;
+
+        mVelocity = T_cLastPriorcCurrPrior;
+        mbVelocity = true;
+
+        const Eigen::Vector3f& p_cLastPriorcCurrPrior_w = T_cLastPriorcCurrPrior.translation();
+        const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast =
+            T_wcLastPrior.inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
+
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "p_cLastPriorcCurrPrior_w: " << p_cLastPriorcCurrPrior_w.transpose()
+            << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] "
+            << "p_cLastPriorcCurrPrior_cLast: " << p_cLastPriorcCurrPrior_cLast.transpose() << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "Quantity of motion prior: " << p_cLastPriorcCurrPrior_w.norm()
+            << " m" << std::endl;
+    }
+}
+
 TrackingResult Tracking::Track()
 {
     if (mpLocalMapper->mbBadImu)
@@ -759,6 +809,8 @@ TrackingResult Tracking::Track()
         {
             // Local Mapping might have changed some MapPoints tracked in last frame
             CheckReplacedInLastFrame();
+
+            ComputeVelocityFromPriors();
 
             if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
             {
@@ -2703,163 +2755,6 @@ void Tracking::UpdateFrameIMU(const float s, const IMU::Bias& b, KeyFrame* pCurr
 int Tracking::GetMatchesInliers()
 {
     return mnMatchesInliers;
-}
-
-MonocularDebugFrame Tracking::GetMonocularDebugFrame() const
-{
-    std::unique_lock<std::mutex> lock(mMutexMonocularDebugFrame);
-    return mLastMonocularDebugFrame;
-}
-
-MonocularDebugFrame Tracking::BuildMonocularDebugFrame(const Frame& frame, const cv::Mat& image) const
-{
-    MonocularDebugFrame debugFrame;
-    debugFrame.image = image.clone();
-    debugFrame.keypoints_detected = frame.mvKeys;
-    const size_t n = frame.mvKeys.size();
-    if (frame.mvpMapPoints.size() != n || frame.mvbOutlier.size() != n)
-    {
-        return debugFrame;
-    }
-    debugFrame.keypoints_inlier.reserve(n);
-    debugFrame.keypoints_outlier.reserve(n);
-    for (size_t i = 0; i < n; ++i)
-    {
-        if (frame.mvpMapPoints[i])
-        {
-            if (frame.mvbOutlier[i])
-            {
-                debugFrame.keypoints_outlier.push_back(frame.mvKeys[i]);
-            }
-            else
-            {
-                debugFrame.keypoints_inlier.push_back(frame.mvKeys[i]);
-            }
-        }
-    }
-    // Copy precomputed debug correspondences from the frame.
-    debugFrame.frame_to_frame_matches = frame.mDebugFrame2FrameMatches;
-    debugFrame.frame_to_ref_kf_matches = frame.mDebugFrame2RefKfMatches;
-    debugFrame.frame_to_local_map_matches = frame.mDebugFrame2LocalMapMatches;
-
-    return debugFrame;
-}
-
-void Tracking::UpdateMonocularDebugFrame(const cv::Mat& image)
-{
-    MonocularDebugFrame debugFrame = BuildMonocularDebugFrame(mCurrentFrame, image);
-    std::unique_lock<std::mutex> lock(mMutexMonocularDebugFrame);
-    mLastMonocularDebugFrame = std::move(debugFrame);
-}
-
-StereoDebugFrame Tracking::GetStereoDebugFrame() const
-{
-    std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
-    return mLastStereoDebugFrame;
-}
-
-StereoDebugFrame Tracking::BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
-                                                                 const cv::Mat& rightRectified, const Frame* pLastFrame,
-                                                                 const cv::Mat* pLastLeftRectified,
-                                                                 const cv::Mat* pLastRightRectified) const
-{
-    StereoDebugFrame debugFrame;
-    debugFrame.mode = StereoDebugMode::METASHAPE_PINHOLE;
-    debugFrame.left_rectified = leftRectified.clone();
-    debugFrame.right_rectified = rightRectified.clone();
-    debugFrame.left_keypoints = frame.mvKeys;
-    debugFrame.right_keypoints = frame.mvKeysRight;
-
-    const size_t n = std::min(frame.mvKeys.size(), frame.mvuRight.size());
-    debugFrame.matches.reserve(n);
-    debugFrame.match_lines.reserve(n);
-    for (size_t i = 0; i < n; ++i)
-    {
-        const float uRight = frame.mvuRight[i];
-        if (uRight < 0.0f)
-        {
-            continue;
-        }
-
-        StereoMatchDebug match;
-        match.left_idx = static_cast<int>(i);
-        match.right_idx = -1;
-        match.left_point = frame.mvKeys[i].pt;
-        match.right_point = cv::Point2f(uRight, frame.mvKeys[i].pt.y);
-        match.disparity = match.left_point.x - match.right_point.x;
-        if (i < frame.mvDepth.size() && frame.mvDepth[i] > 0.0f)
-        {
-            match.depth = frame.mvDepth[i];
-            match.has_depth = true;
-        }
-        debugFrame.matches.push_back(match);
-        debugFrame.match_lines.emplace_back(match.left_point.x, match.left_point.y, match.right_point.x,
-                                            match.right_point.y);
-    }
-
-    if (pLastLeftRectified && !pLastLeftRectified->empty())
-    {
-        debugFrame.last_left_rectified = pLastLeftRectified->clone();
-    }
-    if (pLastRightRectified && !pLastRightRectified->empty())
-    {
-        debugFrame.last_right_rectified = pLastRightRectified->clone();
-    }
-
-    if (pLastFrame && !frame.mvpMapPoints.empty())
-    {
-        debugFrame.frame_to_frame_matches.reserve(frame.mvpMapPoints.size());
-        for (size_t i = 0; i < frame.mvpMapPoints.size(); ++i)
-        {
-            MapPoint* pMP = frame.mvpMapPoints[i];
-            if (!pMP)
-            {
-                continue;
-            }
-            for (size_t j = 0; j < pLastFrame->mvpMapPoints.size(); ++j)
-            {
-                if (pLastFrame->mvpMapPoints[j] == pMP)
-                {
-                    cv::Point2f lastPt = pLastFrame->mvKeys[j].pt;
-                    cv::Point2f currPt = frame.mvKeys[i].pt;
-                    debugFrame.frame_to_frame_matches.push_back(std::make_pair(lastPt, currPt));
-                    break;
-                }
-            }
-        }
-    }
-
-    if (pLastFrame)
-    {
-        debugFrame.last_left_keypoints = pLastFrame->mvKeys;
-        debugFrame.last_right_keypoints = pLastFrame->mvKeysRight;
-    }
-
-    return debugFrame;
-}
-
-void Tracking::UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified)
-{
-    const cv::Mat* pLastLeft = nullptr;
-    const cv::Mat* pLastRight = nullptr;
-    {
-        std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
-        if (!mLastStereoDebugFrame.left_rectified.empty())
-        {
-            pLastLeft = &mLastStereoDebugFrame.left_rectified;
-        }
-        if (!mLastStereoDebugFrame.right_rectified.empty())
-        {
-            pLastRight = &mLastStereoDebugFrame.right_rectified;
-        }
-    }
-
-    const Frame* pLastFrame = (mLastFrame.isSet() && mLastFrame.N > 0) ? &mLastFrame : nullptr;
-    StereoDebugFrame debugFrame = BuildStereoDebugFrameMetashapePinhole(mCurrentFrame, leftRectified, rightRectified,
-                                                                        pLastFrame, pLastLeft, pLastRight);
-
-    std::unique_lock<std::mutex> lock(mMutexStereoDebugFrame);
-    mLastStereoDebugFrame = std::move(debugFrame);
 }
 
 float Tracking::GetImageScale()

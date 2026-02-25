@@ -23,13 +23,13 @@
 #include <unistd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
-#include "StereoDebug.h"
 
 namespace ORB_SLAM3
 {
@@ -78,12 +78,14 @@ public:
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     TrackingResult TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
+                               const std::optional<Sophus::SE3f>& posePrior = std::nullopt,
                                const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
 
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     TrackingResult TrackMonocular(const cv::Mat& im, const double& timestamp,
+                                  const std::optional<Sophus::SE3f>& posePrior = std::nullopt,
                                   const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
 
     // Returns true if there have been a big map change (loop closure, global BA)
@@ -103,8 +105,6 @@ public:
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo)
     int GetTrackingState();
-    MonocularDebugFrame GetMonocularDebugFrame();
-    StereoDebugFrame GetStereoDebugFrame();
 
     // Keyframe trajectory in the world frame.
     std::vector<Sophus::SE3f> GetKeyframeTrajectory();
@@ -167,9 +167,6 @@ private:
 
     // Tracking state
     int mTrackingState;
-
-    MonocularDebugFrame mMonocularDebugFrame;
-    StereoDebugFrame mStereoDebugFrame;
 
     std::mutex mMutexState;
 

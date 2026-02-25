@@ -196,6 +196,7 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
 }
 
 TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
+                                   const std::optional<Sophus::SE3f>& posePrior,
                                    const std::vector<IMU::Point>& vImuMeas)
 {
     if (mSensor != STEREO && mSensor != IMU_STEREO)
@@ -253,13 +254,12 @@ TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
-    mMonocularDebugFrame = MonocularDebugFrame();
-    mStereoDebugFrame = mpTracker->GetStereoDebugFrame();
 
     return tracking_result;
 }
 
 TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp,
+                                      const std::optional<Sophus::SE3f>& posePrior,
                                       const std::vector<IMU::Point>& vImuMeas)
 {
     if (mSensor != MONOCULAR && mSensor != IMU_MONOCULAR)
@@ -305,8 +305,6 @@ TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
-    mMonocularDebugFrame = mpTracker->GetMonocularDebugFrame();
-    mStereoDebugFrame = StereoDebugFrame();
 
     return tracking_result;
 }
@@ -400,18 +398,6 @@ int System::GetTrackingState()
 {
     std::unique_lock<std::mutex> lock(mMutexState);
     return mTrackingState;
-}
-
-MonocularDebugFrame System::GetMonocularDebugFrame()
-{
-    std::unique_lock<std::mutex> lock(mMutexState);
-    return mMonocularDebugFrame;
-}
-
-StereoDebugFrame System::GetStereoDebugFrame()
-{
-    std::unique_lock<std::mutex> lock(mMutexState);
-    return mStereoDebugFrame;
 }
 
 std::vector<Sophus::SE3f> System::GetKeyframeTrajectory()

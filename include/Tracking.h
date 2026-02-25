@@ -23,6 +23,7 @@
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,7 +31,6 @@
 #include "Frame.h"
 #include "ImuTypes.h"
 #include "ORBVocabulary.h"
-#include "StereoDebug.h"
 
 namespace ORB_SLAM3
 {
@@ -148,8 +148,10 @@ public:
     ~Tracking();
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    TrackingResult GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp);
-    TrackingResult GrabImageMonocular(const cv::Mat& im, const double& timestamp);
+    TrackingResult GrabImageStereo(const cv::Mat& imRectLeft, const cv::Mat& imRectRight, const double& timestamp,
+                                   const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
+    TrackingResult GrabImageMonocular(const cv::Mat& im, const double& timestamp,
+                                      const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
     void GrabImuData(const IMU::Point& imuMeasurement);
 
@@ -165,10 +167,13 @@ public:
     void CreateMapInAtlas();
 
     int GetMatchesInliers();
-    MonocularDebugFrame GetMonocularDebugFrame() const;
-    StereoDebugFrame GetStereoDebugFrame() const;
 
     float GetImageScale();
+
+    void Reset(bool bLocMap = false);
+    void ResetActiveMap(bool bLocMap = false);
+
+    std::vector<MapPoint*> GetLocalMapMPS();
 
     // Tracking states
     enum eTrackingState
@@ -228,11 +233,6 @@ public:
     std::list<double> mlFrameTimes;
     std::list<bool> mlbLost;
 
-    void Reset(bool bLocMap = false);
-    void ResetActiveMap(bool bLocMap = false);
-
-    std::vector<MapPoint*> GetLocalMapMPS();
-
 protected:
     // Main tracking function. It is independent of the input sensor.
     TrackingResult Track();
@@ -279,6 +279,15 @@ protected:
     void UpdateAfterTracking(bool bOK);
     int DiscardOutliersAndCountInliers(Frame& frame, int& nmatches, bool clearTrackInViewFlag);
     void BuildDepthIndex(const Frame& frame, int N, std::vector<std::pair<float, int>>& vDepthIdx) const;
+
+    // Compute velocity from priors
+    void ComputeVelocityFromPriors();
+
+    // Load settings
+    void loadFromSettings(Settings* settings);
+
+    // Update the reference keyframe
+    void UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF);
 
     bool mbMapUpdated;
 
@@ -404,27 +413,6 @@ protected:
     GeometricCamera* mpCamera;
 
     int initID, lastID;
-
-    void loadFromSettings(Settings* settings);
-
-    MonocularDebugFrame BuildMonocularDebugFrame(const Frame& frame, const cv::Mat& image) const;
-    void UpdateMonocularDebugFrame(const cv::Mat& image);
-
-    StereoDebugFrame BuildStereoDebugFrameMetashapePinhole(const Frame& frame, const cv::Mat& leftRectified,
-                                                           const cv::Mat& rightRectified,
-                                                           const Frame* pLastFrame = nullptr,
-                                                           const cv::Mat* pLastLeftRectified = nullptr,
-                                                           const cv::Mat* pLastRightRectified = nullptr) const;
-    void UpdateStereoDebugFrame(const cv::Mat& leftRectified, const cv::Mat& rightRectified);
-
-    // Update the reference keyframe
-    void UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF);
-
-    mutable std::mutex mMutexMonocularDebugFrame;
-    MonocularDebugFrame mLastMonocularDebugFrame;
-
-    mutable std::mutex mMutexStereoDebugFrame;
-    StereoDebugFrame mLastStereoDebugFrame;
 };
 
 }  // namespace ORB_SLAM3

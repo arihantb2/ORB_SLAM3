@@ -19,8 +19,6 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include <vector>
-
 #include "DBoW2/BowVector.h"
 #include "DBoW2/FeatureVector.h"
 
@@ -30,6 +28,9 @@
 #include "Settings.h"
 
 #include <mutex>
+#include <optional>
+#include <vector>
+
 #include <opencv2/opencv.hpp>
 
 #include "sophus/se3.hpp"
@@ -144,11 +145,10 @@ public:
     std::vector<int> mvLeftToRightMatch;
     std::vector<int> mvRightToLeftMatch;
 
-    cv::Mat imgLeft;
-    cv::Mat imgRight;
+    // Pose prior
+    std::optional<Sophus::SE3f> mPosePrior;
 
-    Sophus::SE3<double> T_test;
-
+    // Estimated pose
     Sophus::SE3<float> mTcw;
     Eigen::Matrix<float, 3, 3> mRwc;
     Eigen::Matrix<float, 3, 1> mOw;
@@ -196,6 +196,9 @@ public:
     bool imuIsPreintegrated();
     void setIntegrated();
     bool isSet() const;
+
+    void setPosePrior(const Sophus::SE3f& posePrior) { mPosePrior = posePrior; }
+    bool hasPosePrior() const { return mPosePrior.has_value(); }
 
     void UpdatePoseMatrices();
     inline Eigen::Vector3f GetCameraCenter() { return mOw; }
