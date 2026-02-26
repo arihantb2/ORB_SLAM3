@@ -985,7 +985,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nInitialCorrespondences=" << nInitialCorrespondences
         << std::endl;
     Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nMatches= " << nInitialCorrespondences - nBad << std::endl;
+        << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nMatches=" << nInitialCorrespondences - nBad << std::endl;
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nOutliers=" << nBad << std::endl;
 

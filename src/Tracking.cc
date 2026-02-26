@@ -249,6 +249,9 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
 
     if (posePrior.has_value())
     {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_STEREO: TwcPrior" << mCurrentFrame.mnId << ": "
+            << posePrior.value().translation().transpose() << std::endl;
         mCurrentFrame.setPosePrior(posePrior.value());
     }
 
@@ -305,6 +308,9 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
 
     if (posePrior.has_value())
     {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_MONOCULAR: TwcPrior" << mCurrentFrame.mnId << ": "
+            << posePrior.value().translation().transpose() << std::endl;
         mCurrentFrame.setPosePrior(posePrior.value());
     }
 
@@ -580,14 +586,15 @@ void Tracking::UpdateAfterTracking(bool bOK)
         const Eigen::Vector3f& p_cLastcCurr_cLast = R_cLastw * p_cLastcCurr_w;
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "p_cLastcCurr_w: " << p_cLastcCurr_w.transpose() << " m"
+            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
+            << mCurrentFrame.mnId << "_w: " << p_cLastcCurr_w.transpose() << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
+            << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << ": " << p_cLastcCurr_cLast.transpose() << " m"
             << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "p_cLastcCurr_cLast: " << p_cLastcCurr_cLast.transpose() << " m"
-            << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "Quantity of motion: " << p_cLastcCurr_w.norm() << " m"
-            << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: Quantity of motion ||p||_c"
+            << mLastFrame.mnId << "c" << mCurrentFrame.mnId << ": " << p_cLastcCurr_w.norm() << " m" << std::endl;
 
         mbVelocity = true;
     }
@@ -720,27 +727,74 @@ void Tracking::TrackMonocular(TrackingResult& tracking_result)
 
 void Tracking::ComputeVelocityFromPriors()
 {
+    auto compute_velocity = [](const Sophus::SE3f& T_wcCurr, const Sophus::SE3f& T_wcLast) -> Sophus::SE3f
+    {
+        const auto& T_cCurrw = T_wcCurr.inverse();
+        const auto& T_cCurrcLast = T_cCurrw * T_wcLast;
+
+        return T_cCurrcLast;
+    };
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mCurrentFrame.mnId << "] COMPUTE_VELOCITY_FROM_PRIORS: mCurrentFrame.hasPosePrior: " << std::boolalpha
+        << mCurrentFrame.hasPosePrior() << std::endl;
+
+    if (mState == NOT_INITIALIZED)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId
+            << "] COMPUTE_VELOCITY_FROM_PRIORS: mInitialFrame.hasPosePrior: " << std::boolalpha
+            << mInitialFrame.hasPosePrior() << std::endl;
+    }
+    else
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId
+            << "] COMPUTE_VELOCITY_FROM_PRIORS: mLastFrame.hasPosePrior: " << std::boolalpha
+            << mLastFrame.hasPosePrior() << std::endl;
+    }
+
     if (mCurrentFrame.hasPosePrior() && mLastFrame.hasPosePrior())
     {
-        const auto& T_wcLastPrior = mLastFrame.mPosePrior.value();
-        const auto& T_cCurrwPrior = mCurrentFrame.mPosePrior.value().inverse();
-        const auto& T_cLastPriorcCurrPrior = T_cCurrwPrior * T_wcLastPrior;
-
-        mVelocity = T_cLastPriorcCurrPrior;
+        mVelocity = compute_velocity(*mCurrentFrame.mPosePrior, *mLastFrame.mPosePrior);
         mbVelocity = true;
 
-        const Eigen::Vector3f& p_cLastPriorcCurrPrior_w = T_cLastPriorcCurrPrior.translation();
+        const Eigen::Vector3f& p_cLastPriorcCurrPrior_w = mVelocity.inverse().translation();
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast =
-            T_wcLastPrior.inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
+            mLastFrame.mPosePrior->inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "p_cLastPriorcCurrPrior_w: " << p_cLastPriorcCurrPrior_w.transpose()
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
+            << mCurrentFrame.mnId << "Prior_w: " << p_cLastPriorcCurrPrior_w.transpose() << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
+            << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId << ": " << p_cLastPriorcCurrPrior_cLast.transpose()
             << " m" << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] "
-            << "p_cLastPriorcCurrPrior_cLast: " << p_cLastPriorcCurrPrior_cLast.transpose() << " m" << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Quantity of motion ||p||_c"
+            << mLastFrame.mnId << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cLastPriorcCurrPrior_w.norm() << " m"
+            << std::endl;
+    }
+    else if (mCurrentFrame.hasPosePrior() && mInitialFrame.hasPosePrior())
+    {
+        mVelocity = compute_velocity(*mCurrentFrame.mPosePrior, *mInitialFrame.mPosePrior);
+        mbVelocity = true;
+
+        const Eigen::Vector3f& p_cInitialPriorcCurrPrior_w = mVelocity.inverse().translation();
+        const Eigen::Vector3f& p_cInitialPriorcCurrPrior_cInitial =
+            mInitialFrame.mPosePrior->inverse().rotationMatrix() * p_cInitialPriorcCurrPrior_w;
+
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "Quantity of motion prior: " << p_cLastPriorcCurrPrior_w.norm()
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mInitialFrame.mnId
+            << "Priorc" << mCurrentFrame.mnId << "Prior_w: " << p_cInitialPriorcCurrPrior_w.transpose() << " m"
+            << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mInitialFrame.mnId
+            << "Priorc" << mCurrentFrame.mnId << "Prior_c" << mInitialFrame.mnId << ": "
+            << p_cInitialPriorcCurrPrior_cInitial.transpose() << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Quantity of motion ||p||_c"
+            << mInitialFrame.mnId << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cInitialPriorcCurrPrior_w.norm()
             << " m" << std::endl;
     }
 }
@@ -797,6 +851,8 @@ TrackingResult Tracking::Track()
 
     UpdateMapChangeState(pCurrentMap);
 
+    ComputeVelocityFromPriors();
+
     TrackingResult tracking_result;
     if (mState == NOT_INITIALIZED)
     {
@@ -809,8 +865,6 @@ TrackingResult Tracking::Track()
         {
             // Local Mapping might have changed some MapPoints tracked in last frame
             CheckReplacedInLastFrame();
-
-            ComputeVelocityFromPriors();
 
             if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
             {
@@ -1035,8 +1089,12 @@ void Tracking::MonocularInitialization()
         // Set Reference Frame
         if (mCurrentFrame.mvKeys.size() > mMonocularInitMinKeypoints)
         {
-
             mInitialFrame = Frame(mCurrentFrame);
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId
+                << "] MONOCULAR_INITIALIZATION: Set mInitialFrame to id: " << mInitialFrame.mnId << std::endl;
+
             mLastFrame = Frame(mCurrentFrame);
             mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
             for (size_t i = 0; i < mCurrentFrame.mvKeysUn.size(); i++)
@@ -1072,10 +1130,40 @@ void Tracking::MonocularInitialization()
             return;
         }
 
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mInitialFrame[" << mInitialFrame.mnId
+            << "].hasPosePrior: " << std::boolalpha << mInitialFrame.hasPosePrior() << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mCurrentFrame[" << mCurrentFrame.mnId
+            << "].hasPosePrior: " << std::boolalpha << mCurrentFrame.hasPosePrior() << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mbVelocity: " << std::boolalpha << mbVelocity
+            << std::endl;
+
         // Find correspondences
         ORBmatcher matcher(mMonocularInitNNRatio, true);
-        int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
+        int nmatches = 0;
+        if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity)
+        {
+            mInitialFrame.SetPose(Sophus::SE3f());
+            mCurrentFrame.SetPose(mVelocity * mInitialFrame.GetPose());
+
+            nmatches =
+                matcher.SearchByProjection(mCurrentFrame, mInitialFrame, mMotionModelProjectionSearchThMono, true);
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION_W_POSE_PRIORS: nmatches: " << nmatches
+                << std::endl;
+        }
+
+        if (nmatches < mMotionModelMinInitialMatches)
+        {
+            nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
                                                        mMonocularInitSearchWindowSize);
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION: nmatches: " << nmatches << std::endl;
+        }
 
         // Check if there are enough correspondences
         if (nmatches < mMonocularInitMinMatches)
@@ -1105,6 +1193,17 @@ void Tracking::MonocularInitialization()
             // Set Frame Poses
             mInitialFrame.SetPose(Sophus::SE3f());
             mCurrentFrame.SetPose(Tcw);
+
+            const auto& Twc = Tcw.inverse();
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId << "] "
+                << "MONOCULAR_INITIALIZATION: Twc: " << Twc.translation().transpose() << std::endl;
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId << "] "
+                << "MONOCULAR_INITIALIZATION: Motion ||p||_cInitialcCurr: " << Twc.translation().norm() << " m"
+                << std::endl;
 
             CreateInitialMapMonocular();
         }
@@ -1168,44 +1267,47 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(), 20);
 
-    float medianDepth = pKFini->ComputeSceneMedianDepth(2);
-    float invMedianDepth;
-    if (mSensor == System::IMU_MONOCULAR)
+    if (!mInitialFrame.hasPosePrior() || !mCurrentFrame.hasPosePrior())
     {
-        invMedianDepth = 4.0f / medianDepth;  // 4.0f
-    }
-    else
-    {
-        invMedianDepth = 1.0f / medianDepth;
-    }
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Median depth [" << medianDepth << "]."
-        << std::endl;
-
-    if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 50)  // TODO Check, originally 100 tracks
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Wrong initialization, reseting..."
-            << std::endl;
-        mpSystem->ResetActiveMap();
-        return;
-    }
-
-    // Scale initial baseline
-    Sophus::SE3f Tc2w = pKFcur->GetPose();
-    Tc2w.translation() *= invMedianDepth;
-    pKFcur->SetPose(Tc2w);
-
-    // Scale points
-    std::vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
-    for (size_t iMP = 0; iMP < vpAllMapPoints.size(); iMP++)
-    {
-        if (vpAllMapPoints[iMP])
+        float medianDepth = pKFini->ComputeSceneMedianDepth(2);
+        float invMedianDepth;
+        if (mSensor == System::IMU_MONOCULAR)
         {
-            MapPoint* pMP = vpAllMapPoints[iMP];
-            pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
-            pMP->UpdateNormalAndDepth();
+            invMedianDepth = 4.0f / medianDepth;  // 4.0f
+        }
+        else
+        {
+            invMedianDepth = 1.0f / medianDepth;
+        }
+
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Median depth [" << medianDepth << "]."
+            << std::endl;
+
+        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 50)  // TODO Check, originally 100 tracks
+        {
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Wrong initialization, reseting..."
+                << std::endl;
+            mpSystem->ResetActiveMap();
+            return;
+        }
+
+        // Scale initial baseline
+        Sophus::SE3f Tc2w = pKFcur->GetPose();
+        Tc2w.translation() *= invMedianDepth;
+        pKFcur->SetPose(Tc2w);
+
+        // Scale points
+        std::vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
+        for (size_t iMP = 0; iMP < vpAllMapPoints.size(); iMP++)
+        {
+            if (vpAllMapPoints[iMP])
+            {
+                MapPoint* pMP = vpAllMapPoints[iMP];
+                pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
+                pMP->UpdateNormalAndDepth();
+            }
         }
     }
 

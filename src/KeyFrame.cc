@@ -165,7 +165,8 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
       mvKeysRight(F.mvKeysRight),
       NLeft(F.Nleft),
       mnNumberOfOpt(0),
-      mbHasVelocity(false)
+      mbHasVelocity(false),
+      mPosePrior(F.mPosePrior)
 {
     mnId = nNextId++;
 

@@ -140,6 +140,9 @@ public:
     const std::vector<cv::KeyPoint> mvKeysRight;
     const int NLeft;
 
+    // Pose prior
+    std::optional<Sophus::SE3f> mPosePrior;
+
     // --- Public member functions ---
     KeyFrame();
     KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB);
@@ -220,6 +223,8 @@ public:
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
+
+    bool hasPosePrior() const { return mPosePrior.has_value(); }
 
 protected:
     // --- Protected member variables (mutex-protected) ---

@@ -250,7 +250,7 @@ TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight
         }
     }
 
-    TrackingResult tracking_result = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp);
+    TrackingResult tracking_result = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp, posePrior);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
@@ -301,7 +301,7 @@ TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp
         }
     }
 
-    TrackingResult tracking_result = mpTracker->GrabImageMonocular(imToFeed, timestamp);
+    TrackingResult tracking_result = mpTracker->GrabImageMonocular(imToFeed, timestamp, posePrior);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;

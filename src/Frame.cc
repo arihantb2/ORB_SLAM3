@@ -110,7 +110,8 @@ Frame::Frame(const Frame& frame)
       mvRightToLeftMatch(frame.mvRightToLeftMatch),
       mTcw(frame.mTcw),
       mbHasPose(false),
-      mbHasVelocity(false)
+      mbHasVelocity(false),
+      mPosePrior(frame.mPosePrior)
 {
     for (int i = 0; i < FRAME_GRID_COLS; i++)
     {
