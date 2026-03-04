@@ -1221,7 +1221,7 @@ void Tracking::CreateInitialMapMonocular()
     {
         scalingFactor = mVelocity.translation().norm() / Tc2w.translation().norm();
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Scaling factor from velocity ["
+            << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Scaling factor from velocity ["
             << scalingFactor << "]." << std::endl;
     }
     else
@@ -1237,26 +1237,40 @@ void Tracking::CreateInitialMapMonocular()
         }
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Median depth [" << medianDepth << "]."
+            << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Median depth [" << medianDepth << "]."
             << std::endl;
 
         if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 50)  // TODO Check, originally 100 tracks
         {
             Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Wrong initialization, reseting..."
+                << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Wrong initialization, reseting..."
                 << std::endl;
             mpSystem->ResetActiveMap();
             return;
         }
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Scaling factor from median depth ["
+            << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Scaling factor from median depth ["
             << scalingFactor << "]." << std::endl;
     }
 
     // Scale initial baseline
     Tc2w.translation() *= scalingFactor;
     pKFcur->SetPose(Tc2w);
+
+    // Set initial pose for the current frame
+    mCurrentFrame.SetPose(Tc2w);
+
+    const auto& Twc = Tc2w.inverse();
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mCurrentFrame.mnId << "] "
+        << "CREATE_INITIAL_MAP_MONOCULAR: After scaling Twc: " << Twc.translation().transpose() << std::endl;
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mCurrentFrame.mnId << "] "
+        << "CREATE_INITIAL_MAP_MONOCULAR: After scaling Motion ||p||_cInitialcCurr: " << Twc.translation().norm()
+        << " m" << std::endl;
 
     // Scale points
     std::vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
