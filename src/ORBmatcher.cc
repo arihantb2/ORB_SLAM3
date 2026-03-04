@@ -1978,6 +1978,9 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFrame, 
         }
     }
 
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << CurrentFrame.mnId << "] " << "SEARCH_BY_PROJECTION: nmatches=" << nmatches << std::endl;
+
     //Apply rotation consistency
     if (mbCheckOrientation)
     {
@@ -1990,6 +1993,10 @@ int ORBmatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFrame, 
                 nmatches--;
             });
     }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << CurrentFrame.mnId << "] "
+        << "SEARCH_BY_PROJECTION: after rotation consistency check nmatches=" << nmatches << std::endl;
 
     return nmatches;
 }

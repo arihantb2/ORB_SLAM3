@@ -155,20 +155,15 @@ void Tracking::loadFromSettings(Settings* settings)
     mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
     mReferenceKeyframeMinBoWMatches = settings->referenceKeyframeMinBoWMatches();
     mReferenceKeyframeMinOptimizedMapMatches = settings->referenceKeyframeMinOptimizedMapMatches();
-    mReferenceKeyframeQuadSearchWindowSize = settings->referenceKeyframeQuadSearchWindowSize();
-    mbUseQuadMatchingReferenceKeyFrame = settings->stereoUseQuadMatchingReferenceKeyFrame();
 
     // Motion model tracking thresholds
     mMotionModelNNRatio = settings->motionModelNNRatio();
     mMotionModelProjectionSearchThStereo = settings->motionModelProjectionSearchThStereo();
     mMotionModelProjectionSearchThMono = settings->motionModelProjectionSearchThMono();
     mMotionModelMinInitialMatches = settings->motionModelMinInitialMatches();
-    mMotionModelQuadSearchWindowSize = settings->motionModelQuadSearchWindowSize();
-    mbUseQuadMatchingMotionModel = settings->stereoUseQuadMatchingMotionModel();
     mMotionModelRetryProjectionSearchThStereo = settings->motionModelRetryProjectionSearchThStereo();
     mMotionModelRetryProjectionSearchThMono = settings->motionModelRetryProjectionSearchThMono();
     mMotionModelMinRetryMatches = settings->motionModelMinRetryMatches();
-    mMotionModelQuadSearchWindowSizeRetry = settings->motionModelQuadSearchWindowSizeRetry();
     mMotionModelMinOptimizedMapMatches = settings->motionModelMinOptimizedMapMatches();
 
     // Local map tracking success thresholds
@@ -584,6 +579,7 @@ void Tracking::UpdateAfterTracking(bool bOK)
         // motion from frane cLast to frame cCurr as seen in the cLast frame
         const auto R_cLastw = T_cLastw.rotationMatrix();
         const Eigen::Vector3f& p_cLastcCurr_cLast = R_cLastw * p_cLastcCurr_w;
+        const Eigen::Vector3f& p_cLastcCurr_cLast_norm = p_cLastcCurr_cLast.normalized();
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
@@ -591,6 +587,10 @@ void Tracking::UpdateAfterTracking(bool bOK)
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
             << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << ": " << p_cLastcCurr_cLast.transpose() << " m"
+            << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
+            << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << "_norm: " << p_cLastcCurr_cLast_norm.transpose() << " m"
             << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: Quantity of motion ||p||_c"
@@ -652,45 +652,7 @@ void Tracking::UpdateAfterTracking(bool bOK)
     }
 }
 
-void Tracking::TrackStereo(TrackingResult& tracking_result)
-{
-    Map* pCurrentMap = mpAtlas->GetCurrentMap();
-    if (!mbVelocity && !pCurrentMap->isImuInitialized())
-    {
-        tracking_result.ref_key_frame_result =
-            mbUseQuadMatchingReferenceKeyFrame ? TrackQuadReferenceKeyFrame() : TrackReferenceKeyFrameWithBoW();
-        tracking_result.ref_keyframe_tracking_primary = true;
-        if (!tracking_result.ref_key_frame_result.success)
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed." << std::endl;
-        }
-    }
-    else
-    {
-        tracking_result.motion_model_result =
-            mbUseQuadMatchingMotionModel ? TrackQuadWithMotionModel() : TrackWithMotionModel();
-        tracking_result.motion_model_tracking_primary = true;
-        if (!tracking_result.motion_model_result.success)
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL failed." << std::endl;
-            tracking_result.ref_key_frame_result =
-                mbUseQuadMatchingReferenceKeyFrame ? TrackQuadReferenceKeyFrame() : TrackReferenceKeyFrameWithBoW();
-            tracking_result.ref_keyframe_tracking_fallback = true;
-            if (!tracking_result.ref_key_frame_result.success)
-            {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
-                    << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed (fallback)." << std::endl;
-            }
-        }
-    }
-
-    tracking_result.success =
-        tracking_result.ref_key_frame_result.success || tracking_result.motion_model_result.success;
-}
-
-void Tracking::TrackMonocular(TrackingResult& tracking_result)
+void Tracking::TrackFrame(TrackingResult& tracking_result)
 {
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if (!mbVelocity && !pCurrentMap->isImuInitialized())
@@ -754,7 +716,12 @@ void Tracking::ComputeVelocityFromPriors()
             << mLastFrame.hasPosePrior() << std::endl;
     }
 
-    if (mCurrentFrame.hasPosePrior() && mLastFrame.hasPosePrior())
+    if (!mCurrentFrame.hasPosePrior())
+    {
+        return;
+    }
+
+    if (mState == OK && mLastFrame.hasPosePrior())
     {
         mVelocity = compute_velocity(*mCurrentFrame.mPosePrior, *mLastFrame.mPosePrior);
         mbVelocity = true;
@@ -762,6 +729,7 @@ void Tracking::ComputeVelocityFromPriors()
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_w = mVelocity.inverse().translation();
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast =
             mLastFrame.mPosePrior->inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
+        const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast_norm = p_cLastPriorcCurrPrior_cLast.normalized();
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
@@ -771,11 +739,15 @@ void Tracking::ComputeVelocityFromPriors()
             << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId << ": " << p_cLastPriorcCurrPrior_cLast.transpose()
             << " m" << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
+            << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId
+            << "_norm: " << p_cLastPriorcCurrPrior_cLast_norm.transpose() << " m" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Quantity of motion ||p||_c"
             << mLastFrame.mnId << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cLastPriorcCurrPrior_w.norm() << " m"
             << std::endl;
     }
-    else if (mCurrentFrame.hasPosePrior() && mInitialFrame.hasPosePrior())
+    else if (mInitialFrame.hasPosePrior())
     {
         mVelocity = compute_velocity(*mCurrentFrame.mPosePrior, *mInitialFrame.mPosePrior);
         mbVelocity = true;
@@ -865,15 +837,7 @@ TrackingResult Tracking::Track()
         {
             // Local Mapping might have changed some MapPoints tracked in last frame
             CheckReplacedInLastFrame();
-
-            if (mSensor == System::STEREO || mSensor == System::IMU_STEREO)
-            {
-                TrackStereo(tracking_result);
-            }
-            else if (mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
-            {
-                TrackMonocular(tracking_result);
-            }
+            TrackFrame(tracking_result);
 
             if (!tracking_result.success)
             {
@@ -1142,28 +1106,11 @@ void Tracking::MonocularInitialization()
 
         // Find correspondences
         ORBmatcher matcher(mMonocularInitNNRatio, true);
-        int nmatches = 0;
-        if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity)
-        {
-            mInitialFrame.SetPose(Sophus::SE3f());
-            mCurrentFrame.SetPose(mVelocity * mInitialFrame.GetPose());
-
-            nmatches =
-                matcher.SearchByProjection(mCurrentFrame, mInitialFrame, mMotionModelProjectionSearchThMono, true);
-
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION_W_POSE_PRIORS: nmatches: " << nmatches
-                << std::endl;
-        }
-
-        if (nmatches < mMotionModelMinInitialMatches)
-        {
-            nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
+        int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
                                                        mMonocularInitSearchWindowSize);
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION: nmatches: " << nmatches << std::endl;
-        }
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION: nmatches: " << nmatches << std::endl;
 
         // Check if there are enough correspondences
         if (nmatches < mMonocularInitMinMatches)
@@ -1267,17 +1214,26 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(), 20);
 
-    if (!mInitialFrame.hasPosePrior() || !mCurrentFrame.hasPosePrior())
+    float scalingFactor;
+    Sophus::SE3f Tc2w = pKFcur->GetPose();
+
+    if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity)
+    {
+        scalingFactor = mVelocity.translation().norm() / Tc2w.translation().norm();
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Scaling factor from velocity ["
+            << scalingFactor << "]." << std::endl;
+    }
+    else
     {
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
-        float invMedianDepth;
         if (mSensor == System::IMU_MONOCULAR)
         {
-            invMedianDepth = 4.0f / medianDepth;  // 4.0f
+            scalingFactor = 4.0f / medianDepth;  // 4.0f
         }
         else
         {
-            invMedianDepth = 1.0f / medianDepth;
+            scalingFactor = 1.0f / medianDepth;
         }
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
@@ -1293,21 +1249,24 @@ void Tracking::CreateInitialMapMonocular()
             return;
         }
 
-        // Scale initial baseline
-        Sophus::SE3f Tc2w = pKFcur->GetPose();
-        Tc2w.translation() *= invMedianDepth;
-        pKFcur->SetPose(Tc2w);
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Scaling factor from median depth ["
+            << scalingFactor << "]." << std::endl;
+    }
 
-        // Scale points
-        std::vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
-        for (size_t iMP = 0; iMP < vpAllMapPoints.size(); iMP++)
+    // Scale initial baseline
+    Tc2w.translation() *= scalingFactor;
+    pKFcur->SetPose(Tc2w);
+
+    // Scale points
+    std::vector<MapPoint*> vpAllMapPoints = pKFini->GetMapPointMatches();
+    for (size_t iMP = 0; iMP < vpAllMapPoints.size(); iMP++)
+    {
+        if (vpAllMapPoints[iMP])
         {
-            if (vpAllMapPoints[iMP])
-            {
-                MapPoint* pMP = vpAllMapPoints[iMP];
-                pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
-                pMP->UpdateNormalAndDepth();
-            }
+            MapPoint* pMP = vpAllMapPoints[iMP];
+            pMP->SetWorldPos(pMP->GetWorldPos() * scalingFactor);
+            pMP->UpdateNormalAndDepth();
         }
     }
 
@@ -1415,122 +1374,16 @@ void Tracking::CheckReplacedInLastFrame()
     }
 }
 
-void Tracking::UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF)
-{
-    // We sort points according to their measured depth by the stereo/RGB-D sensor
-    std::vector<std::pair<float, int>> vDepthIdx;
-    vDepthIdx.reserve(mpReferenceKF->N);
-    for (int i = 0; i < mpReferenceKF->N; i++)
-    {
-        float z = mpReferenceKF->mvDepth[i];
-        if (z > 0)
-        {
-            vDepthIdx.push_back(std::make_pair(z, i));
-        }
-    }
-
-    if (vDepthIdx.empty())
-    {
-        return;
-    }
-    std::sort(vDepthIdx.begin(), vDepthIdx.end());
-
-    // We insert 1000 points sorted by depth
-    int nPoints = 0;
-    for (size_t j = 0; j < vDepthIdx.size(); j++)
-    {
-        int i = vDepthIdx[j].second;
-
-        MapPoint* pMP = vpMapPointsKF[i];
-        if (!pMP || pMP->Observations() < 1)
-        {
-            Eigen::Vector3f x3D;
-            mpReferenceKF->UnprojectStereo(i, x3D);
-            MapPoint* pNewMP = new MapPoint(x3D, mpReferenceKF, mpAtlas->GetCurrentMap());
-
-            vpMapPointsKF[i] = pNewMP;
-            mlpTemporalPoints.push_back(pNewMP);
-
-            nPoints++;
-        }
-
-        if (nPoints > 1000)
-        {  // 1000 for underwater dataset
-            break;
-        }
-    }
-}
-
-RefKeyFrameTrackingResult Tracking::TrackQuadReferenceKeyFrame()
-{
-    RefKeyFrameTrackingResult result;
-    result.used_quad_matching = true;
-
-    mbFrame2Frame = false;
-    ORBmatcher matcher(mReferenceKeyframeNNRatio, true);
-
-    std::vector<MapPoint*> vpMapPointsKF = mpReferenceKF->GetMapPointMatches();
-
-    UpdateRefKeyFrame(vpMapPointsKF);
-
-    int nmatches = matcher.SearchByQuadKeyFrame(mpReferenceKF, mCurrentFrame, vpMapPointsKF,
-                                                mReferenceKeyframeQuadSearchWindowSize);
-
-    result.num_matches = nmatches;
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_REF_KF: nmatches=" << nmatches << std::endl;
-
-    if (nmatches < mReferenceKeyframeMinBoWMatches)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_REF_KF failed: nmatches=" << nmatches
-            << " < MinBoWMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
-        return result;
-    }
-
-    mCurrentFrame.SetPose(mLastFrame.mTcw);
-
-    Optimizer::PoseOptimization(&mCurrentFrame);
-
-    // Discard outliers
-    int nmatchesMap = DiscardOutliersAndCountInliers(mCurrentFrame, nmatches, true);
-
-    result.num_matches_optimized = nmatchesMap;
-    result.pose = mCurrentFrame.GetPose().inverse();
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_REF_KF: nmatchesMap=" << nmatchesMap << std::endl;
-
-    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
-    {
-        result.success = true;
-        return result;
-    }
-    else
-    {
-        if (nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches)
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_REF_KF ok: nmatchesMap=" << nmatchesMap << std::endl;
-            result.success = true;
-            return result;
-        }
-
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_REF_KF failed: nmatchesMap=" << nmatchesMap
-            << " < MinOptimizedMapMatches=" << mReferenceKeyframeMinOptimizedMapMatches << std::endl;
-
-        return result;
-    }
-
-    return result;
-}
-
 void Tracking::UpdateLastFrame()
 {
     // Update pose according to reference keyframe
     KeyFrame* pRef = mLastFrame.mpReferenceKF;
+
+    if (!pRef)
+    {
+        return;
+    }
+
     Sophus::SE3f Tlr = mlRelativeFramePoses.back();
     mLastFrame.SetPose(Tlr * pRef->GetPose());
 
@@ -1590,128 +1443,9 @@ void Tracking::UpdateLastFrame()
     }
 }
 
-MotionModelTrackingResult Tracking::TrackQuadWithMotionModel()
-{
-    MotionModelTrackingResult result;
-    result.used_quad_matching = true;
-
-    mbFrame2Frame = true;
-    ORBmatcher matcher(mMotionModelNNRatio, true);
-
-    // Update last frame pose according to its reference keyframe
-    // Create "visual odometry" points if in Localization Mode
-    UpdateLastFrame();
-
-    if (mpAtlas->isImuInitialized())
-    {
-        PredictStateIMU();
-        return result;
-    }
-    else
-    {
-        mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
-    }
-
-    result.initial_pose = mCurrentFrame.GetPose().inverse();
-
-    // Save temperal matches for visualization
-    mvTemporalMatches = std::vector<int>(mCurrentFrame.N, -1);
-
-    std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
-
-    // Search matches by quad matching, i.e., matches must fit to
-    // last left, right and current left, right frames simultaneously
-    int nmatches = matcher.SearchByQuad(mCurrentFrame, mLastFrame, mvTemporalMatches, mMotionModelQuadSearchWindowSize);
-
-    result.num_matches = nmatches;
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
-
-    if (nmatches < mMotionModelMinInitialMatches)
-    {
-        // Retry with wider window: reset match state so retry is consistent
-        std::fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
-        std::fill(mvTemporalMatches.begin(), mvTemporalMatches.end(), -1);
-        nmatches =
-            matcher.SearchByQuad(mCurrentFrame, mLastFrame, mvTemporalMatches, mMotionModelQuadSearchWindowSizeRetry);
-
-        result.retry = true;
-        result.num_matches_retry = nmatches;
-
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL: nmatches (retry)=" << nmatches
-            << std::endl;
-    }
-
-    for (const auto& mapPoint : mCurrentFrame.mvpMapPoints)
-    {
-        // TODO: Populate result.keypoints_matches
-    }
-
-    if (nmatches < mMotionModelMinRetryMatches)
-    {
-        if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
-        {
-            result.success = true;
-            return result;
-        }
-        else
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL failed: nmatches=" << nmatches
-                << " < MinRetryMatches=" << mMotionModelMinRetryMatches << std::endl;
-            return result;
-        }
-    }
-
-    // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
-
-    int nmatchesMap = DiscardOutliersAndCountInliers(mCurrentFrame, nmatches, false);
-    result.num_matches_optimized = nmatchesMap;
-    result.pose = mCurrentFrame.GetPose().inverse();
-
-    for (const auto& mapPoint : mCurrentFrame.mvpMapPoints)
-    {
-        // TODO: Populate result.keypoints_inliers_optimized
-        // TODO: Populate result.keypoints_outliers_optimized
-        // TODO: Populate result.keypoints_matches_optimized
-    }
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL: nmatchesMap=" << nmatchesMap << std::endl;
-
-    if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
-    {
-        result.success = true;
-        return result;
-    }
-    else
-    {
-        if (nmatchesMap < mMotionModelMinOptimizedMapMatches)
-        {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL failed: nmatchesMap=" << nmatchesMap
-                << " < MinOptimizedMapMatches=" << mMotionModelMinOptimizedMapMatches << std::endl;
-            return result;
-        }
-
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] TRACK_QUAD_WITH_MOTION_MODEL ok: nmatchesMap=" << nmatchesMap
-            << std::endl;
-
-        result.success = true;
-        return result;
-    }
-
-    return result;
-}
-
 RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
 {
     RefKeyFrameTrackingResult result;
-    result.used_quad_matching = false;
 
     // Compute Bag of Words vector
     mCurrentFrame.ComputeBoW();

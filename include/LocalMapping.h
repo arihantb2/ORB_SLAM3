@@ -148,6 +148,8 @@ protected:
 
     KeyFrame* mpCurrentKeyFrame;
 
+    double prevOptimizedKFTimestamp = -1.0;
+
     std::list<MapPoint*> mlpRecentAddedMapPoints;
 
     std::mutex mMutexNewKFs;

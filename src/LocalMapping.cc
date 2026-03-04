@@ -121,13 +121,29 @@ bool LocalMapping::RunLoop()
             SearchInNeighbors();
         }
 
+        constexpr double OPTIMIZE_EVERY_T_SECONDS = 5.0;  // about 10 keyframes at 2 fps
+        constexpr double TIME_EPSILON = 0.1;              // 100ms
+        bool b_doLBA = true;
+        if (prevOptimizedKFTimestamp > 0.0)
+        {
+            const auto time_since_last_optimize = mpCurrentKeyFrame->mTimeStamp - prevOptimizedKFTimestamp;
+            if (!mbInertial && time_since_last_optimize < OPTIMIZE_EVERY_T_SECONDS - TIME_EPSILON)
+            {
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << mpCurrentKeyFrame->mnFrameId
+                    << "] Skipping LBA because it's too soon (time_since_last_optimize=" << time_since_last_optimize
+                    << " s < OPTIMIZE_EVERY_T_SECONDS=" << OPTIMIZE_EVERY_T_SECONDS << " s)." << std::endl;
+                b_doLBA = false;
+            }
+        }
+
         bool b_doneLBA = false;
         int num_FixedKF_BA = 0;
         int num_OptKF_BA = 0;
         int num_MPs_BA = 0;
         int num_edges_BA = 0;
 
-        if (!CheckNewKeyFrames() && !stopRequested())
+        if (!CheckNewKeyFrames() && !stopRequested() && b_doLBA)
         {
             if (mpAtlas->KeyFramesInMap() > 2)
             {
@@ -166,8 +182,13 @@ bool LocalMapping::RunLoop()
                 {
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
                                                      num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
+                    Verbose::Print(Verbose::VERBOSITY_QUIET)
+                        << "[" << mpCurrentKeyFrame->mnFrameId << "] LBA performed with " << num_FixedKF_BA << " fixed KFs, "
+                        << num_OptKF_BA << " optimized KFs, " << num_MPs_BA << " MapPoints, and " << num_edges_BA
+                        << " edges." << std::endl;
                     b_doneLBA = true;
                 }
+                prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
             }
 
             // Initialize IMU here
@@ -259,11 +280,15 @@ bool LocalMapping::CheckNewKeyFrames()
 
 void LocalMapping::ProcessNewKeyFrame()
 {
+    int pending_KFs_count = 0;
     {
         std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        pending_KFs_count = mlNewKeyFrames.size();
         mpCurrentKeyFrame = mlNewKeyFrames.front();
         mlNewKeyFrames.pop_front();
     }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << "] Processing new keyframe (pending KFs: " << pending_KFs_count << ")" << std::endl;
 
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
@@ -659,16 +684,18 @@ void LocalMapping::CreateNewMapPoints()
             mlpRecentAddedMapPoints.push_back(pMP);
         }
     }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << "] Added " << mlpRecentAddedMapPoints.size() << " map points" << std::endl;
 }
 
 void LocalMapping::SearchInNeighbors()
 {
     // Retrieve neighbor keyframes
-    int nn = 10;
-    if (mbMonocular)
-    {
-        nn = 30;
-    }
+    int nn = 30;  // 10 originally, changed to 30
+    // if (mbMonocular)
+    // {
+    //     nn = 30;
+    // }
     const std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
     std::vector<KeyFrame*> vpTargetKFs;
     for (std::vector<KeyFrame*>::const_iterator vit = vpNeighKFs.begin(), vend = vpNeighKFs.end(); vit != vend; vit++)
@@ -706,7 +733,7 @@ void LocalMapping::SearchInNeighbors()
     }
 
     // Extend to temporal neighbors
-    if (mbInertial)
+    if (true)  // mbInertial
     {
         KeyFrame* pKFi = mpCurrentKeyFrame->mPrevKF;
         while (vpTargetKFs.size() < 20 && pKFi)

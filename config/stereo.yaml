@@ -84,19 +84,13 @@ Tracking.StereoInit.MinKeypoints: 500
 Tracking.ReferenceKeyframe.NNRatio: 0.7
 Tracking.ReferenceKeyframe.MinBoWMatches: 15
 Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
-Tracking.ReferenceKeyframe.UseQuadMatching: 1 # Stereo tracking: algorithm selection for TrackStereo()
-Tracking.ReferenceKeyframe.QuadSearchWindowSize: 500
-
 
 # Motion model tracking (stereo projection search thresholds)
 Tracking.MotionModel.NNRatio: 0.9
 Tracking.MotionModel.ProjectionSearchThStereo: 7
 Tracking.MotionModel.MinInitialMatches: 20
-Tracking.MotionModel.QuadSearchWindowSize: 250
-Tracking.MotionModel.UseQuadMatching: 1 # Stereo tracking: algorithm selection for TrackStereo()
 Tracking.MotionModel.RetryProjectionSearchThStereo: 14
 Tracking.MotionModel.MinRetryMatches: 20
-Tracking.MotionModel.QuadSearchWindowSizeRetry: 500
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
 # Local map tracking success thresholds (visual path only)

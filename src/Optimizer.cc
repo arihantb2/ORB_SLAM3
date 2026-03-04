@@ -1258,6 +1258,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         }
     }
     num_edges = nEdges;
+    num_MPs = nPoints;
 
     if (pbStopFlag && *pbStopFlag)
     {

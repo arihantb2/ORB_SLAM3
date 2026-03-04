@@ -52,7 +52,6 @@ class GeometricCamera;
 struct MotionModelTrackingResult
 {
     bool success = false;
-    bool used_quad_matching = false;
     bool retry = false;
 
     // Initial pose
@@ -82,7 +81,6 @@ struct MotionModelTrackingResult
 struct RefKeyFrameTrackingResult
 {
     bool success = false;
-    bool used_quad_matching = false;
 
     // Number of matches before optimization
     int num_matches = 0;
@@ -210,18 +208,13 @@ public:
     float mReferenceKeyframeNNRatio = 0.7f;
     int mReferenceKeyframeMinBoWMatches = 15;
     int mReferenceKeyframeMinOptimizedMapMatches = 10;
-    int mReferenceKeyframeQuadSearchWindowSize = 500;
-    bool mbUseQuadMatchingReferenceKeyFrame = true;
     float mMotionModelNNRatio = 0.9f;
     int mMotionModelProjectionSearchThStereo = 7;
     int mMotionModelProjectionSearchThMono = 30;
     int mMotionModelMinInitialMatches = 20;
-    int mMotionModelQuadSearchWindowSize = 250;
-    bool mbUseQuadMatchingMotionModel = true;
     int mMotionModelRetryProjectionSearchThStereo = 14;
     int mMotionModelRetryProjectionSearchThMono = 60;
     int mMotionModelMinRetryMatches = 20;
-    int mMotionModelQuadSearchWindowSizeRetry = 500;
     int mMotionModelMinOptimizedMapMatches = 10;
     int mLocalMapGenericMinInliers = 10;
     int mLocalMapVisualMinInliers = 30;
@@ -237,7 +230,7 @@ protected:
     // Main tracking function. It is independent of the input sensor.
     TrackingResult Track();
     void TrackStereo(TrackingResult& tracking_result);
-    void TrackMonocular(TrackingResult& tracking_result);
+    void TrackFrame(TrackingResult& tracking_result);
 
     // Stereo Initialization
     void StereoInitialization();
@@ -252,9 +245,6 @@ protected:
 
     RefKeyFrameTrackingResult TrackReferenceKeyFrameWithBoW();
     MotionModelTrackingResult TrackWithMotionModel();
-
-    RefKeyFrameTrackingResult TrackQuadReferenceKeyFrame();
-    MotionModelTrackingResult TrackQuadWithMotionModel();
 
     void UpdateLocalMap();
     void UpdateLocalPoints();
@@ -285,9 +275,6 @@ protected:
 
     // Load settings
     void loadFromSettings(Settings* settings);
-
-    // Update the reference keyframe
-    void UpdateRefKeyFrame(std::vector<MapPoint*>& vpMapPointsKF);
 
     bool mbMapUpdated;
 
