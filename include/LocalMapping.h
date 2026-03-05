@@ -114,6 +114,7 @@ public:
     float mThFarPoints;
 
 protected:
+    void SetNewKeyFrame();
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();

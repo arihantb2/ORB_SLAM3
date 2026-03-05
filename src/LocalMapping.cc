@@ -104,6 +104,13 @@ bool LocalMapping::RunLoop()
     // Check if there are keyframes in the queue
     if (CheckNewKeyFrames() && !mbBadImu)
     {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "----------------------------------------------------------------------------------------------------";
+        Verbose::Print(Verbose::VERBOSITY_QUIET) << "[-:-] LOCAL_MAPPING_LOOP";
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "----------------------------------------------------------------------------------------------------";
+        const auto start_time = std::chrono::steady_clock::now();
+
         // BoW conversion and insertion in Map
         ProcessNewKeyFrame();
 
@@ -130,7 +137,7 @@ bool LocalMapping::RunLoop()
             if (!mbInertial && time_since_last_optimize < OPTIMIZE_EVERY_T_SECONDS - TIME_EPSILON)
             {
                 Verbose::Print(Verbose::VERBOSITY_QUIET)
-                    << "[" << mpCurrentKeyFrame->mnFrameId
+                    << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                     << "] Skipping LBA because it's too soon (time_since_last_optimize=" << time_since_last_optimize
                     << " s < OPTIMIZE_EVERY_T_SECONDS=" << OPTIMIZE_EVERY_T_SECONDS << " s)." << std::endl;
                 b_doLBA = false;
@@ -183,9 +190,10 @@ bool LocalMapping::RunLoop()
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
                                                      num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
                     Verbose::Print(Verbose::VERBOSITY_QUIET)
-                        << "[" << mpCurrentKeyFrame->mnFrameId << "] LBA performed with " << num_FixedKF_BA
-                        << " fixed KFs, " << num_OptKF_BA << " optimized KFs, " << num_MPs_BA << " MapPoints, and "
-                        << num_edges_BA << " edges." << std::endl;
+                        << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+                        << "] LBA performed with " << num_FixedKF_BA << " fixed KFs, " << num_OptKF_BA
+                        << " optimized KFs, " << num_MPs_BA << " MapPoints, and " << num_edges_BA << " edges."
+                        << std::endl;
                     b_doneLBA = true;
                 }
                 prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
@@ -245,6 +253,15 @@ bool LocalMapping::RunLoop()
         }
 
         mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+        const auto end_time = std::chrono::steady_clock::now();
+        const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+            << "] LOCAL_MAPPING_LOOP: duration=" << duration << " ms" << std::endl;
+
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "----------------------------------------------------------------------------------------------------";
     }
     else if (Stop() && !mbBadImu)
     {
@@ -278,7 +295,7 @@ bool LocalMapping::CheckNewKeyFrames()
     return (!mlNewKeyFrames.empty());
 }
 
-void LocalMapping::ProcessNewKeyFrame()
+void LocalMapping::SetNewKeyFrame()
 {
     int pending_KFs_count = 0;
     {
@@ -288,9 +305,13 @@ void LocalMapping::ProcessNewKeyFrame()
         pending_KFs_count = mlNewKeyFrames.size();
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << mpCurrentKeyFrame->mnFrameId << "] Processing new keyframe (pending KFs: " << pending_KFs_count << ")"
-        << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+                                             << "] SET_NEW_KEYFRAME: pending KFs=" << pending_KFs_count << std::endl;
+}
+
+void LocalMapping::ProcessNewKeyFrame()
+{
+    SetNewKeyFrame();
 
     if (mpCurrentKeyFrame->mPrevKF && mpCurrentKeyFrame->mPrevKF->hasPosePrior() && mpCurrentKeyFrame->hasPosePrior())
     {
@@ -317,14 +338,16 @@ void LocalMapping::ProcessNewKeyFrame()
         const float scaling_factor = prior_motion / estimated_motion;
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << "] PROCESS_NEW_KEYFRAME: Scaling factor: " << scaling_factor
-            << std::endl;
+            << "[" << mpCurrentKeyFrame->mnFrameId << ": " << mpCurrentKeyFrame->mnId
+            << "] PROCESS_NEW_KEYFRAME: Scaling factor: " << scaling_factor << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << "] PROCESS_NEW_KEYFRAME: p_c" << pkfId << "c" << cfId << "_c" << pkfId << ": " << p_c1c2_c1.transpose()
-            << ": " << p_c1c2_c1.norm() << " m" << std::endl;
+            << "[" << mpCurrentKeyFrame->mnFrameId << ": " << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
+            << pkfId << "c" << cfId << "_c" << pkfId << ": " << p_c1c2_c1.transpose() << ": " << p_c1c2_c1.norm()
+            << " m" << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << "] PROCESS_NEW_KEYFRAME: p_c" << pkfId << "priorc" << cfId << "prior_c" << pkfId << ": " << p_c1priorc2prior_c1.transpose()
-            << ": " << p_c1priorc2prior_c1.norm() << " m" << std::endl;
+            << "[" << mpCurrentKeyFrame->mnFrameId << ": " << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
+            << pkfId << "priorc" << cfId << "prior_c" << pkfId << ": " << p_c1priorc2prior_c1.transpose() << ": "
+            << p_c1priorc2prior_c1.norm() << " m" << std::endl;
         // T_c1c2.translation() *= scaling_factor;
         // auto T_c2w_scaled = T_c1c2.inverse() * T_c1w;
         // mpCurrentKeyFrame->SetPose(T_c2w_scaled);

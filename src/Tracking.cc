@@ -593,8 +593,8 @@ void Tracking::UpdateAfterTracking(bool bOK)
             << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << "_norm: " << p_cLastcCurr_cLast_norm.transpose() << " m"
             << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: Quantity of motion ||p||_c"
-            << mLastFrame.mnId << "c" << mCurrentFrame.mnId << ": " << p_cLastcCurr_w.norm() << " m" << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: Motion ||p||_c" << mLastFrame.mnId << "c"
+            << mCurrentFrame.mnId << ": " << p_cLastcCurr_w.norm() << " m" << std::endl;
 
         mbVelocity = true;
     }
@@ -729,7 +729,6 @@ void Tracking::ComputeVelocityFromPriors()
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_w = mVelocity.inverse().translation();
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast =
             mLastFrame.mPosePrior->inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
-        const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast_norm = p_cLastPriorcCurrPrior_cLast.normalized();
 
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
@@ -739,13 +738,8 @@ void Tracking::ComputeVelocityFromPriors()
             << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId << ": " << p_cLastPriorcCurrPrior_cLast.transpose()
             << " m" << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
-            << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId
-            << "_norm: " << p_cLastPriorcCurrPrior_cLast_norm.transpose() << " m" << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Quantity of motion ||p||_c"
-            << mLastFrame.mnId << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cLastPriorcCurrPrior_w.norm() << " m"
-            << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Motion ||p||_c" << mLastFrame.mnId
+            << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cLastPriorcCurrPrior_w.norm() << " m" << std::endl;
     }
     else if (mInitialFrame.hasPosePrior())
     {
@@ -765,9 +759,8 @@ void Tracking::ComputeVelocityFromPriors()
             << "Priorc" << mCurrentFrame.mnId << "Prior_c" << mInitialFrame.mnId << ": "
             << p_cInitialPriorcCurrPrior_cInitial.transpose() << " m" << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Quantity of motion ||p||_c"
-            << mInitialFrame.mnId << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cInitialPriorcCurrPrior_w.norm()
-            << " m" << std::endl;
+            << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Motion ||p||_c" << mInitialFrame.mnId
+            << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cInitialPriorcCurrPrior_w.norm() << " m" << std::endl;
     }
 }
 
