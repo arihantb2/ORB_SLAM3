@@ -27,26 +27,26 @@ flowchart TD
 
     %% ─── FRAME PREPROCESSING ───────────────────────────────────────────────
     subgraph FP["① Frame Preprocessing"]
-        B["ORB Feature Extraction\n(mpIniORBextractor during init:\n~2× more features than normal)"]
-        B --> C["Build BoW Vector\n(DBoW2 vocabulary lookup:\nassign features to visual words)"]
-        C --> D["Assign Features to Grid\n(64×48 image grid for fast\nneighbourhood lookups)"]
+        B["ORB Feature Extraction<br/>(mpIniORBextractor during init:<br/>~2× more features than normal)"]
+        B --> C["Build BoW Vector<br/>(DBoW2 vocabulary lookup:<br/>assign features to visual words)"]
+        C --> D["Assign Features to Grid<br/>(64×48 image grid for fast<br/>neighbourhood lookups)"]
     end
 
-    D --> E{Tracking\nState?}
+    D --> E{Tracking<br/>State?}
 
     %% ─── INITIALIZATION ──────────────────────────────────────────────────
     E -->|NOT_INITIALIZED| INIT
 
     subgraph INIT["② Monocular Initialization  (Two-View Geometry)"]
         direction TB
-        I1["Stage 1 – Collect Reference Frame\nWait for frame with ≥100 keypoints.\nStore as mInitialFrame.\nSet mbReadyToInitializate = true"]
-        I1 --> I2["Stage 2 – Feature Matching\nSearchForInitialization():\n• Window search (100 px) at scale level 0\n• ORB descriptor distance (Hamming)\n• Ratio test (NN ratio = 0.9)\n• Rotation histogram consistency check\n→ Requires ≥100 symmetric matches"]
-        I2 --> I3["Two-View Geometry\nCamera::ReconstructWithTwoViews():\n• Estimate Fundamental/Essential matrix\n  (RANSAC 8-point algorithm)\n• Recover rotation R, translation t\n• Chirality check to select correct solution\n→ Camera pose of 2nd frame relative to 1st"]
-        I3 --> I4["Triangulation\nLinear triangulation (DLT) for all\ninlier feature matches\n→ Initial sparse 3D point cloud\n  (scale-ambiguous, up-to-scale)"]
-        I4 --> I5["CreateInitialMapMonocular()\n• Create 2 KeyFrames (KFini, KFcur)\n• Create MapPoints from triangulated pts\n• Add cross-observations to both KFs\n• Compute descriptors, normals, scale levels"]
-        I5 --> I6["Global Bundle Adjustment\nOptimizer::GlobalBundleAdjustment()\n20 iterations on both KFs and all MPs\n→ Jointly refines poses + 3D positions"]
-        I6 --> I7["Scale Normalisation\nMedian depth of MPs → scale s = 1/median_depth\n(IMU-Mono: s = 4/median_depth)\nApply s to both poses and all 3D points\n→ Map now has unit median scene depth"]
-        I7 --> I8{"Valid?\n≥50 tracked MPs\nmedian depth > 0"}
+        I1["Stage 1 – Collect Reference Frame<br/>Wait for frame with ≥100 keypoints.<br/>Store as mInitialFrame.<br/>Set mbReadyToInitializate = true"]
+        I1 --> I2["Stage 2 – Feature Matching<br/>SearchForInitialization():<br/>• Window search (100 px) at scale level 0<br/>• ORB descriptor distance (Hamming)<br/>• Ratio test (NN ratio = 0.9)<br/>• Rotation histogram consistency check<br/>→ Requires ≥100 symmetric matches"]
+        I2 --> I3["Two-View Geometry<br/>Camera::ReconstructWithTwoViews():<br/>• Estimate Fundamental/Essential matrix<br/>  (RANSAC 8-point algorithm)<br/>• Recover rotation R, translation t<br/>• Chirality check to select correct solution<br/>→ Camera pose of 2nd frame relative to 1st"]
+        I3 --> I4["Triangulation<br/>Linear triangulation (DLT) for all<br/>inlier feature matches<br/>→ Initial sparse 3D point cloud<br/>  (scale-ambiguous, up-to-scale)"]
+        I4 --> I5["CreateInitialMapMonocular()<br/>• Create 2 KeyFrames (KFini, KFcur)<br/>• Create MapPoints from triangulated pts<br/>• Add cross-observations to both KFs<br/>• Compute descriptors, normals, scale levels"]
+        I5 --> I6["Global Bundle Adjustment<br/>Optimizer::GlobalBundleAdjustment()<br/>20 iterations on both KFs and all MPs<br/>→ Jointly refines poses + 3D positions"]
+        I6 --> I7["Scale Normalisation<br/>Median depth of MPs → scale s = 1/median_depth<br/>(IMU-Mono: s = 4/median_depth)<br/>Apply s to both poses and all 3D points<br/>→ Map now has unit median scene depth"]
+        I7 --> I8{"Valid?<br/>≥50 tracked MPs<br/>median depth > 0"}
         I8 -->|No – reset| I1
         I8 -->|Yes| OK
     end
@@ -56,26 +56,26 @@ flowchart TD
 
     subgraph TRACK["③ Steady-State Tracking"]
         direction TB
-        T0["CheckReplacedInLastFrame()\nReplace any MapPoints that LocalMapping\nmarked as bad with their substitute MPs"]
+        T0["CheckReplacedInLastFrame()<br/>Replace any MapPoints that LocalMapping<br/>marked as bad with their substitute MPs"]
 
-        T0 --> T1{Velocity\nmodel valid?}
+        T0 --> T1{Velocity<br/>model valid?}
 
-        subgraph MM["③-a  Motion-Model Tracking\n(frame-to-frame, constant velocity)"]
+        subgraph MM["③-a  Motion-Model Tracking<br/>(frame-to-frame, constant velocity)"]
             direction TB
-            MM1["Predict Pose\nTcw_predicted = mVelocity × Tcw_lastFrame\n(constant velocity assumption)"]
-            MM1 --> MM2["Project Last-Frame MPs into Current Frame\nSearchByProjection(CurrentFrame, LastFrame,\n  th=30 px, mono=true)\n• Reproject each MP using predicted pose\n• Search within 30 px radius (×1.5 on retry)\n• ORB descriptor match + ratio test (0.9)\n→ Seed correspondences for pose opt."]
-            MM2 --> MM3["Pose Optimisation\nOptimizer::PoseOptimization()\n• Solve PnP with inlier MPs via g2o\n• Huber robust kernel to down-weight outliers\n• 4 iterations with outlier removal\n→ Refined camera pose"]
-            MM3 --> MM4{"≥10 inlier\nmap points?"}
+            MM1["Predict Pose<br/>Tcw_predicted = mVelocity × Tcw_lastFrame<br/>(constant velocity assumption)"]
+            MM1 --> MM2["Project Last-Frame MPs into Current Frame<br/>SearchByProjection(CurrentFrame, LastFrame,<br/>  th=30 px, mono=true)<br/>• Reproject each MP using predicted pose<br/>• Search within 30 px radius (×1.5 on retry)<br/>• ORB descriptor match + ratio test (0.9)<br/>→ Seed correspondences for pose opt."]
+            MM2 --> MM3["Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>• Solve PnP with inlier MPs via g2o<br/>• Huber robust kernel to down-weight outliers<br/>• 4 iterations with outlier removal<br/>→ Refined camera pose"]
+            MM3 --> MM4{"≥10 inlier<br/>map points?"}
             MM4 -->|Yes| TLM
             MM4 -->|No – fall back| BOW
         end
 
-        subgraph BOW["③-b  Reference-KeyFrame Tracking\n(BoW appearance matching)"]
+        subgraph BOW["③-b  Reference-KeyFrame Tracking<br/>(BoW appearance matching)"]
             direction TB
-            B1["Compute Current Frame BoW\n(if not already computed)"]
-            B1 --> B2["BoW Feature Matching\nSearchByBoW(mpReferenceKF, CurrentFrame)\n• Match features sharing the same\n  vocabulary tree node (fast pruning)\n• ORB descriptor distance, ratio test (0.7)\n• Rotation histogram outlier rejection\n→ 2D–3D correspondences to reference KF MPs"]
-            B2 --> B3["Pose Optimisation\nOptimizer::PoseOptimization()\nSame PnP solver as motion model path\n→ Refined camera pose"]
-            B3 --> B4{"≥10 inlier\nmap points?"}
+            B1["Compute Current Frame BoW<br/>(if not already computed)"]
+            B1 --> B2["BoW Feature Matching<br/>SearchByBoW(mpReferenceKF, CurrentFrame)<br/>• Match features sharing the same<br/>  vocabulary tree node (fast pruning)<br/>• ORB descriptor distance, ratio test (0.7)<br/>• Rotation histogram outlier rejection<br/>→ 2D–3D correspondences to reference KF MPs"]
+            B2 --> B3["Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>Same PnP solver as motion model path<br/>→ Refined camera pose"]
+            B3 --> B4{"≥10 inlier<br/>map points?"}
             B4 -->|No| LOST
             B4 -->|Yes| TLM
         end
@@ -87,34 +87,34 @@ flowchart TD
     %% ─── LOCAL MAP TRACKING ──────────────────────────────────────────────
     subgraph LMT["④ Local Map Tracking  (pose refinement with full local context)"]
         direction TB
-        TLM["UpdateLocalKeyFrames()\n• Gather all KFs sharing ≥1 MP with current frame\n• Add their 10 best covisible neighbours\n• Add essential-graph parents/children\n→ Local keyframe set (≤80 KFs)"]
-        TLM --> TLM2["UpdateLocalPoints()\nCollect all MPs observed by local KFs\nthat are not yet matched in current frame\n→ Local map point set (thousands of MPs)"]
-        TLM2 --> TLM3["SearchLocalPoints()\nFor each local MP:\n  • Project into current frame using refined pose\n  • Check viewing angle ≤60° to MP normal\n  • Check distance within scale invariance range\n  • Search in projected neighbourhood (th=3–5 px)\n  • ORB descriptor match\n→ Hundreds of additional 2D–3D matches"]
-        TLM3 --> TLM4["Final Pose Optimisation\nOptimizer::PoseOptimization()\nNow with all matched local MPs\n→ Accurate camera pose"]
-        TLM4 --> TLM5{"≥30 inlier\nmap points?"}
+        TLM["UpdateLocalKeyFrames()<br/>• Gather all KFs sharing ≥1 MP with current frame<br/>• Add their 10 best covisible neighbours<br/>• Add essential-graph parents/children<br/>→ Local keyframe set (≤80 KFs)"]
+        TLM --> TLM2["UpdateLocalPoints()<br/>Collect all MPs observed by local KFs<br/>that are not yet matched in current frame<br/>→ Local map point set (thousands of MPs)"]
+        TLM2 --> TLM3["SearchLocalPoints()<br/>For each local MP:<br/>  • Project into current frame using refined pose<br/>  • Check viewing angle ≤60° to MP normal<br/>  • Check distance within scale invariance range<br/>  • Search in projected neighbourhood (th=3–5 px)<br/>  • ORB descriptor match<br/>→ Hundreds of additional 2D–3D matches"]
+        TLM3 --> TLM4["Final Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>Now with all matched local MPs<br/>→ Accurate camera pose"]
+        TLM4 --> TLM5{"≥30 inlier<br/>map points?"}
         TLM5 -->|No| LOST
         TLM5 -->|Yes| VEL
     end
 
     %% ─── VELOCITY UPDATE + OUTCOMES ─────────────────────────────────────
-    VEL["Update Motion Model\nmVelocity = Tcw_current × Tcw_last⁻¹\n(stored for next frame's prediction)"]
+    VEL["Update Motion Model<br/>mVelocity = Tcw_current × Tcw_last⁻¹<br/>(stored for next frame's prediction)"]
     VEL --> KFD
 
     subgraph KFD["⑤ Keyframe Decision"]
         direction TB
-        KF1["NeedNewKeyFrame()?\n• MaxFrames exceeded since last KF\n• Tracking quality weak:\n  inliers < 0.9 × reference KF inliers\n• MinFrames elapsed AND local mapper idle\n• Too few 'close' (depth < mThDepth) points\n  with many unmatched close features"]
+        KF1["NeedNewKeyFrame()?<br/>• MaxFrames exceeded since last KF<br/>• Tracking quality weak:<br/>  inliers &lt; 0.9 × reference KF inliers<br/>• MinFrames elapsed AND local mapper idle<br/>• Too few 'close' (depth &lt; mThDepth) points<br/>  with many unmatched close features"]
         KF1 -->|Yes| KF2
         KF1 -->|No| DONE
 
-        KF2["CreateNewKeyFrame()\n• Wrap current frame as KeyFrame\n• Link prev/next KF pointers\n• Insert into Atlas\n• Queue for LocalMapping thread:\n  → triangulates new MPs with neighbours\n  → refines covisibility graph\n  → runs local BA"]
+        KF2["CreateNewKeyFrame()<br/>• Wrap current frame as KeyFrame<br/>• Link prev/next KF pointers<br/>• Insert into Atlas<br/>• Queue for LocalMapping thread:<br/>  → triangulates new MPs with neighbours<br/>  → refines covisibility graph<br/>  → runs local BA"]
     end
 
-    DONE(["Pose Output\nTcw stored in Frame;\nTrajectory logger updated"])
+    DONE(["Pose Output<br/>Tcw stored in Frame;<br/>Trajectory logger updated"])
     KF2 --> DONE
 
-    LOST(["LOST\nAttempt Relocalization:\nBoW place recognition against all KFs\n→ PnP + RANSAC to recover pose\nReset if repeated failure"])
+    LOST(["LOST<br/>Attempt Relocalization:<br/>BoW place recognition against all KFs<br/>→ PnP + RANSAC to recover pose<br/>Reset if repeated failure"])
 
-    OK(["State = OK\nStart Steady-State Tracking"])
+    OK(["State = OK<br/>Start Steady-State Tracking"])
     OK --> T0
 ```
 

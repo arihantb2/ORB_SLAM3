@@ -25,32 +25,32 @@ BoW, and local-map tracking stages are reused.
 
 ```mermaid
 flowchart TD
-    A([New Stereo Frame\nleft + right images]) --> B
+    A([New Stereo Frame<br/>left + right images]) --> B
 
     %% ─── FRAME PREPROCESSING ───────────────────────────────────────────────
     subgraph FP["① Frame Preprocessing  (stereo-specific)"]
-        B["Parallel ORB Extraction\nLeft image  → mpORBextractorLeft\nRight image → mpORBextractorRight\n(run in separate threads for speed)"]
-        B --> C["Stereo Feature Matching\nFrame::ComputeStereoMatches()\n• Match left↔right ORB descriptors\n• Enforce epipolar constraint: same row ±2 px\n• Sub-pixel disparity refinement (SAD window)\n• Depth = mBF / disparity  (mBF = baseline × fx)\n→ Each matched left feature gets a right u-coord\n  and a metric depth value"]
-        C --> D["BoW Vector + Feature Grid\n(same as monocular)"]
+        B["Parallel ORB Extraction<br/>Left image  → mpORBextractorLeft<br/>Right image → mpORBextractorRight<br/>(run in separate threads for speed)"]
+        B --> C["Stereo Feature Matching<br/>Frame::ComputeStereoMatches()<br/>• Match left↔right ORB descriptors<br/>• Enforce epipolar constraint: same row ±2 px<br/>• Sub-pixel disparity refinement (SAD window)<br/>• Depth = mBF / disparity  (mBF = baseline × fx)<br/>→ Each matched left feature gets a right u-coord<br/>  and a metric depth value"]
+        C --> D["BoW Vector + Feature Grid<br/>(same as monocular)"]
     end
 
-    D --> E{Tracking\nState?}
+    D --> E{Tracking<br/>State?}
 
     %% ─── INITIALIZATION ──────────────────────────────────────────────────
     E -->|NOT_INITIALIZED| INIT
 
     subgraph INIT["② Stereo Initialization  (single-frame, metric)"]
         direction TB
-        I1["Prerequisite Check\n≥500 ORB keypoints in left image\n(mStereoInitMinKeypoints)"]
-        I1 --> I2["Set Origin Pose\nFirst frame placed at world origin:\nTcw = Identity\n(no two-view geometry needed)"]
-        I2 --> I3["Unproject Stereo Features → 3D\nFor each left feature with valid disparity:\n  X = (u − cx) × depth / fx\n  Y = (v − cy) × depth / fy\n  Z = depth\n→ Immediate metric 3D positions\n  (no scale ambiguity)"]
-        I3 --> I4["Create Initial KeyFrame\nWrap current frame as KFini\nInsert into Atlas"]
-        I4 --> I5["Create MapPoints\nFor each valid 3D point:\n  • Create MapPoint at (X,Y,Z)\n  • Add left + right observations to KFini\n  • Compute representative descriptor\n  • Compute mean viewing direction\n  • Set scale invariance distances\n→ Hundreds of MPs immediately available"]
-        I5 --> I6["Covisibility Graph Initialised\nKFini is the sole vertex;\nedges added as new KFs arrive"]
+        I1["Prerequisite Check<br/>≥500 ORB keypoints in left image<br/>(mStereoInitMinKeypoints)"]
+        I1 --> I2["Set Origin Pose<br/>First frame placed at world origin:<br/>Tcw = Identity<br/>(no two-view geometry needed)"]
+        I2 --> I3["Unproject Stereo Features → 3D<br/>For each left feature with valid disparity:<br/>  X = (u − cx) × depth / fx<br/>  Y = (v − cy) × depth / fy<br/>  Z = depth<br/>→ Immediate metric 3D positions<br/>  (no scale ambiguity)"]
+        I3 --> I4["Create Initial KeyFrame<br/>Wrap current frame as KFini<br/>Insert into Atlas"]
+        I4 --> I5["Create MapPoints<br/>For each valid 3D point:<br/>  • Create MapPoint at (X,Y,Z)<br/>  • Add left + right observations to KFini<br/>  • Compute representative descriptor<br/>  • Compute mean viewing direction<br/>  • Set scale invariance distances<br/>→ Hundreds of MPs immediately available"]
+        I5 --> I6["Covisibility Graph Initialised<br/>KFini is the sole vertex;<br/>edges added as new KFs arrive"]
         I6 --> OK
     end
 
-    OK(["State = OK\nStart Steady-State Tracking"])
+    OK(["State = OK<br/>Start Steady-State Tracking"])
     OK --> T0
 
     %% ─── STEADY-STATE TRACKING ──────────────────────────────────────────
@@ -58,26 +58,26 @@ flowchart TD
 
     subgraph TRACK["③ Steady-State Tracking"]
         direction TB
-        T0["CheckReplacedInLastFrame()\nSwap any bad/merged MPs with\ntheir valid replacements from LocalMapping"]
+        T0["CheckReplacedInLastFrame()<br/>Swap any bad/merged MPs with<br/>their valid replacements from LocalMapping"]
 
-        T0 --> T1{Velocity\nmodel valid?}
+        T0 --> T1{Velocity<br/>model valid?}
 
-        subgraph MM["③-a  Motion-Model Tracking\n(frame-to-frame, constant velocity)"]
+        subgraph MM["③-a  Motion-Model Tracking<br/>(frame-to-frame, constant velocity)"]
             direction TB
-            MM1["Predict Pose\nTcw_pred = mVelocity × Tcw_last\n(constant-velocity SE(3) integration)"]
-            MM1 --> MM2["Project Last-Frame MPs → Current Frame\nSearchByProjection(CurrentFrame, LastFrame,\n  th=7 px, mono=false)\n• Reproject each MP with predicted pose\n• Search in 7 px radius (tight: metric depth known)\n• Descriptor match + ratio test (0.9)\n• Widen to 14 px if < mMotionModelMinInitialMatches\n→ Seed correspondences for pose opt."]
-            MM2 --> MM3["Pose Optimisation\nOptimizer::PoseOptimization()\n• g2o PnP, Huber kernel\n• 4 iterations with outlier pruning\n→ Refined Tcw"]
-            MM3 --> MM4{"≥10 inlier\nmap points?"}
+            MM1["Predict Pose<br/>Tcw_pred = mVelocity × Tcw_last<br/>(constant-velocity SE(3) integration)"]
+            MM1 --> MM2["Project Last-Frame MPs → Current Frame<br/>SearchByProjection(CurrentFrame, LastFrame,<br/>  th=7 px, mono=false)<br/>• Reproject each MP with predicted pose<br/>• Search in 7 px radius (tight: metric depth known)<br/>• Descriptor match + ratio test (0.9)<br/>• Widen to 14 px if &lt; mMotionModelMinInitialMatches<br/>→ Seed correspondences for pose opt."]
+            MM2 --> MM3["Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>• g2o PnP, Huber kernel<br/>• 4 iterations with outlier pruning<br/>→ Refined Tcw"]
+            MM3 --> MM4{"≥10 inlier<br/>map points?"}
             MM4 -->|Yes| TLM
             MM4 -->|No – fall back| BOW
         end
 
-        subgraph BOW["③-b  Reference-KeyFrame Tracking\n(BoW appearance matching)"]
+        subgraph BOW["③-b  Reference-KeyFrame Tracking<br/>(BoW appearance matching)"]
             direction TB
-            B1["Compute BoW for Current Frame\n(if not yet done)"]
-            B1 --> B2["BoW Feature Matching\nSearchByBoW(mpReferenceKF, CurrentFrame)\n• Match features in same vocabulary node\n• ORB descriptor distance, ratio test (0.7)\n• Rotation-histogram outlier rejection\n→ 2D–3D correspondences via reference KF MPs"]
-            B2 --> B3["Pose Optimisation\nOptimizer::PoseOptimization()\n→ Refined Tcw"]
-            B3 --> B4{"≥10 inlier\nmap points?"}
+            B1["Compute BoW for Current Frame<br/>(if not yet done)"]
+            B1 --> B2["BoW Feature Matching<br/>SearchByBoW(mpReferenceKF, CurrentFrame)<br/>• Match features in same vocabulary node<br/>• ORB descriptor distance, ratio test (0.7)<br/>• Rotation-histogram outlier rejection<br/>→ 2D–3D correspondences via reference KF MPs"]
+            B2 --> B3["Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>→ Refined Tcw"]
+            B3 --> B4{"≥10 inlier<br/>map points?"}
             B4 -->|No| LOST
             B4 -->|Yes| TLM
         end
@@ -89,32 +89,32 @@ flowchart TD
     %% ─── LOCAL MAP TRACKING ──────────────────────────────────────────────
     subgraph LMT["④ Local Map Tracking  (full local-context refinement)"]
         direction TB
-        TLM["UpdateLocalKeyFrames()\n• All KFs sharing ≥1 MP with current frame\n• Their 10 best covisible neighbours\n• Essential-graph parents/children\n→ Local KF set (≤80 KFs)"]
-        TLM --> TLM2["UpdateLocalPoints()\nAll MPs seen by local KFs\nnot yet matched in this frame\n→ Candidate local-map point set"]
-        TLM2 --> TLM3["SearchLocalPoints()\nFor each candidate MP:\n  • Project with current (coarse) pose\n  • Reject if viewing angle > 60° to MP normal\n  • Reject if outside scale-invariance range\n  • Search in tight 3–5 px window\n  • ORB descriptor match\n→ Many additional 2D–3D matches"]
-        TLM3 --> TLM4["Final Pose Optimisation\nOptimizer::PoseOptimization()\nOver all matched local MPs\n→ Accurate final Tcw"]
-        TLM4 --> TLM5{"≥30 inlier\nmap points?"}
+        TLM["UpdateLocalKeyFrames()<br/>• All KFs sharing ≥1 MP with current frame<br/>• Their 10 best covisible neighbours<br/>• Essential-graph parents/children<br/>→ Local KF set (≤80 KFs)"]
+        TLM --> TLM2["UpdateLocalPoints()<br/>All MPs seen by local KFs<br/>not yet matched in this frame<br/>→ Candidate local-map point set"]
+        TLM2 --> TLM3["SearchLocalPoints()<br/>For each candidate MP:<br/>  • Project with current (coarse) pose<br/>  • Reject if viewing angle &gt; 60° to MP normal<br/>  • Reject if outside scale-invariance range<br/>  • Search in tight 3–5 px window<br/>  • ORB descriptor match<br/>→ Many additional 2D–3D matches"]
+        TLM3 --> TLM4["Final Pose Optimisation<br/>Optimizer::PoseOptimization()<br/>Over all matched local MPs<br/>→ Accurate final Tcw"]
+        TLM4 --> TLM5{"≥30 inlier<br/>map points?"}
         TLM5 -->|No| LOST
         TLM5 -->|Yes| VEL
     end
 
     %% ─── VELOCITY UPDATE + KEYFRAME ─────────────────────────────────────
-    VEL["Update Motion Model\nmVelocity = Tcw_current × Tcw_last⁻¹"]
+    VEL["Update Motion Model<br/>mVelocity = Tcw_current × Tcw_last⁻¹"]
     VEL --> KFD
 
     subgraph KFD["⑤ Keyframe Decision  (stereo thresholds)"]
         direction TB
-        KF1["NeedNewKeyFrame()?\n• MaxFrames elapsed since last KF\n• Many KFs in map:  inliers < 0.75 × ref-KF inliers\n  Few KFs in map:   inliers < 0.9  × ref-KF inliers\n• Weak tracking:   inliers < 0.80 × ref-KF inliers\n  AND close-point condition met\n• Local mapper idle + MinFrames elapsed\n• Too few tracked close points\n  (depth < mThDepth, baseline-relative)"]
+        KF1["NeedNewKeyFrame()?<br/>• MaxFrames elapsed since last KF<br/>• Many KFs in map:  inliers &lt; 0.75 × ref-KF inliers<br/>  Few KFs in map:   inliers &lt; 0.9  × ref-KF inliers<br/>• Weak tracking:   inliers &lt; 0.80 × ref-KF inliers<br/>  AND close-point condition met<br/>• Local mapper idle + MinFrames elapsed<br/>• Too few tracked close points<br/>  (depth &lt; mThDepth, baseline-relative)"]
         KF1 -->|Yes| KF2
         KF1 -->|No| DONE
 
-        KF2["CreateNewKeyFrame()\n• Wrap current frame as new KF\n• Link prev/next KF pointers\n• Insert into Atlas\n• Create stereo MapPoints for\n  unmatched features with valid depth:\n    depth < mThDepth → 'close' (reliable)\n    depth ≥ mThDepth → 'far' (skip for now)\n  Limit to ~100 closest new MPs\n• Queue KF for LocalMapping:\n  → BoW, covisibility edges\n  → Triangulate with neighbours\n  → Local Bundle Adjustment"]
+        KF2["CreateNewKeyFrame()<br/>• Wrap current frame as new KF<br/>• Link prev/next KF pointers<br/>• Insert into Atlas<br/>• Create stereo MapPoints for<br/>  unmatched features with valid depth:<br/>    depth &lt; mThDepth → 'close' (reliable)<br/>    depth ≥ mThDepth → 'far' (skip for now)<br/>  Limit to ~100 closest new MPs<br/>• Queue KF for LocalMapping:<br/>  → BoW, covisibility edges<br/>  → Triangulate with neighbours<br/>  → Local Bundle Adjustment"]
     end
 
-    DONE(["Pose Output\nTcw stored; trajectory updated"])
+    DONE(["Pose Output<br/>Tcw stored; trajectory updated"])
     KF2 --> DONE
 
-    LOST(["LOST\nRelocalization:\nBoW query → candidate KFs\n→ EPnP + RANSAC per candidate\n→ PnP optimise if ≥10 inliers\n→ Return to OK or reset map"])
+    LOST(["LOST<br/>Relocalization:<br/>BoW query → candidate KFs<br/>→ EPnP + RANSAC per candidate<br/>→ PnP optimise if ≥10 inliers<br/>→ Return to OK or reset map"])
 ```
 
 ---
