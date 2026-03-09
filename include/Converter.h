@@ -22,11 +22,8 @@
 #include <opencv2/core/core.hpp>
 
 #include <Eigen/Dense>
-#include "g2o/types/sba/types_six_dof_expmap.h"
-#include "g2o/types/sim3/types_seven_dof_expmap.h"
 
-#include "sophus/geometry.hpp"
-#include "sophus/sim3.hpp"
+#include "sophus/se3.hpp"
 
 namespace ORB_SLAM3
 {
@@ -37,13 +34,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     static std::vector<cv::Mat> toDescriptorVector(const cv::Mat& Descriptors);
 
-    static g2o::SE3Quat toSE3Quat(const cv::Mat& cvT);
-    static g2o::SE3Quat toSE3Quat(const Sophus::SE3f& T);
-    static g2o::SE3Quat toSE3Quat(const g2o::Sim3& gSim3);
-
     // TODO templetize these functions
-    static cv::Mat toCvMat(const g2o::SE3Quat& SE3);
-    static cv::Mat toCvMat(const g2o::Sim3& Sim3);
     static cv::Mat toCvMat(const Eigen::Matrix<double, 4, 4>& m);
     static cv::Mat toCvMat(const Eigen::Matrix<float, 4, 4>& m);
     static cv::Mat toCvMat(const Eigen::Matrix<float, 3, 4>& m);
@@ -72,7 +63,6 @@ public:
 
     //TODO: Sophus migration, to be deleted in the future
     static Sophus::SE3<float> toSophus(const cv::Mat& T);
-    static Sophus::Sim3f toSophus(const g2o::Sim3& S);
 };
 
 }  // namespace ORB_SLAM3

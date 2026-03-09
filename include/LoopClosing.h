@@ -19,6 +19,7 @@
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
 
+#include <gtsam/geometry/Similarity3.h>
 #include <boost/algorithm/string.hpp>
 #include <map>
 #include <mutex>
@@ -28,7 +29,6 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include "g2o/types/sim3/types_seven_dof_expmap.h"
 
 #include "ORBVocabulary.h"
 
@@ -48,8 +48,8 @@ class LoopClosing
 {
 public:
     typedef std::pair<std::set<KeyFrame*>, int> ConsistentGroup;
-    typedef std::map<KeyFrame*, g2o::Sim3, std::less<KeyFrame*>,
-                     Eigen::aligned_allocator<std::pair<KeyFrame* const, g2o::Sim3>>>
+    typedef std::map<KeyFrame*, gtsam::Similarity3, std::less<KeyFrame*>,
+                     Eigen::aligned_allocator<std::pair<KeyFrame* const, gtsam::Similarity3>>>
         KeyFrameAndPose;
 
 public:
@@ -94,16 +94,16 @@ protected:
 
     //Methods to implement the new place recognition algorithm
     bool NewDetectCommonRegions();
-    bool DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, g2o::Sim3& gScw,
+    bool DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, gtsam::Similarity3& gScw,
                                         int& nNumProjMatches, std::vector<MapPoint*>& vpMPs,
                                         std::vector<MapPoint*>& vpMatchedMPs);
     bool DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, KeyFrame*& pMatchedKF, KeyFrame*& pLastCurrentKF,
-                                    g2o::Sim3& g2oScw, int& nNumCoincidences, std::vector<MapPoint*>& vpMPs,
+                                    gtsam::Similarity3& g2oScw, int& nNumCoincidences, std::vector<MapPoint*>& vpMPs,
                                     std::vector<MapPoint*>& vpMatchedMPs);
-    bool DetectCommonRegionsFromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, g2o::Sim3& gScw,
+    bool DetectCommonRegionsFromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, gtsam::Similarity3& gScw,
                                        int& nNumProjMatches, std::vector<MapPoint*>& vpMPs,
                                        std::vector<MapPoint*>& vpMatchedMPs);
-    int FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw, g2o::Sim3& g2oScw,
+    int FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw, gtsam::Similarity3& g2oScw,
                                 std::set<MapPoint*>& spMatchedMPinOrigin, std::vector<MapPoint*>& vpMapPoints,
                                 std::vector<MapPoint*>& vpMatchedMapPoints);
 
@@ -154,7 +154,7 @@ protected:
     std::vector<MapPoint*> mvpCurrentMatchedPoints;
     std::vector<MapPoint*> mvpLoopMapPoints;
     cv::Mat mScw;
-    g2o::Sim3 mg2oScw;
+    gtsam::Similarity3 mg2oScw;
 
     //-------
     Map* mpLastMap;
@@ -163,8 +163,8 @@ protected:
     int mnLoopNumCoincidences;
     int mnLoopNumNotFound;
     KeyFrame* mpLoopLastCurrentKF;
-    g2o::Sim3 mg2oLoopSlw;
-    g2o::Sim3 mg2oLoopScw;
+    gtsam::Similarity3 mg2oLoopSlw;
+    gtsam::Similarity3 mg2oLoopScw;
     KeyFrame* mpLoopMatchedKF;
     std::vector<MapPoint*> mvpLoopMPs;
     std::vector<MapPoint*> mvpLoopMatchedMPs;
@@ -172,15 +172,15 @@ protected:
     int mnMergeNumCoincidences;
     int mnMergeNumNotFound;
     KeyFrame* mpMergeLastCurrentKF;
-    g2o::Sim3 mg2oMergeSlw;
-    g2o::Sim3 mg2oMergeSmw;
-    g2o::Sim3 mg2oMergeScw;
+    gtsam::Similarity3 mg2oMergeSlw;
+    gtsam::Similarity3 mg2oMergeSmw;
+    gtsam::Similarity3 mg2oMergeScw;
     KeyFrame* mpMergeMatchedKF;
     std::vector<MapPoint*> mvpMergeMPs;
     std::vector<MapPoint*> mvpMergeMatchedMPs;
     std::vector<KeyFrame*> mvpMergeConnectedKFs;
 
-    g2o::Sim3 mSold_new;
+    gtsam::Similarity3 mSold_new;
     //-------
 
     long unsigned int mLastLoopKFid;

@@ -41,6 +41,21 @@ Read-only references (no changes):
 
 ---
 
+## Pre-implementation: verify return types and includes
+
+Before implementing, confirm the following in the actual codebase. Line numbers and
+signatures may differ across ORB-SLAM3 versions or local patches.
+
+| Location | What to verify |
+|----------|----------------|
+| **`include/Tracking.h`** | `Eigen::Vector3f` is used in `MapPointObservation` and `NewMapPointCandidate`. Confirm Eigen is available (e.g. via `Frame.h`, `Sophus`, or other existing includes). If not, add the appropriate `#include <Eigen/Core>` (or equivalent). |
+| **`include/MapPoint.h`** | `GetWorldPos()` — confirm return type is `Eigen::Vector3f` (or adapt struct field type). |
+| **`include/MapPoint.h`** | `GetObservations()` — confirm return type is `std::map<KeyFrame*, std::tuple<int,int>>` and that the left-image keypoint index in the reference KeyFrame is `std::get<0>(it->second)`. If the type is different (e.g. `std::pair` or different tuple order), adapt the Touch point C1 code accordingly. |
+| **`include/Frame.h`** | `UnprojectStereo(int i, Eigen::Vector3f& x3D)` — confirm signature (const int& vs int, output by reference) and that the output `x3D` is in **world** frame. |
+| **`include/Frame.h`** | `isSet()` — confirm it exists and returns true when the frame has been set (so that when state becomes LOST, the Touch point E blocks still run if the current frame is set; see “Debug data when state is LOST” below). |
+
+---
+
 ## Part 1 — `include/Tracking.h`: New Helper Structs and New Fields
 
 ### 1a. Add `#include <unordered_map>` to the existing include block
@@ -535,8 +550,20 @@ Current code at lines 907–922:
 ```
 
 Insert **after** `UpdateAfterTracking(tracking_result.success);` and **before** the
-`if (mState == LOST)` check, so these blocks also run on frames that become LOST (the
-data is still useful for debugging):
+`if (mState == LOST)` check, so these blocks also run on frames that become LOST (see
+below).
+
+#### Why populate before the LOST check (debug data when state is LOST)
+
+We intentionally populate `all_tracked_map_points` and `new_map_point_candidates` *before*
+the `if (mState == LOST)` check so that **even when the camera is declared lost**, the
+`TrackingResult` still contains the last frame's tracked map points and stereo candidates.
+That data is valuable for:
+
+- **Post-mortem debugging**: Inspecting what the tracker "saw" in the frame where tracking failed (e.g. how many inliers, which keypoints had depth, how many were already matched to the map).
+- **Offline visualisation**: A debugging UI can show the last good (or last attempted) state before reset, without needing to special-case LOST returns.
+
+So the design choice is: always fill these fields when `mCurrentFrame.isSet()` (and, for candidates, when stereo). Do not skip them when `mState == LOST`. After implementation, **verify** that when the state transitions to LOST, `mCurrentFrame.isSet()` is still true at this point in `Track()`, so that the population blocks actually run; if the codebase clears or unsets the frame earlier on the path to LOST, the condition may need to be adjusted.
 
 ```cpp
         UpdateAfterTracking(tracking_result.success);
@@ -751,6 +778,7 @@ stereo or mono example):
 | `local_map_result.inlier_observations[i].pos_camera.z() > 0` | Yes (forward-facing) |
 | `all_tracked_map_points.size()` ≈ `mnMatchesInliers` | Yes |
 | `new_map_point_candidates` non-empty (stereo, near keyframe) | Yes |
+| When state is LOST, `all_tracked_map_points` and `new_map_point_candidates` still populated (per “debug data when state is LOST”) | Yes; confirm `mCurrentFrame.isSet()` is true at Touch point E when LOST |
 | `image_left.empty()` | Always false — populated before every return |
 | `image_right.empty()` | False for stereo, true for monocular |
 | `image_left.channels()` | Always 1 (grayscale) |

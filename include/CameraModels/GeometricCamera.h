@@ -62,7 +62,7 @@ public:
                                    const Eigen::Matrix3f& R12, const Eigen::Vector3f& t12, const float sigmaLevel,
                                    const float unc) = 0;
 
-    float getParameter(const int i) { return mvParameters[i]; }
+    float getParameter(const int i) const { return mvParameters[i]; }
     void setParameter(const float p, const size_t i) { mvParameters[i] = p; }
 
     size_t size() { return mvParameters.size(); }

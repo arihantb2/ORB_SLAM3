@@ -19,10 +19,9 @@ add_library(${PROJECT_NAME} SHARED
     Sim3Solver.cc
     Viewer.cc
     ImuTypes.cc
-    G2oTypes.cc
+    GTSAMTypes.cc
     CameraModels/Pinhole.cpp
     CameraModels/Metashape.cpp
-    OptimizableTypes.cpp
     MLPnPsolver.cpp
     GeometricTools.cc
     TwoViewReconstruction.cc
@@ -37,11 +36,15 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>
 )
 
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${GTSAM_INCLUDE_DIR}
+)
+
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
     ${Pangolin_LIBRARIES}
-    g2o::g2o_interface
+    gtsam
     DBoW2::DBoW2
     -lcrypto
 )

@@ -13,7 +13,7 @@
   <depend>opencv4</depend>
   <depend>pangolin</depend>
   <depend>dbow2</depend>
-  <depend>g2o</depend>
+  <depend>gtsam</depend>
 
   <export>
     <build_type>cmake</build_type>
