@@ -3,8 +3,8 @@
  * Verifies error at consistent state and analytical vs numerical Jacobians.
  */
 
-#include "GTSAMTypes.h"
 #include "CameraModels/Pinhole.h"
+#include "GTSAMTypes.h"
 
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/Values.h>
@@ -37,15 +37,15 @@ TEST(GTSAMFactors, FourDOFBetweenFactor)
 {
     const gtsam::Key keyI = fourDofKey(0);
     const gtsam::Key keyJ = fourDofKey(1);
-    const Eigen::Matrix3d Rcwi = Eigen::AngleAxisd(0.1, Eigen::Vector3d::UnitZ()).toRotationMatrix()
-                                * Eigen::AngleAxisd(0.05, Eigen::Vector3d::UnitY()).toRotationMatrix();
+    const Eigen::Matrix3d Rcwi = Eigen::AngleAxisd(0.1, Eigen::Vector3d::UnitZ()).toRotationMatrix() *
+                                 Eigen::AngleAxisd(0.05, Eigen::Vector3d::UnitY()).toRotationMatrix();
     const Eigen::Vector3d tcwi(1.0, 0.2, 0.5);
     const gtsam::Rot3 rotI(Rcwi);
     const gtsam::Point3 transI(tcwi(0), tcwi(1), tcwi(2));
     const gtsam::Pose3 poseI(rotI, transI);
 
-    const Eigen::Matrix3d Rcwj = Eigen::AngleAxisd(0.15, Eigen::Vector3d::UnitZ()).toRotationMatrix()
-                                 * Eigen::AngleAxisd(-0.02, Eigen::Vector3d::UnitY()).toRotationMatrix();
+    const Eigen::Matrix3d Rcwj = Eigen::AngleAxisd(0.15, Eigen::Vector3d::UnitZ()).toRotationMatrix() *
+                                 Eigen::AngleAxisd(-0.02, Eigen::Vector3d::UnitY()).toRotationMatrix();
     const Eigen::Vector3d tcwj(1.3, 0.1, 0.6);
     const gtsam::Rot3 rotJ(Rcwj);
     const gtsam::Point3 transJ(tcwj(0), tcwj(1), tcwj(2));
@@ -65,11 +65,14 @@ TEST(GTSAMFactors, FourDOFBetweenFactor)
     (void)factor.evaluateError(poseI, poseJ, H1_analytical, H2_analytical);
 
     std::function<gtsam::Vector(const gtsam::Pose3&, const gtsam::Pose3&)> err_fn =
-        [&factor](const gtsam::Pose3& a, const gtsam::Pose3& b) -> gtsam::Vector {
-            return factor.evaluateError(a, b, boost::none, boost::none);
-        };
-    Eigen::MatrixXd H1_num = gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Pose3>(err_fn, poseI, poseJ);
-    Eigen::MatrixXd H2_num = gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Pose3>(err_fn, poseI, poseJ);
+        [&factor](const gtsam::Pose3& a, const gtsam::Pose3& b) -> gtsam::Vector
+    {
+        return factor.evaluateError(a, b, boost::none, boost::none);
+    };
+    Eigen::MatrixXd H1_num =
+        gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Pose3>(err_fn, poseI, poseJ);
+    Eigen::MatrixXd H2_num =
+        gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Pose3>(err_fn, poseI, poseJ);
 
     ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "FourDOFBetweenFactor H1");
     ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "FourDOFBetweenFactor H2");
@@ -99,7 +102,8 @@ TEST(GTSAMFactors, MonoOnlyPoseFactor)
     Eigen::MatrixXd H_analytical(2, 6);
     factor.evaluateError(Twb, H_analytical);
 
-    auto err_fn = [&factor](const gtsam::Pose3& Twb_) -> gtsam::Vector {
+    auto err_fn = [&factor](const gtsam::Pose3& Twb_) -> gtsam::Vector
+    {
         return factor.evaluateError(Twb_, boost::none);
     };
     Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(err_fn, Twb);
@@ -132,7 +136,8 @@ TEST(GTSAMFactors, StereoOnlyPoseFactor)
     Eigen::MatrixXd H_analytical(3, 6);
     factor.evaluateError(Twb, H_analytical);
 
-    auto err_fn = [&factor](const gtsam::Pose3& Twb_) -> gtsam::Vector {
+    auto err_fn = [&factor](const gtsam::Pose3& Twb_) -> gtsam::Vector
+    {
         return factor.evaluateError(Twb_, boost::none);
     };
     Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(err_fn, Twb);
@@ -160,7 +165,8 @@ TEST(GTSAMFactors, Sim3ProjectionFactor)
     Eigen::MatrixXd H_analytical(2, 7);
     factor.evaluateError(S12, H_analytical);
 
-    auto err_fn = [&factor](const gtsam::Similarity3& S) -> gtsam::Vector {
+    auto err_fn = [&factor](const gtsam::Similarity3& S) -> gtsam::Vector
+    {
         return factor.evaluateError(S, boost::none);
     };
     Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Similarity3>(err_fn, S12);
@@ -189,7 +195,8 @@ TEST(GTSAMFactors, InverseSim3ProjectionFactor)
     Eigen::MatrixXd H_analytical(2, 7);
     factor.evaluateError(S12, H_analytical);
 
-    auto err_fn = [&factor](const gtsam::Similarity3& S) -> gtsam::Vector {
+    auto err_fn = [&factor](const gtsam::Similarity3& S) -> gtsam::Vector
+    {
         return factor.evaluateError(S, boost::none);
     };
     Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Similarity3>(err_fn, S12);

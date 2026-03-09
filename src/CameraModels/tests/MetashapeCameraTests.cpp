@@ -85,8 +85,7 @@ TEST(MetashapeCamera, UnprojectWithSkew)
 
 TEST(MetashapeCamera, ProjectJacobian)
 {
-    const std::vector<float> params = {500.f,   510.f,  320.f,  240.f,   -0.1f, 0.02f,
-                                        -0.005f, 0.001f, 0.001f, -0.002f, 5.f};
+    const std::vector<float> params = {500.f, 510.f, 320.f, 240.f, -0.1f, 0.02f, -0.005f, 0.001f, 0.001f, -0.002f, 5.f};
     Metashape cam(params);
 
     const Eigen::Vector3d P(0.12, -0.08, 1.7);

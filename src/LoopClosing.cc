@@ -113,9 +113,11 @@ void LoopClosing::Run()
                     else
                     {
                         Sophus::SE3d mTmw = mpMergeMatchedKF->GetPose().cast<double>();
-                        gtsam::Similarity3 gSmw2(gtsam::Rot3(mTmw.rotationMatrix()), gtsam::Point3(mTmw.translation()), 1.0);
+                        gtsam::Similarity3 gSmw2(gtsam::Rot3(mTmw.rotationMatrix()), gtsam::Point3(mTmw.translation()),
+                                                 1.0);
                         Sophus::SE3d mTcw = mpCurrentKF->GetPose().cast<double>();
-                        gtsam::Similarity3 gScw1(gtsam::Rot3(mTcw.rotationMatrix()), gtsam::Point3(mTcw.translation()), 1.0);
+                        gtsam::Similarity3 gScw1(gtsam::Rot3(mTcw.rotationMatrix()), gtsam::Point3(mTcw.translation()),
+                                                 1.0);
                         gtsam::Similarity3 gSw2c = mg2oMergeSlw.inverse();
                         gtsam::Similarity3 gSw1m = mg2oMergeSlw;
 
@@ -200,7 +202,8 @@ void LoopClosing::Run()
                     if (mpCurrentKF->GetMap()->IsInertial())
                     {
                         Sophus::SE3d Twc = mpCurrentKF->GetPoseInverse().cast<double>();
-                        gtsam::Similarity3 g2oTwc(gtsam::Rot3(Twc.rotationMatrix()), gtsam::Point3(Twc.translation()), 1.0);
+                        gtsam::Similarity3 g2oTwc(gtsam::Rot3(Twc.rotationMatrix()), gtsam::Point3(Twc.translation()),
+                                                  1.0);
                         gtsam::Similarity3 g2oSww_new = g2oTwc * mg2oLoopScw;
 
                         Eigen::Vector3d phi = LogSO3(g2oSww_new.rotation().matrix());
@@ -215,7 +218,8 @@ void LoopClosing::Run()
                                 {
                                     phi(0) = 0;
                                     phi(1) = 0;
-                                    g2oSww_new = gtsam::Similarity3(gtsam::Rot3(ExpSO3(phi)), g2oSww_new.translation(), 1.0);
+                                    g2oSww_new =
+                                        gtsam::Similarity3(gtsam::Rot3(ExpSO3(phi)), g2oSww_new.translation(), 1.0);
                                     mg2oLoopScw = g2oTwc.inverse() * g2oSww_new;
                                 }
                             }
@@ -498,8 +502,9 @@ bool LoopClosing::DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame*
 }
 
 bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, KeyFrame*& pMatchedKF2,
-                                             KeyFrame*& pLastCurrentKF, gtsam::Similarity3& g2oScw, int& nNumCoincidences,
-                                             std::vector<MapPoint*>& vpMPs, std::vector<MapPoint*>& vpMatchedMPs)
+                                             KeyFrame*& pLastCurrentKF, gtsam::Similarity3& g2oScw,
+                                             int& nNumCoincidences, std::vector<MapPoint*>& vpMPs,
+                                             std::vector<MapPoint*>& vpMatchedMPs)
 {
     int nBoWMatches = 20;
     int nBoWInliers = 15;
@@ -660,9 +665,10 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
                 }
 
                 gtsam::Similarity3 gScm(gtsam::Rot3(solver.GetEstimatedRotation().cast<double>()),
-                               gtsam::Point3(solver.GetEstimatedTranslation().cast<double>()), (double)solver.GetEstimatedScale());
+                                        gtsam::Point3(solver.GetEstimatedTranslation().cast<double>()),
+                                        (double)solver.GetEstimatedScale());
                 gtsam::Similarity3 gSmw(gtsam::Rot3(pMostBoWMatchesKF->GetRotation().cast<double>()),
-                               gtsam::Point3(pMostBoWMatchesKF->GetTranslation().cast<double>()), 1.0);
+                                        gtsam::Point3(pMostBoWMatchesKF->GetTranslation().cast<double>()), 1.0);
                 gtsam::Similarity3 gScw = gScm * gSmw;  // Similarity matrix of current from the world position
                 Sophus::Sim3f mScw = fromGTSAMSim3(gScw);
 
@@ -688,7 +694,7 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
                     if (numOptMatches >= nSim3Inliers)
                     {
                         gtsam::Similarity3 gSmw(gtsam::Rot3(pMostBoWMatchesKF->GetRotation().cast<double>()),
-                                       gtsam::Point3(pMostBoWMatchesKF->GetTranslation().cast<double>()), 1.0);
+                                                gtsam::Point3(pMostBoWMatchesKF->GetTranslation().cast<double>()), 1.0);
                         gtsam::Similarity3 gScw = gScm * gSmw;  // Similarity matrix of current from the world position
                         Sophus::Sim3f mScw = fromGTSAMSim3(gScw);
 
@@ -745,7 +751,8 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
                             {
                                 KeyFrame* pKFj = vpCurrentCovKFs[j];
                                 Sophus::SE3d mTjc = (pKFj->GetPose() * mpCurrentKF->GetPoseInverse()).cast<double>();
-                                gtsam::Similarity3 gSjc(gtsam::Rot3(mTjc.rotationMatrix()), gtsam::Point3(mTjc.translation()), 1.0);
+                                gtsam::Similarity3 gSjc(gtsam::Rot3(mTjc.rotationMatrix()),
+                                                        gtsam::Point3(mTjc.translation()), 1.0);
                                 gtsam::Similarity3 gSjw = gSjc * gScw;
                                 int numProjMatches_j = 0;
                                 std::vector<MapPoint*> vpMatchedMPs_j;
@@ -928,11 +935,15 @@ void LoopClosing::CorrectLoop()
     CorrectedSim3[mpCurrentKF] = mg2oLoopScw;
     Sophus::SE3f Twc = mpCurrentKF->GetPoseInverse();
     Sophus::SE3f Tcw = mpCurrentKF->GetPose();
-    gtsam::Similarity3 g2oScw(gtsam::Rot3(Tcw.rotationMatrix().cast<double>()), gtsam::Point3(Tcw.translation().cast<double>()), 1.0);
+    gtsam::Similarity3 g2oScw(gtsam::Rot3(Tcw.rotationMatrix().cast<double>()),
+                              gtsam::Point3(Tcw.translation().cast<double>()), 1.0);
     NonCorrectedSim3[mpCurrentKF] = g2oScw;
 
     // Update keyframe pose with corrected Sim3. First transform Sim3 to SE3 (scale translation)
-    Sophus::SE3d correctedTcw(mg2oLoopScw.rotation().matrix(), Eigen::Vector3d(mg2oLoopScw.translation().x(), mg2oLoopScw.translation().y(), mg2oLoopScw.translation().z()) / mg2oLoopScw.scale());
+    Sophus::SE3d correctedTcw(
+        mg2oLoopScw.rotation().matrix(),
+        Eigen::Vector3d(mg2oLoopScw.translation().x(), mg2oLoopScw.translation().y(), mg2oLoopScw.translation().z()) /
+            mg2oLoopScw.scale());
     mpCurrentKF->SetPose(correctedTcw.cast<float>());
 
     Map* pLoopMap = mpCurrentKF->GetMap();
@@ -958,12 +969,16 @@ void LoopClosing::CorrectLoop()
                 CorrectedSim3[pKFi] = g2oCorrectedSiw;
 
                 // Update keyframe pose with corrected Sim3. First transform Sim3 to SE3 (scale translation)
-                Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation().matrix(),
-                                          Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(), g2oCorrectedSiw.translation().z()) / g2oCorrectedSiw.scale());
+                Sophus::SE3d correctedTiw(
+                    g2oCorrectedSiw.rotation().matrix(),
+                    Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(),
+                                    g2oCorrectedSiw.translation().z()) /
+                        g2oCorrectedSiw.scale());
                 pKFi->SetPose(correctedTiw.cast<float>());
 
                 //Pose without correction
-                gtsam::Similarity3 g2oSiw(gtsam::Rot3(Tiw.rotationMatrix().cast<double>()), gtsam::Point3(Tiw.translation().cast<double>()), 1.0);
+                gtsam::Similarity3 g2oSiw(gtsam::Rot3(Tiw.rotationMatrix().cast<double>()),
+                                          gtsam::Point3(Tiw.translation().cast<double>()), 1.0);
                 NonCorrectedSim3[pKFi] = g2oSiw;
             }
         }
@@ -1012,7 +1027,8 @@ void LoopClosing::CorrectLoop()
             // Correct velocity according to orientation correction
             if (bImuInit)
             {
-                Eigen::Quaternionf Rcor((g2oCorrectedSiw.rotation().inverse() * g2oSiw.rotation()).matrix().cast<float>());
+                Eigen::Quaternionf Rcor(
+                    (g2oCorrectedSiw.rotation().inverse() * g2oSiw.rotation()).matrix().cast<float>());
                 pKFi->SetVelocity(Rcor * pKFi->GetVelocity());
             }
 
@@ -1330,13 +1346,17 @@ void LoopClosing::MergeLocal()
         // Update keyframe pose with corrected Sim3. First transform Sim3 to SE3 (scale translation)
         double s = g2oCorrectedSiw.scale();
         pKFi->mfScale = s;
-        Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation().matrix(), Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(), g2oCorrectedSiw.translation().z()) / s);
+        Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation().matrix(),
+                                  Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(),
+                                                  g2oCorrectedSiw.translation().z()) /
+                                      s);
 
         pKFi->mTcwMerge = correctedTiw.cast<float>();
 
         if (pCurrentMap->isImuInitialized())
         {
-            Eigen::Quaternionf Rcor(Eigen::Matrix3f((g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation()).matrix().cast<float>()));
+            Eigen::Quaternionf Rcor(Eigen::Matrix3f(
+                (g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation()).matrix().cast<float>()));
             pKFi->mVwbMerge = Rcor * pKFi->GetVelocity();
         }
 
@@ -1530,7 +1550,11 @@ void LoopClosing::MergeLocal()
 
                 pKFi->mfScale = s;
 
-                Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation().matrix(), Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(), g2oCorrectedSiw.translation().z()) / s);
+                Sophus::SE3d correctedTiw(
+                    g2oCorrectedSiw.rotation().matrix(),
+                    Eigen::Vector3d(g2oCorrectedSiw.translation().x(), g2oCorrectedSiw.translation().y(),
+                                    g2oCorrectedSiw.translation().z()) /
+                        s);
 
                 pKFi->mTcwBefMerge = pKFi->GetPose();
                 pKFi->mTwcBefMerge = pKFi->GetPoseInverse();
@@ -1539,7 +1563,10 @@ void LoopClosing::MergeLocal()
 
                 if (pCurrentMap->isImuInitialized())
                 {
-                    Eigen::Quaternionf Rcor(Eigen::Matrix3f((g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation()).matrix().cast<float>()));
+                    Eigen::Quaternionf Rcor(
+                        Eigen::Matrix3f((g2oCorrectedSiw.rotation().inverse() * vNonCorrectedSim3[pKFi].rotation())
+                                            .matrix()
+                                            .cast<float>()));
                     pKFi->SetVelocity(Rcor * pKFi->GetVelocity());  // TODO: should add here scale s
                 }
             }

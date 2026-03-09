@@ -52,13 +52,13 @@ namespace ORB_SLAM3
 // ─────────────────────────────────────────────────────────────────────────────
 // Eigen convenience typedefs (shared with the old G2oTypes / Optimizer code)
 // ─────────────────────────────────────────────────────────────────────────────
-typedef Eigen::Matrix<double, 6,  1>  Vector6d;
-typedef Eigen::Matrix<double, 9,  1>  Vector9d;
-typedef Eigen::Matrix<double, 12, 1>  Vector12d;
-typedef Eigen::Matrix<double, 15, 1>  Vector15d;
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
+typedef Eigen::Matrix<double, 9, 1> Vector9d;
+typedef Eigen::Matrix<double, 12, 1> Vector12d;
+typedef Eigen::Matrix<double, 15, 1> Vector15d;
 typedef Eigen::Matrix<double, 12, 12> Matrix12d;
 typedef Eigen::Matrix<double, 15, 15> Matrix15d;
-typedef Eigen::Matrix<double, 9,  9>  Matrix9d;
+typedef Eigen::Matrix<double, 9, 9> Matrix9d;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SO(3) / Lie-algebra utilities  (formerly in G2oTypes.h / G2oTypes.cc)
@@ -106,7 +106,7 @@ public:
     Eigen::Vector3d vwb;
     Eigen::Vector3d bg;
     Eigen::Vector3d ba;
-    Matrix15d       H;
+    Matrix15d H;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,25 +122,52 @@ public:
 //  's' — log-scale             (double)
 //  'S' — Sim3 pose             (Similarity3)
 
-inline gtsam::Key poseKey  (uint32_t id) { return gtsam::Symbol('x', id); }
-inline gtsam::Key imuPoseKey(uint32_t id) { return gtsam::Symbol('p', id); }
-inline gtsam::Key fourDofKey(uint32_t id) { return gtsam::Symbol('f', id); }
-inline gtsam::Key pointKey (uint32_t id) { return gtsam::Symbol('l', id); }
-inline gtsam::Key velKey   (uint32_t id) { return gtsam::Symbol('v', id); }
-inline gtsam::Key biasKey  (uint32_t id) { return gtsam::Symbol('b', id); }
-inline gtsam::Key gravKey  ()            { return gtsam::Symbol('g',  0); }
-inline gtsam::Key scaleKey ()            { return gtsam::Symbol('s',  0); }
-inline gtsam::Key sim3Key  (uint32_t id) { return gtsam::Symbol('S', id); }
+inline gtsam::Key poseKey(uint32_t id)
+{
+    return gtsam::Symbol('x', id);
+}
+inline gtsam::Key imuPoseKey(uint32_t id)
+{
+    return gtsam::Symbol('p', id);
+}
+inline gtsam::Key fourDofKey(uint32_t id)
+{
+    return gtsam::Symbol('f', id);
+}
+inline gtsam::Key pointKey(uint32_t id)
+{
+    return gtsam::Symbol('l', id);
+}
+inline gtsam::Key velKey(uint32_t id)
+{
+    return gtsam::Symbol('v', id);
+}
+inline gtsam::Key biasKey(uint32_t id)
+{
+    return gtsam::Symbol('b', id);
+}
+inline gtsam::Key gravKey()
+{
+    return gtsam::Symbol('g', 0);
+}
+inline gtsam::Key scaleKey()
+{
+    return gtsam::Symbol('s', 0);
+}
+inline gtsam::Key sim3Key(uint32_t id)
+{
+    return gtsam::Symbol('S', id);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversion helpers (declarations — implemented in GTSAMTypes.cc)
 // ─────────────────────────────────────────────────────────────────────────────
-gtsam::Pose3                 sophusToGTSAMPose(const Sophus::SE3f& T);
-Sophus::SE3f                 gtsamToSophusPose(const gtsam::Pose3& P);
+gtsam::Pose3 sophusToGTSAMPose(const Sophus::SE3f& T);
+Sophus::SE3f gtsamToSophusPose(const gtsam::Pose3& P);
 gtsam::imuBias::ConstantBias toGTSAMBias(const IMU::Bias& b);
-IMU::Bias                    fromGTSAMBias(const gtsam::imuBias::ConstantBias& cb);
-gtsam::Similarity3           toGTSAMSim3(const Sophus::Sim3f& S);
-Sophus::Sim3f                fromGTSAMSim3(const gtsam::Similarity3& S);
+IMU::Bias fromGTSAMBias(const gtsam::imuBias::ConstantBias& cb);
+gtsam::Similarity3 toGTSAMSim3(const Sophus::Sim3f& S);
+Sophus::Sim3f fromGTSAMSim3(const gtsam::Similarity3& S);
 
 /// Returns a pinhole calibration for the left camera (asserts pinhole type).
 gtsam::Cal3_S2 toGTSAMCal(const GeometricCamera* pCam);
@@ -169,14 +196,12 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Pose3>;
 
-    MonoOnlyPoseFactor(const gtsam::Key& poseKey,
-                       const Eigen::Vector3d& Xw,
-                       const Eigen::Vector2d& obs,
-                       const gtsam::SharedNoiseModel& noise,
-                       GeometricCamera* pCamera,
+    MonoOnlyPoseFactor(const gtsam::Key& poseKey, const Eigen::Vector3d& Xw, const Eigen::Vector2d& obs,
+                       const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
                        const gtsam::Pose3& Tbc = gtsam::Pose3())
         : Base(noise, poseKey), Xw_(Xw), obs_(obs), pCamera_(pCamera), Tbc_(Tbc)
-    {}
+    {
+    }
 
     gtsam::Vector evaluateError(const gtsam::Pose3& Twb,
                                 boost::optional<gtsam::Matrix&> H = boost::none) const override;
@@ -185,10 +210,10 @@ public:
     bool isDepthPositive(const gtsam::Pose3& Twb) const;
 
 private:
-    Eigen::Vector3d  Xw_;
-    Eigen::Vector2d  obs_;
+    Eigen::Vector3d Xw_;
+    Eigen::Vector2d obs_;
     GeometricCamera* pCamera_;
-    gtsam::Pose3     Tbc_;
+    gtsam::Pose3 Tbc_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,15 +227,13 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Pose3>;
 
-    StereoOnlyPoseFactor(const gtsam::Key& poseKey,
-                         const Eigen::Vector3d& Xw,
-                         const Eigen::Vector3d& obs,   // [ul, v, ur]
-                         double bf,
-                         const gtsam::SharedNoiseModel& noise,
-                         GeometricCamera* pCamera,
+    StereoOnlyPoseFactor(const gtsam::Key& poseKey, const Eigen::Vector3d& Xw,
+                         const Eigen::Vector3d& obs,  // [ul, v, ur]
+                         double bf, const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
                          const gtsam::Pose3& Tbc = gtsam::Pose3())
         : Base(noise, poseKey), Xw_(Xw), obs_(obs), bf_(bf), pCamera_(pCamera), Tbc_(Tbc)
-    {}
+    {
+    }
 
     gtsam::Vector evaluateError(const gtsam::Pose3& Twb,
                                 boost::optional<gtsam::Matrix&> H = boost::none) const override;
@@ -218,11 +241,11 @@ public:
     bool isDepthPositive(const gtsam::Pose3& Twb) const;
 
 private:
-    Eigen::Vector3d  Xw_;
-    Eigen::Vector3d  obs_;   // [ul, v, ur]
-    double           bf_;
+    Eigen::Vector3d Xw_;
+    Eigen::Vector3d obs_;  // [ul, v, ur]
+    double bf_;
     GeometricCamera* pCamera_;
-    gtsam::Pose3     Tbc_;
+    gtsam::Pose3 Tbc_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,33 +254,29 @@ private:
 //   Binary factor: Pose3(Twb) × Point3(Xw) → ℝ².
 //   For pinhole cameras use gtsam::GenericProjectionFactor instead.
 // ─────────────────────────────────────────────────────────────────────────────
-class FisheyeProjectionFactor
-    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
+class FisheyeProjectionFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
 
-    FisheyeProjectionFactor(const gtsam::Key& poseKey,
-                            const gtsam::Key& pointKey,
-                            const Eigen::Vector2d& obs,
-                            const gtsam::SharedNoiseModel& noise,
-                            GeometricCamera* pCamera,
+    FisheyeProjectionFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey, const Eigen::Vector2d& obs,
+                            const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
                             const gtsam::Pose3& Tbc = gtsam::Pose3())
         : Base(noise, poseKey, pointKey), obs_(obs), pCamera_(pCamera), Tbc_(Tbc)
-    {}
+    {
+    }
 
-    gtsam::Vector evaluateError(const gtsam::Pose3& Twb,
-                                const gtsam::Point3& Xw,
+    gtsam::Vector evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
                                 boost::optional<gtsam::Matrix&> H1 = boost::none,
                                 boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
 
     bool isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const;
 
 private:
-    Eigen::Vector2d  obs_;
+    Eigen::Vector2d obs_;
     GeometricCamera* pCamera_;
-    gtsam::Pose3     Tbc_;
+    gtsam::Pose3 Tbc_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -265,35 +284,31 @@ private:
 //   Replaces EdgeStereo for fisheye cameras.
 //   Binary factor: Pose3(Twb) × Point3(Xw) → ℝ³  ([ul, v, ur]).
 // ─────────────────────────────────────────────────────────────────────────────
-class FisheyeStereoFactor
-    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
+class FisheyeStereoFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
 
-    FisheyeStereoFactor(const gtsam::Key& poseKey,
-                        const gtsam::Key& pointKey,
-                        const Eigen::Vector3d& obs,   // [ul, v, ur]
-                        double bf,
-                        const gtsam::SharedNoiseModel& noise,
-                        GeometricCamera* pCamera,
+    FisheyeStereoFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey,
+                        const Eigen::Vector3d& obs,  // [ul, v, ur]
+                        double bf, const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
                         const gtsam::Pose3& Tbc = gtsam::Pose3())
         : Base(noise, poseKey, pointKey), obs_(obs), bf_(bf), pCamera_(pCamera), Tbc_(Tbc)
-    {}
+    {
+    }
 
-    gtsam::Vector evaluateError(const gtsam::Pose3& Twb,
-                                const gtsam::Point3& Xw,
+    gtsam::Vector evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
                                 boost::optional<gtsam::Matrix&> H1 = boost::none,
                                 boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
 
     bool isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const;
 
 private:
-    Eigen::Vector3d  obs_;
-    double           bf_;
+    Eigen::Vector3d obs_;
+    double bf_;
     GeometricCamera* pCamera_;
-    gtsam::Pose3     Tbc_;
+    gtsam::Pose3 Tbc_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -308,10 +323,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // keys order: pose1, vel1, bias1, pose2, vel2
-    InertialFactor(const gtsam::Key& pose1Key, const gtsam::Key& vel1Key,
-                   const gtsam::Key& bias1Key, const gtsam::Key& pose2Key,
-                   const gtsam::Key& vel2Key,
-                   IMU::Preintegrated* pInt);
+    InertialFactor(const gtsam::Key& pose1Key, const gtsam::Key& vel1Key, const gtsam::Key& bias1Key,
+                   const gtsam::Key& pose2Key, const gtsam::Key& vel2Key, IMU::Preintegrated* pInt);
 
     double error(const gtsam::Values& c) const override;
 
@@ -320,31 +333,27 @@ public:
     size_t dim() const override { return 9; }
 
     /// Compute the 9-D inertial residual given explicit state values.
-    Eigen::Matrix<double, 9, 1> computeResidual(
-        const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
-        const gtsam::imuBias::ConstantBias& bias1,
-        const gtsam::Pose3& Twb2, const Eigen::Vector3d& v2) const;
+    Eigen::Matrix<double, 9, 1> computeResidual(const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
+                                                const gtsam::imuBias::ConstantBias& bias1, const gtsam::Pose3& Twb2,
+                                                const Eigen::Vector3d& v2) const;
 
     // Jacobian blocks (same ordering as linearizeOplus in EdgeInertial)
     // [J_pose1 | J_vel1 | J_bias1_gyro | J_bias1_acc | J_pose2 | J_vel2]
     // sizes:   9×6       9×3              9×3              9×3        9×6      9×3
-    void computeJacobians(
-        const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
-        const gtsam::imuBias::ConstantBias& bias1,
-        const gtsam::Pose3& Twb2, const Eigen::Vector3d& v2,
-        Eigen::Matrix<double, 9, 6>&  J_pose1,
-        Eigen::Matrix<double, 9, 3>&  J_vel1,
-        Eigen::Matrix<double, 9, 6>&  J_bias1,   // [gyro_cols | acc_cols]
-        Eigen::Matrix<double, 9, 6>&  J_pose2,
-        Eigen::Matrix<double, 9, 3>&  J_vel2) const;
+    void computeJacobians(const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
+                          const gtsam::imuBias::ConstantBias& bias1, const gtsam::Pose3& Twb2,
+                          const Eigen::Vector3d& v2, Eigen::Matrix<double, 9, 6>& J_pose1,
+                          Eigen::Matrix<double, 9, 3>& J_vel1,
+                          Eigen::Matrix<double, 9, 6>& J_bias1,  // [gyro_cols | acc_cols]
+                          Eigen::Matrix<double, 9, 6>& J_pose2, Eigen::Matrix<double, 9, 3>& J_vel2) const;
 
 private:
     // Preintegration Jacobians (double-precision copies)
     const Eigen::Matrix3d JRg_, JVg_, JPg_, JVa_, JPa_;
-    IMU::Preintegrated*   mpInt_;
-    const double          dt_;
-    const Eigen::Vector3d g_;   // [0, 0, -9.81]
-    Matrix9d              information_;
+    IMU::Preintegrated* mpInt_;
+    const double dt_;
+    const Eigen::Vector3d g_;  // [0, 0, -9.81]
+    Matrix9d information_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -358,11 +367,9 @@ class InertialGSFactor : public gtsam::NonlinearFactor
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    InertialGSFactor(const gtsam::Key& pose1Key, const gtsam::Key& vel1Key,
-                     const gtsam::Key& bias1Key, const gtsam::Key& pose2Key,
-                     const gtsam::Key& vel2Key,  const gtsam::Key& gravKey,
-                     const gtsam::Key& scaleKey,
-                     IMU::Preintegrated* pInt);
+    InertialGSFactor(const gtsam::Key& pose1Key, const gtsam::Key& vel1Key, const gtsam::Key& bias1Key,
+                     const gtsam::Key& pose2Key, const gtsam::Key& vel2Key, const gtsam::Key& gravKey,
+                     const gtsam::Key& scaleKey, IMU::Preintegrated* pInt);
 
     double error(const gtsam::Values& c) const override;
 
@@ -370,33 +377,28 @@ public:
 
     size_t dim() const override { return 9; }
 
-    Eigen::Matrix<double, 9, 1> computeResidual(
-        const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
-        const gtsam::imuBias::ConstantBias& bias1,
-        const gtsam::Pose3& Twb2, const Eigen::Vector3d& v2,
-        const gtsam::Rot3& gravRot, double logScale) const;
+    Eigen::Matrix<double, 9, 1> computeResidual(const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
+                                                const gtsam::imuBias::ConstantBias& bias1, const gtsam::Pose3& Twb2,
+                                                const Eigen::Vector3d& v2, const gtsam::Rot3& gravRot,
+                                                double logScale) const;
 
     // Jacobian blocks — same ordering as linearizeOplus in EdgeInertialGS
     // [J_pose1|J_vel1|J_bias1_gyro|J_bias1_acc|J_pose2|J_vel2|J_grav|J_scale]
-    void computeJacobians(
-        const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
-        const gtsam::imuBias::ConstantBias& bias1,
-        const gtsam::Pose3& Twb2, const Eigen::Vector3d& v2,
-        const gtsam::Rot3& gravRot, double logScale,
-        Eigen::Matrix<double, 9, 6>&  J_pose1,
-        Eigen::Matrix<double, 9, 3>&  J_vel1,
-        Eigen::Matrix<double, 9, 6>&  J_bias1,
-        Eigen::Matrix<double, 9, 6>&  J_pose2,
-        Eigen::Matrix<double, 9, 3>&  J_vel2,
-        Eigen::Matrix<double, 9, 2>&  J_grav,   // 3rd column zeroed (yaw-around-g)
-        Eigen::Matrix<double, 9, 1>&  J_scale) const;
+    void computeJacobians(const gtsam::Pose3& Twb1, const Eigen::Vector3d& v1,
+                          const gtsam::imuBias::ConstantBias& bias1, const gtsam::Pose3& Twb2,
+                          const Eigen::Vector3d& v2, const gtsam::Rot3& gravRot, double logScale,
+                          Eigen::Matrix<double, 9, 6>& J_pose1, Eigen::Matrix<double, 9, 3>& J_vel1,
+                          Eigen::Matrix<double, 9, 6>& J_bias1, Eigen::Matrix<double, 9, 6>& J_pose2,
+                          Eigen::Matrix<double, 9, 3>& J_vel2,
+                          Eigen::Matrix<double, 9, 2>& J_grav,  // 3rd column zeroed (yaw-around-g)
+                          Eigen::Matrix<double, 9, 1>& J_scale) const;
 
 private:
     const Eigen::Matrix3d JRg_, JVg_, JPg_, JVa_, JPa_;
-    IMU::Preintegrated*   mpInt_;
-    const double          dt_;
+    IMU::Preintegrated* mpInt_;
+    const double dt_;
     const Eigen::Vector3d gI_;  // [0, 0, -GRAVITY_VALUE]
-    Matrix9d              information_;
+    Matrix9d information_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -411,8 +413,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // Construct from an existing ConstraintPoseImu (marginalization result).
-    PriorNavFactor(const gtsam::Key& poseKey, const gtsam::Key& velKey,
-                   const gtsam::Key& biasKey, const ConstraintPoseImu& c);
+    PriorNavFactor(const gtsam::Key& poseKey, const gtsam::Key& velKey, const gtsam::Key& biasKey,
+                   const ConstraintPoseImu& c);
 
     double error(const gtsam::Values& c) const override;
 
@@ -421,17 +423,14 @@ public:
     size_t dim() const override { return 15; }
 
     // Jacobian blocks for external Hessian assembly.
-    void computeJacobians(
-        const gtsam::Pose3& Twb, const Eigen::Vector3d& vel,
-        const gtsam::imuBias::ConstantBias& bias,
-        Eigen::Matrix<double, 15, 6>&  J_pose,
-        Eigen::Matrix<double, 15, 3>&  J_vel,
-        Eigen::Matrix<double, 15, 6>&  J_bias) const;
+    void computeJacobians(const gtsam::Pose3& Twb, const Eigen::Vector3d& vel, const gtsam::imuBias::ConstantBias& bias,
+                          Eigen::Matrix<double, 15, 6>& J_pose, Eigen::Matrix<double, 15, 3>& J_vel,
+                          Eigen::Matrix<double, 15, 6>& J_bias) const;
 
 private:
     Eigen::Matrix3d Rwb_;
     Eigen::Vector3d twb_, vwb_, bg_, ba_;
-    Matrix15d       information_;
+    Matrix15d information_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -445,20 +444,18 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Similarity3>;
 
-    Sim3ProjectionFactor(const gtsam::Key& sim3Key,
-                         const Eigen::Vector3d& P3Dc,
-                         const Eigen::Vector2d& obs,
-                         const gtsam::SharedNoiseModel& noise,
-                         GeometricCamera* pCamera)
+    Sim3ProjectionFactor(const gtsam::Key& sim3Key, const Eigen::Vector3d& P3Dc, const Eigen::Vector2d& obs,
+                         const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
         : Base(noise, sim3Key), P3Dc_(P3Dc), obs_(obs), pCamera_(pCamera)
-    {}
+    {
+    }
 
     gtsam::Vector evaluateError(const gtsam::Similarity3& S12,
                                 boost::optional<gtsam::Matrix&> H = boost::none) const override;
 
 private:
-    Eigen::Vector3d  P3Dc_;   // fixed point in camera-1 frame
-    Eigen::Vector2d  obs_;
+    Eigen::Vector3d P3Dc_;  // fixed point in camera-1 frame
+    Eigen::Vector2d obs_;
     GeometricCamera* pCamera_;
 };
 
@@ -473,20 +470,18 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Similarity3>;
 
-    InverseSim3ProjectionFactor(const gtsam::Key& sim3Key,
-                                const Eigen::Vector3d& P3Dc2,
-                                const Eigen::Vector2d& obs,
-                                const gtsam::SharedNoiseModel& noise,
-                                GeometricCamera* pCamera)
+    InverseSim3ProjectionFactor(const gtsam::Key& sim3Key, const Eigen::Vector3d& P3Dc2, const Eigen::Vector2d& obs,
+                                const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
         : Base(noise, sim3Key), P3Dc2_(P3Dc2), obs_(obs), pCamera_(pCamera)
-    {}
+    {
+    }
 
     gtsam::Vector evaluateError(const gtsam::Similarity3& S12,
                                 boost::optional<gtsam::Matrix&> H = boost::none) const override;
 
 private:
-    Eigen::Vector3d  P3Dc2_;   // fixed point in camera-2 frame
-    Eigen::Vector2d  obs_;
+    Eigen::Vector3d P3Dc2_;  // fixed point in camera-2 frame
+    Eigen::Vector2d obs_;
     GeometricCamera* pCamera_;
 };
 
@@ -496,18 +491,17 @@ private:
 //   Convention: Pose3 stores Tcw (world-to-camera) in this graph.
 //   Roll and pitch are anchored via PriorFactor<Pose3> per KF.
 // ─────────────────────────────────────────────────────────────────────────────
-class FourDOFBetweenFactor
-    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>
+class FourDOFBetweenFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>;
 
-    FourDOFBetweenFactor(const gtsam::Key& keyI, const gtsam::Key& keyJ,
-                         const Eigen::Matrix3d& dRij, const Eigen::Vector3d& dtij,
-                         const gtsam::SharedNoiseModel& noise)
+    FourDOFBetweenFactor(const gtsam::Key& keyI, const gtsam::Key& keyJ, const Eigen::Matrix3d& dRij,
+                         const Eigen::Vector3d& dtij, const gtsam::SharedNoiseModel& noise)
         : Base(noise, keyI, keyJ), dRij_(dRij), dtij_(dtij)
-    {}
+    {
+    }
 
     gtsam::Vector evaluateError(const gtsam::Pose3& Ti, const gtsam::Pose3& Tj,
                                 boost::optional<gtsam::Matrix&> H1 = boost::none,

@@ -19,8 +19,8 @@
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
 
-#include <boost/algorithm/string.hpp>
 #include <gtsam/geometry/Similarity3.h>
+#include <boost/algorithm/string.hpp>
 #include <map>
 #include <mutex>
 #include <opencv2/core/core.hpp>
