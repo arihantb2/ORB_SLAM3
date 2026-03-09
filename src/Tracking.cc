@@ -21,7 +21,7 @@
 
 #include "Atlas.h"
 #include "CameraModels/GeometricCamera.h"
-#include "G2oTypes.h"
+#include "GTSAMTypes.h"
 #include "GeometricTools.h"
 #include "KeyFrameDatabase.h"
 #include "LocalMapping.h"

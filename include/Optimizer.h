@@ -25,6 +25,8 @@
 #include "Map.h"
 #include "MapPoint.h"
 
+#include <gtsam/geometry/Similarity3.h>
+
 #include <math.h>
 #include <set>
 #include <vector>
@@ -71,9 +73,9 @@ public:
                                            const std::map<KeyFrame*, std::set<KeyFrame*>>& LoopConnections);
 
     // if bFixScale is true, optimize SE3 (stereo), Sim3 otherwise (mono) (NEW)
-    static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches1, g2o::Sim3& g2oS12,
-                            const float th2, const bool bFixScale, Eigen::Matrix<double, 7, 7>& mAcumHessian,
-                            const bool bAllPoints = false);
+    static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches1,
+                            gtsam::Similarity3& g2oS12, const float th2, const bool bFixScale,
+                            Eigen::Matrix<double, 7, 7>& mAcumHessian, const bool bAllPoints = false);
 
     // For inertial systems
 

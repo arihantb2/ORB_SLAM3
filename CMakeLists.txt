@@ -11,14 +11,27 @@ endif()
 
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# Match GTSAM's build to avoid Eigen ABI / double-free (see src/tests/CMakeLists.txt).
+# Build GTSAM with: -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF
+option(ORB_SLAM3_USE_MARCH_NATIVE "Use -march=native for ORB_SLAM3 (set OFF if GTSAM was built without it)" OFF)
+if(ORB_SLAM3_USE_MARCH_NATIVE)
+  set(ORB_SLAM3_MARCH_FLAG "-march=native")
+else()
+  set(ORB_SLAM3_MARCH_FLAG "")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
-    add_compile_options(-Wall -O0 -g -march=native -fstack-protector-all)
+    set(ORB_SLAM3_OPTS -Wall -O0 -g -fstack-protector-all)
 else()
-    add_compile_options(-Wall -O3 -march=native)
+    set(ORB_SLAM3_OPTS -Wall -O3)
 endif()
+if(ORB_SLAM3_MARCH_FLAG)
+    list(APPEND ORB_SLAM3_OPTS ${ORB_SLAM3_MARCH_FLAG})
+endif()
+add_compile_options(${ORB_SLAM3_OPTS})
 
 # Extract vocabulary if needed
 message(STATUS "Uncompress vocabulary ...")
@@ -64,7 +77,8 @@ find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
 find_package(DBoW2 REQUIRED)
-find_package(g2o REQUIRED CONFIG)
+find_package(GTSAM REQUIRED)
+message(STATUS "Found GTSAM version: ${GTSAM_VERSION}")
 
 # Build the main library
 add_subdirectory(src)
@@ -72,6 +86,7 @@ add_subdirectory(src)
 # Unit tests
 enable_testing()
 add_subdirectory(src/CameraModels/tests)
+add_subdirectory(src/tests)
 
 # ---------------
 # Installation instructions.
@@ -88,21 +103,18 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
 
-# Install Thirdparty headers (Sophus only; g2o installs itself to include/g2o/)
+# Install Thirdparty headers (Sophus only)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty
     COMPONENT library
     FILES_MATCHING REGEX ".*\\.h(pp)?"
-    PATTERN "Sophus" EXCLUDE
-    PATTERN "g2o" EXCLUDE)
+    PATTERN "Sophus" EXCLUDE)
 
 # Install Sophus headers to correct location
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/Sophus/sophus
     COMPONENT library
     FILES_MATCHING PATTERN "*.hpp")
-
-# g2o config.h and headers are installed by g2o itself to include/g2o/
 
 install(FILES ${PROJECT_SOURCE_DIR}/package.xml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/orb_slam3)
