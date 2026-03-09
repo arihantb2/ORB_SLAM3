@@ -21,7 +21,6 @@
 
 #include "Atlas.h"
 #include "CameraModels/GeometricCamera.h"
-#include "GTSAMTypes.h"
 #include "GeometricTools.h"
 #include "KeyFrameDatabase.h"
 #include "LocalMapping.h"
@@ -251,6 +250,13 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
     }
 
     TrackingResult result = Track();
+
+    // Attach the rectified images so the result is self-contained.
+    // .clone() is mandatory: imageLeft/imageRight are const refs to temporaries
+    // in System.cc that go out of scope immediately after this function returns.
+    result.image_left = imageLeft.clone();
+    result.image_right = imageRight.clone();
+
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
@@ -311,6 +317,11 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
 
     lastID = mCurrentFrame.mnId;
     TrackingResult result = Track();
+
+    // Attach the (undistorted) image so the result is self-contained.
+    // image_right is left default-constructed (empty) for monocular.
+    result.image_left = image.clone();
+
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
@@ -819,6 +830,24 @@ TrackingResult Tracking::Track()
     ComputeVelocityFromPriors();
 
     TrackingResult tracking_result;
+
+    // Populate keypoint_data from mCurrentFrame immediately after frame construction.
+    // mvuRight is initialised to -1 for every keypoint in mono (Frame constructor),
+    // so this block is safe to run unconditionally for all sensor types.
+    tracking_result.keypoint_data.left_keypoints = mCurrentFrame.mvKeysUn;
+    tracking_result.keypoint_data.right_keypoints = mCurrentFrame.mvKeysRight;
+    tracking_result.keypoint_data.stereo_right_u = mCurrentFrame.mvuRight;
+    tracking_result.keypoint_data.stereo_depth = mCurrentFrame.mvDepth;
+    for (int i = 0; i < mCurrentFrame.N; i++)
+    {
+        if (mCurrentFrame.mvuRight[i] >= 0.f)
+        {
+            cv::KeyPoint right_kp = mCurrentFrame.mvKeysUn[i];
+            right_kp.pt.x = mCurrentFrame.mvuRight[i];
+            tracking_result.keypoint_data.stereo_match_pairs.push_back({i, right_kp});
+        }
+    }
+
     if (mState == NOT_INITIALIZED)
     {
         Initialize();
@@ -905,6 +934,64 @@ TrackingResult Tracking::Track()
         }
 
         UpdateAfterTracking(tracking_result.success);
+
+        // Populate all_tracked_map_points: every inlier map point visible in this frame
+        // after the complete tracking pipeline.
+        if (mCurrentFrame.isSet())
+        {
+            const Sophus::SE3f Tcw = mCurrentFrame.GetPose();
+            for (int i = 0; i < mCurrentFrame.N; i++)
+            {
+                if (!mCurrentFrame.mvpMapPoints[i] || mCurrentFrame.mvbOutlier[i])
+                {
+                    continue;
+                }
+
+                MapPointObservation obs;
+                obs.keypoint_idx = i;
+                obs.keypoint = mCurrentFrame.mvKeysUn[i];
+                obs.pos_world = mCurrentFrame.mvpMapPoints[i]->GetWorldPos();
+                obs.pos_camera = Tcw * obs.pos_world;
+                obs.map_point_id = mCurrentFrame.mvpMapPoints[i]->mnId;
+                obs.is_inlier = true;
+                tracking_result.all_tracked_map_points.push_back(obs);
+            }
+        }
+
+        // Populate new_map_point_candidates: stereo keypoints with valid depth that
+        // are NOT currently tracked as map points. LocalMapping will create new
+        // MapPoints from these when this frame becomes a KeyFrame.
+        if ((mSensor == System::STEREO || mSensor == System::IMU_STEREO) && mCurrentFrame.isSet())
+        {
+            const Sophus::SE3f Tcw = mCurrentFrame.GetPose();
+            for (int i = 0; i < mCurrentFrame.N; i++)
+            {
+                if (mCurrentFrame.mvDepth[i] <= 0.f)
+                {
+                    continue;
+                }
+                if (mCurrentFrame.mvpMapPoints[i])
+                {
+                    continue;
+                }
+
+                NewMapPointCandidate c;
+                c.keypoint_idx = i;
+                c.left_kp = mCurrentFrame.mvKeysUn[i];
+                c.depth = mCurrentFrame.mvDepth[i];
+                c.right_kp = mCurrentFrame.mvKeysUn[i];
+                c.right_kp.pt.x = mCurrentFrame.mvuRight[i];
+
+                Eigen::Vector3f x3D;
+                if (mCurrentFrame.UnprojectStereo(i, x3D))
+                {
+                    c.pos_world = x3D;
+                    c.pos_camera = Tcw * x3D;
+                }
+
+                tracking_result.new_map_point_candidates.push_back(c);
+            }
+        }
 
         // Reset if the camera get lost
         if (mState == LOST)
@@ -1465,9 +1552,33 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
     int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
     result.num_matches = nmatches;
 
-    for (const auto& mapPoint : vpMapPointMatches)
+    // vpMapPointMatches[i] is the MapPoint matched to current-frame keypoint i.
+    // Resolve the reference-KF keypoint via the MapPoint's observation list.
+    // GetObservations() returns std::map<KeyFrame*, std::tuple<int,int>> where
+    // std::get<0>(value) is the left-image keypoint index in that KeyFrame.
+    for (int i = 0; i < static_cast<int>(vpMapPointMatches.size()); i++)
     {
-        // TODO: Populate result.keypoints_matches
+        MapPoint* pMP = vpMapPointMatches[i];
+        if (!pMP || pMP->isBad())
+        {
+            continue;
+        }
+
+        MatchedKeypoint m;
+        m.current_kp_idx = i;
+        m.current_kp = mCurrentFrame.mvKeysUn[i];
+
+        auto obs = pMP->GetObservations();
+        auto it = obs.find(mpReferenceKF);
+        if (it != obs.end())
+        {
+            int refIdx = std::get<0>(it->second);  // left-image kp index in ref KF
+            m.source_kp_idx = refIdx;
+            m.source_kp = mpReferenceKF->mvKeysUn[refIdx];
+        }
+
+        result.kf_matches.push_back(m);
+        result.keypoints_matches.push_back({m.current_kp, m.source_kp});  // legacy field
     }
 
     Verbose::Print(Verbose::VERBOSITY_QUIET)
@@ -1490,11 +1601,21 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
     // Discard outliers
     int nmatchesMap = DiscardOutliersAndCountInliers(mCurrentFrame, nmatches, true);
 
-    for (const auto& mapPoint : mCurrentFrame.mvpMapPoints)
+    // After DiscardOutliersAndCountInliers(), outlier mvpMapPoints entries are nullptr.
+    for (auto& m : result.kf_matches)
     {
-        // TODO: Populate result.keypoints_inliers_optimized
-        // TODO: Populate result.keypoints_outliers_optimized
-        // TODO: Populate result.keypoints_matches_optimized
+        m.is_inlier = (m.current_kp_idx >= 0 && m.current_kp_idx < mCurrentFrame.N &&
+                       mCurrentFrame.mvpMapPoints[m.current_kp_idx] != nullptr);
+        if (m.is_inlier)
+        {
+            result.kf_matches_optimized.push_back(m);
+            result.keypoints_inliers_optimized.push_back(m.current_kp);
+            result.keypoints_matches_optimized.push_back({m.current_kp, m.source_kp});
+        }
+        else
+        {
+            result.keypoints_outliers_optimized.push_back(m.current_kp);
+        }
     }
 
     result.num_matches_optimized = nmatchesMap;
@@ -1591,9 +1712,40 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
     }
 
-    for (const auto& mapPoint : mCurrentFrame.mvpMapPoints)
+    // Build a reverse lookup: MapPoint* -> index in mLastFrame.mvpMapPoints.
+    // Used to find the last-frame keypoint that corresponds to each current-frame match.
+    std::unordered_map<MapPoint*, int> lastFramePointIdx;
+    lastFramePointIdx.reserve(mLastFrame.N);
+    for (int j = 0; j < mLastFrame.N; j++)
     {
-        // TODO: Populate result.keypoints_matches
+        if (mLastFrame.mvpMapPoints[j])
+        {
+            lastFramePointIdx[mLastFrame.mvpMapPoints[j]] = j;
+        }
+    }
+
+    // Populate frame_matches (rich) and keypoints_matches (legacy pair vector).
+    for (int i = 0; i < mCurrentFrame.N; i++)
+    {
+        MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        if (!pMP)
+        {
+            continue;
+        }
+
+        MatchedKeypoint m;
+        m.current_kp_idx = i;
+        m.current_kp = mCurrentFrame.mvKeysUn[i];
+
+        auto it = lastFramePointIdx.find(pMP);
+        if (it != lastFramePointIdx.end())
+        {
+            m.source_kp_idx = it->second;
+            m.source_kp = mLastFrame.mvKeysUn[it->second];
+        }
+
+        result.frame_matches.push_back(m);
+        result.keypoints_matches.push_back({m.current_kp, m.source_kp});  // legacy field
     }
 
     if (nmatches < mMotionModelMinRetryMatches)
@@ -1620,11 +1772,23 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
     result.num_matches_optimized = nmatchesMap;
     result.pose = mCurrentFrame.GetPose().inverse();
 
-    for (const auto& mapPoint : mCurrentFrame.mvpMapPoints)
+    // After DiscardOutliersAndCountInliers(), outlier entries in mvpMapPoints are
+    // set to nullptr. Iterate frame_matches (captured before optimization) to
+    // determine inlier/outlier status and populate optimized fields.
+    for (auto& m : result.frame_matches)
     {
-        // TODO: Populate result.keypoints_inliers_optimized
-        // TODO: Populate result.keypoints_outliers_optimized
-        // TODO: Populate result.keypoints_matches_optimized
+        m.is_inlier = (m.current_kp_idx >= 0 && m.current_kp_idx < mCurrentFrame.N &&
+                       mCurrentFrame.mvpMapPoints[m.current_kp_idx] != nullptr);
+        if (m.is_inlier)
+        {
+            result.frame_matches_optimized.push_back(m);
+            result.keypoints_inliers_optimized.push_back(m.current_kp);
+            result.keypoints_matches_optimized.push_back({m.current_kp, m.source_kp});
+        }
+        else
+        {
+            result.keypoints_outliers_optimized.push_back(m.current_kp);
+        }
     }
 
     Verbose::Print(Verbose::VERBOSITY_QUIET)
@@ -1683,25 +1847,46 @@ LocalMapTrackingResult Tracking::TrackLocalMap()
 
     mnMatchesInliers = 0;
 
-    // Update MapPoints Statistics
+    // Update MapPoints Statistics and populate observation vectors.
+    const Sophus::SE3f Tcw = mCurrentFrame.GetPose();
     for (int i = 0; i < mCurrentFrame.N; i++)
     {
-        if (mCurrentFrame.mvpMapPoints[i])
+        if (!mCurrentFrame.mvpMapPoints[i])
         {
-            if (!mCurrentFrame.mvbOutlier[i])
+            continue;
+        }
+
+        MapPointObservation obs;
+        obs.keypoint_idx = i;
+        obs.keypoint = mCurrentFrame.mvKeysUn[i];
+        obs.pos_world = mCurrentFrame.mvpMapPoints[i]->GetWorldPos();
+        obs.pos_camera = Tcw * obs.pos_world;
+        obs.map_point_id = mCurrentFrame.mvpMapPoints[i]->mnId;
+        obs.is_inlier = !mCurrentFrame.mvbOutlier[i];
+
+        if (!mCurrentFrame.mvbOutlier[i])
+        {
+            mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+            if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
             {
-                mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
-                if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
-                {
-                    mnMatchesInliers++;
-                }
+                mnMatchesInliers++;
             }
-            else if (mSensor == System::STEREO)
+            result.inlier_observations.push_back(obs);
+            result.keypoints_inliers.push_back(obs.keypoint);  // legacy field
+        }
+        else
+        {
+            if (mSensor == System::STEREO)
             {
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
             }
+            result.outlier_observations.push_back(obs);
+            result.keypoints_outliers.push_back(obs.keypoint);  // legacy field
         }
     }
+
+    // Populate the pose field (was previously unpopulated).
+    result.pose = mCurrentFrame.GetPose().inverse();
 
     result.num_matches = mnMatchesInliers;
 

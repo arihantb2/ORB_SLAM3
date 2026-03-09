@@ -21,6 +21,7 @@
 
 #include <list>
 #include <mutex>
+#include <unordered_map>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <optional>
@@ -49,6 +50,76 @@ class MapPoint;
 class ORBextractor;
 class GeometricCamera;
 
+// ---------------------------------------------------------------------------
+// Helper structs for rich tracking introspection data
+// ---------------------------------------------------------------------------
+
+// A single feature match between two images, with keypoint indices for
+// cross-referencing and an inlier flag set after pose optimization.
+struct MatchedKeypoint
+{
+    int current_kp_idx = -1;  // Index into current Frame's mvKeysUn
+    int source_kp_idx = -1;  // Index into source Frame's/KF's mvKeysUn; -1 if unknown
+    cv::KeyPoint current_kp;  // Keypoint in current frame (undistorted)
+    cv::KeyPoint source_kp;  // Keypoint in source frame/KF (undistorted)
+    bool is_inlier = false;  // True if this match survives pose optimization
+};
+
+// A map point that is currently observed in the current frame, with its
+// 3D position expressed in both world and camera frames.
+struct MapPointObservation
+{
+    int keypoint_idx = -1;  // Index into current Frame's mvKeysUn
+    cv::KeyPoint keypoint;  // Keypoint in current frame (undistorted)
+    Eigen::Vector3f pos_world;  // MapPoint world position (GetWorldPos())
+    Eigen::Vector3f pos_camera;  // pos_world transformed to camera frame: Tcw * pos_world
+    unsigned long map_point_id = 0;  // MapPoint::mnId — unique across the map
+    bool is_inlier = true;  // False if marked as outlier by pose optimization
+};
+
+// All ORB keypoints detected in the current frame, plus stereo matching
+// results for stereo-pinhole mode.
+struct FrameKeypointData
+{
+    // Left/mono keypoints in the undistorted image plane (Frame::mvKeysUn).
+    // For stereo-pinhole the image is already rectified, so these are also
+    // undistorted. For monocular the standard undistortion is applied.
+    std::vector<cv::KeyPoint> left_keypoints;
+
+    // Right-image keypoints (Frame::mvKeysRight). Empty for monocular.
+    std::vector<cv::KeyPoint> right_keypoints;
+
+    // Per-left-keypoint stereo matching results (stereo only, else empty).
+    // Indexed the same as left_keypoints (i.e. index i corresponds to left_keypoints[i]).
+    // stereo_right_u[i] = u-coordinate of the match on the right image (-1 = no match).
+    // stereo_depth[i]   = depth in metres derived from the stereo baseline (-1 = no match).
+    // Source: Frame::mvuRight and Frame::mvDepth respectively.
+    std::vector<float> stereo_right_u;
+    std::vector<float> stereo_depth;
+
+    // Convenience list of matched stereo pairs for visualisation.
+    // Each entry is (left_kp_index, reconstructed right-image KeyPoint).
+    // The right KeyPoint has pt.x = stereo_right_u[i], pt.y = left_keypoints[i].pt.y,
+    // and the same octave/response/size as the left keypoint.
+    std::vector<std::pair<int, cv::KeyPoint>> stereo_match_pairs;
+};
+
+// A keypoint that has valid stereo depth but is NOT currently matched to any
+// tracked map point. If this frame is promoted to a KeyFrame, LocalMapping
+// will create a new MapPoint for each of these. 3D positions are computed
+// inline via Frame::UnprojectStereo(). Empty for monocular.
+struct NewMapPointCandidate
+{
+    int keypoint_idx = -1;  // Index into current Frame's mvKeysUn
+    cv::KeyPoint left_kp;  // Left undistorted keypoint
+    cv::KeyPoint right_kp;  // Reconstructed right keypoint (pt.x = mvuRight[i])
+    float depth = -1.f;  // Stereo depth in metres (Frame::mvDepth[i])
+    Eigen::Vector3f pos_world;  // 3D world position (from UnprojectStereo)
+    Eigen::Vector3f pos_camera;  // 3D camera-frame position: Tcw * pos_world
+};
+
+// ---------------------------------------------------------------------------
+
 struct MotionModelTrackingResult
 {
     bool success = false;
@@ -74,6 +145,14 @@ struct MotionModelTrackingResult
     // Matches after optimization
     std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches_optimized;
 
+    // Rich match data with keypoint indices (supersedes the pair-based fields above,
+    // which are also populated for backward compatibility).
+    // frame_matches: all current↔last-frame matches after the final SearchByProjection,
+    //   before pose optimization. is_inlier is false at this point.
+    // frame_matches_optimized: subset where is_inlier == true after DiscardOutliersAndCountInliers.
+    std::vector<MatchedKeypoint> frame_matches;
+    std::vector<MatchedKeypoint> frame_matches_optimized;
+
     // Optimized Pose
     Sophus::SE3f pose;
 };
@@ -98,6 +177,12 @@ struct RefKeyFrameTrackingResult
     // Matches after optimization
     std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches_optimized;
 
+    // Rich match data with keypoint indices.
+    // kf_matches: all current↔ref-KF matches from SearchByBoW, before optimization.
+    // kf_matches_optimized: inlier subset after DiscardOutliersAndCountInliers.
+    std::vector<MatchedKeypoint> kf_matches;
+    std::vector<MatchedKeypoint> kf_matches_optimized;
+
     // Optimized Pose
     Sophus::SE3f pose;
 };
@@ -116,6 +201,11 @@ struct LocalMapTrackingResult
     // Matches
     std::vector<std::pair<cv::KeyPoint, cv::KeyPoint>> keypoints_matches;
 
+    // Full map point observations split by inlier/outlier status.
+    // Populated inside TrackLocalMap() during the inlier-counting loop.
+    std::vector<MapPointObservation> inlier_observations;
+    std::vector<MapPointObservation> outlier_observations;
+
     // Pose
     Sophus::SE3f pose;
 };
@@ -131,6 +221,35 @@ struct TrackingResult
     RefKeyFrameTrackingResult ref_key_frame_result;
     MotionModelTrackingResult motion_model_result;
     LocalMapTrackingResult local_map_result;
+
+    // (1) All ORB keypoints detected in this frame, plus stereo matching results.
+    //     Populated at the start of Track() from mCurrentFrame, before any tracking.
+    FrameKeypointData keypoint_data;
+
+    // (3) All map points that are inlier observations in this frame after the full
+    //     tracking pipeline (TrackLocalMap + pose optimization). Superset of
+    //     local_map_result.inlier_observations because it is populated at the very
+    //     end of Track() after UpdateAfterTracking().
+    std::vector<MapPointObservation> all_tracked_map_points;
+
+    // (4) Stereo keypoints with valid depth that are NOT matched to any existing map
+    //     point after tracking. These are candidates that LocalMapping will turn into
+    //     new MapPoints. Always empty for monocular.
+    std::vector<NewMapPointCandidate> new_map_point_candidates;
+
+    // (5) Input images as received by the tracking layer — already grayscale, rectified
+    //     (stereo pinhole) or undistorted (monocular), and rescaled to mImageScale.
+    //     Together with the keypoint and map-point data above, these make TrackingResult
+    //     fully self-contained for offline visualisation.
+    //
+    //     image_left  — left image (stereo) or the single image (monocular). Never empty.
+    //     image_right — right image (stereo only). Empty (default-constructed cv::Mat)
+    //                   for monocular.
+    //
+    //     Both images are cloned (own their data); the originals are temporaries and go
+    //     out of scope after GrabImage* returns.
+    cv::Mat image_left;
+    cv::Mat image_right;
 
     Sophus::SE3f pose;
 };
