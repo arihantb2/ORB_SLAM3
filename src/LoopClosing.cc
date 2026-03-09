@@ -19,7 +19,6 @@
 #include "LoopClosing.h"
 
 #include "Atlas.h"
-#include "Converter.h"
 #include "GTSAMTypes.h"
 #include "KeyFrame.h"
 #include "KeyFrameDatabase.h"

@@ -93,24 +93,30 @@ void InertialOptimizationImpl(Map* pMap, InertialOptMode mode, Eigen::Matrix3d* 
     for (KeyFrame* pKFi : vpKF)
     {
         if (!pKFi->bImu)
+        {
             continue;
+        }
         gtsam::Pose3 Twb = sophusToGTSAMPose(pKFi->GetImuPose());
         gtsam::Key pk = imuPoseKey(static_cast<uint32_t>(pKFi->mnId));
         initial.insert(pk, Twb);
         if (fixPose)
+        {
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(pk, Twb, tightPose));
-
+        }
         Eigen::Vector3d vel = pKFi->GetVelocity().cast<double>();
         gtsam::Key vk = velKey(static_cast<uint32_t>(pKFi->mnId));
         initial.insert(vk, vel);
         if (fixVel)
+        {
             graph.add(gtsam::PriorFactor<gtsam::Vector3>(vk, vel, tightVel));
-
+        }
         gtsam::Key bk = biasKey(static_cast<uint32_t>(maxKFid + 3 * pKFi->mnId + 2));
         gtsam::imuBias::ConstantBias bias = toGTSAMBias(pKFi->GetImuBias());
         initial.insert(bk, bias);
         if (fixBias)
+        {
             graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(bk, bias, tightBias));
+        }
     }
 
     Eigen::Matrix3d RwgInit = Eigen::Matrix3d::Identity();
@@ -122,7 +128,9 @@ void InertialOptimizationImpl(Map* pMap, InertialOptMode mode, Eigen::Matrix3d* 
     }
     Eigen::Vector3d gDir = RwgInit.transpose() * Eigen::Vector3d(0, 0, -1);
     if (gDir.norm() < 1e-6)
+    {
         gDir = Eigen::Vector3d(0, 0, -1);
+    }
     gDir.normalize();
     Eigen::Quaterniond qGrav = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(0, 0, -1), gDir);
     gtsam::Rot3 gravRotInit(qGrav.toRotationMatrix());
@@ -138,7 +146,9 @@ void InertialOptimizationImpl(Map* pMap, InertialOptMode mode, Eigen::Matrix3d* 
     {
         KeyFrame* pKFi = vpKF[i];
         if (!pKFi->bImu || !pKFi->mPrevKF || !pKFi->mPrevKF->bImu || !pKFi->mpImuPreintegrated)
+        {
             continue;
+        }
         KeyFrame* pPrev = pKFi->mPrevKF;
         pKFi->mpImuPreintegrated->SetNewBias(pPrev->GetImuBias());
         gtsam::Key p1 = imuPoseKey(static_cast<uint32_t>(pPrev->mnId));
@@ -171,7 +181,9 @@ void InertialOptimizationImpl(Map* pMap, InertialOptMode mode, Eigen::Matrix3d* 
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(maxIter);
     if (mode == InertialOptMode::Full)
+    {
         params.setlambdaInitial(1e-5);
+    }
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
     gtsam::LevenbergMarquardtOptimizer opt(graph, initial, params);
     gtsam::Values result = opt.optimize();
@@ -222,7 +234,9 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
     {
         KeyFrame* pKF = vpKFs[i];
         if (pKF->isBad())
+        {
             continue;
+        }
         Sophus::SE3f Tcw = pKF->GetPose();
         gtsam::Pose3 Twc = sophusToGTSAMPose(Tcw.inverse());
         initial.insert(poseKey(static_cast<uint32_t>(pKF->mnId)), Twc);
@@ -232,7 +246,9 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKF->mnId)), Twc, priorNoise));
         }
         if (pKF->mnId > maxKFid)
+        {
             maxKFid = pKF->mnId;
+        }
     }
 
     const double thHuber2D = std::sqrt(5.99);
@@ -242,7 +258,9 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
     {
         MapPoint* pMP = vpMP[i];
         if (pMP->isBad())
+        {
             continue;
+        }
         gtsam::Point3 Xw(pMP->GetWorldPos().cast<double>());
         const gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
         initial.insert(pk, Xw);
@@ -255,11 +273,14 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
         {
             KeyFrame* pKF = mit.first;
             if (pKF->isBad() || pKF->mnId > maxKFid)
+            {
                 continue;
+            }
             const int leftIndex = std::get<0>(mit.second);
             if (leftIndex == -1)
+            {
                 continue;
-
+            }
             const gtsam::Key poseK = poseKey(static_cast<uint32_t>(pKF->mnId));
             const double invSigma2 = static_cast<double>(pKF->mvInvLevelSigma2[pKF->mvKeysUn[leftIndex].octave]);
 
@@ -327,7 +348,9 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
         for (int it = 0; it < nIterations; it++)
         {
             if (*pbStopFlag)
+            {
                 break;
+            }
             opt.iterate();
         }
         result = opt.values();
@@ -341,11 +364,15 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
     {
         KeyFrame* pKF = vpKFs[i];
         if (pKF->isBad())
+        {
             continue;
+        }
         gtsam::Pose3 Twc = result.at<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKF->mnId)));
         Sophus::SE3f Tcw = gtsamToSophusPose(Twc).inverse();
         if (nLoopKF == pMap->GetOriginKF()->mnId)
+        {
             pKF->SetPose(Tcw);
+        }
         else
         {
             pKF->mTcwGBA = Tcw.cast<double>().cast<float>();
@@ -356,13 +383,19 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
     for (size_t i = 0; i < vpMP.size(); i++)
     {
         if (vbNotIncludedMP[i])
+        {
             continue;
+        }
         MapPoint* pMP = vpMP[i];
         if (pMP->isBad())
+        {
             continue;
+        }
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
         if (!result.exists(pk))
+        {
             continue;
+        }
         gtsam::Point3 Xw = result.at<gtsam::Point3>(pk);
         if (nLoopKF == pMap->GetOriginKF()->mnId)
         {
@@ -398,13 +431,17 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
     {
         KeyFrame* pKFi = vpKFs[i];
         if (pKFi->mnId > maxKFid)
+        {
             continue;
+        }
         bool bFixed = false;
         if (bFixLocal)
         {
             bFixed = (pKFi->mnBALocalForKF >= (maxKFid - 1)) || (pKFi->mnBAFixedForKF >= (maxKFid - 1));
             if (!bFixed)
+            {
                 nNonFixed++;
+            }
         }
 
         gtsam::Pose3 Twb = sophusToGTSAMPose(pKFi->GetImuPose());
@@ -420,23 +457,32 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
             initial.insert(velKey(static_cast<uint32_t>(pKFi->mnId)),
                            Eigen::Vector3d(pKFi->GetVelocity().cast<double>()));
             if (bInit)
+            {
                 initial.insert(commonBiasKey, toGTSAMBias(pKFi->GetImuBias()));
+            }
             else
+            {
                 initial.insert(biasKey(static_cast<uint32_t>(maxKFid + 3 * (pKFi->mnId) + 2)),
                                toGTSAMBias(pKFi->GetImuBias()));
+            }
         }
     }
 
     if (bFixLocal && nNonFixed < 3)
+    {
         return;
-
+    }
     for (size_t i = 0; i < vpKFs.size(); i++)
     {
         KeyFrame* pKFi = vpKFs[i];
         if (!pKFi->mPrevKF || pKFi->mnId > maxKFid || pKFi->isBad() || pKFi->mPrevKF->mnId > maxKFid)
+        {
             continue;
+        }
         if (!pKFi->bImu || !pKFi->mPrevKF->bImu)
+        {
             continue;
+        }
         pKFi->mpImuPreintegrated->SetNewBias(pKFi->mPrevKF->GetImuBias());
 
         gtsam::Key p1 = imuPoseKey(static_cast<uint32_t>(pKFi->mPrevKF->mnId));
@@ -486,14 +532,19 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
         {
             KeyFrame* pKFi = mit.first;
             if (pKFi->mnId > maxKFid || pKFi->isBad())
+            {
                 continue;
+            }
             const int leftIndex = std::get<0>(mit.second);
             if (leftIndex == -1)
+            {
                 continue;
-
+            }
             const gtsam::Key poseK = imuPoseKey(static_cast<uint32_t>(pKFi->mnId));
             if (!initial.exists(poseK))
+            {
                 continue;
+            }
             bAllFixed = false;
             const double invSigma2 = static_cast<double>(pKFi->mvInvLevelSigma2[pKFi->mvKeysUn[leftIndex].octave]);
             gtsam::Pose3 Tbc_kf = sophusToGTSAMPose(pKFi->mImuCalib.mTbc);
@@ -502,16 +553,10 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
             {
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
-                    graph.add(
-                        boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                            obs, noise, poseK, pk, cal, Tbc_kf));
-                }
-                else
-                    graph.add(
-                        boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKFi->mpCamera, Tbc_kf));
+                auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
+                graph.add(
+                    boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                        obs, noise, poseK, pk, cal, Tbc_kf));
                 nEdges++;
             }
             else
@@ -519,16 +564,9 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
                 const float kp_ur = pKFi->mvuRight[leftIndex];
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y, kp_ur);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
-                    graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        obs, noise, poseK, pk, cal, Tbc_kf));
-                }
-                else
-                    graph.add(boost::make_shared<FisheyeStereoFactor>(poseK, pk,
-                                                                      Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                      pKFi->mbf, noise, pKFi->mpCamera, Tbc_kf));
+                auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
+                graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
+                                                                                                      pk, cal, Tbc_kf));
                 nEdges++;
             }
         }
@@ -542,8 +580,9 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
     }
 
     if (pbStopFlag && *pbStopFlag)
+    {
         return;
-
+    }
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(its);
     params.setlambdaInitial(1e-5);
@@ -558,24 +597,31 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
         for (int it = 0; it < its; it++)
         {
             if (*pbStopFlag)
+            {
                 break;
+            }
             opt.iterate();
         }
         result = opt.values();
     }
     else
+    {
         result = opt.optimize();
-
+    }
     for (size_t i = 0; i < vpKFs.size(); i++)
     {
         KeyFrame* pKFi = vpKFs[i];
         if (pKFi->mnId > maxKFid)
+        {
             continue;
+        }
         gtsam::Pose3 Twb = result.at<gtsam::Pose3>(imuPoseKey(static_cast<uint32_t>(pKFi->mnId)));
         Sophus::SE3f Twb_s = gtsamToSophusPose(Twb);
         Sophus::SE3f Tcw = (Twb_s * pKFi->mImuCalib.mTbc).inverse();
         if (nLoopId == 0)
+        {
             pKFi->SetPose(Tcw);
+        }
         else
         {
             pKFi->mTcwGBA = Tcw;
@@ -585,28 +631,40 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal, const l
         {
             Eigen::Vector3d v = result.at<gtsam::Vector3>(velKey(static_cast<uint32_t>(pKFi->mnId)));
             if (nLoopId == 0)
+            {
                 pKFi->SetVelocity(v.cast<float>());
+            }
             else
+            {
                 pKFi->mVwbGBA = v.cast<float>();
+            }
             gtsam::imuBias::ConstantBias bias = bInit ? result.at<gtsam::imuBias::ConstantBias>(commonBiasKey)
                                                       : result.at<gtsam::imuBias::ConstantBias>(biasKey(
                                                             static_cast<uint32_t>(maxKFid + 3 * (pKFi->mnId) + 2)));
             IMU::Bias b = fromGTSAMBias(bias);
             if (nLoopId == 0)
+            {
                 pKFi->SetNewBias(b);
+            }
             else
+            {
                 pKFi->mBiasGBA = b;
+            }
         }
     }
 
     for (size_t i = 0; i < vpMPs.size(); i++)
     {
         if (vbNotIncludedMP[i])
+        {
             continue;
+        }
         MapPoint* pMP = vpMPs[i];
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + iniMPid + 1));
         if (!result.exists(pk))
+        {
             continue;
+        }
         gtsam::Point3 Xw = result.at<gtsam::Point3>(pk);
         if (nLoopId == 0)
         {
@@ -642,7 +700,9 @@ int Optimizer::PoseOptimization(Frame* pFrame)
         {
             MapPoint* pMP = pFrame->mvpMapPoints[i];
             if (!pMP)
+            {
                 continue;
+            }
             Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
             const double invSigma2 = static_cast<double>(pFrame->mvInvLevelSigma2[pFrame->mvKeysUn[i].octave]);
 
@@ -670,8 +730,9 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     }
 
     if (nInitialCorrespondences < 3)
+    {
         return 0;
-
+    }
     const int its[4] = {10, 10, 10, 10};
     const double chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
     const double chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
@@ -681,12 +742,19 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     {
         gtsam::NonlinearFactorGraph graph;
         for (size_t i = 0; i < vpFactorsMono.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 graph.add(vpFactorsMono[i]);
+            }
+        }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 graph.add(vpFactorsStereo[i]);
-
+            }
+        }
         gtsam::LevenbergMarquardtParams params;
         params.setMaxIterations(its[it]);
         params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -704,7 +772,9 @@ int Optimizer::PoseOptimization(Frame* pFrame)
                 nBad++;
             }
             else
+            {
                 pFrame->mvbOutlier[vnIndexMono[i]] = false;
+            }
         }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
         {
@@ -715,11 +785,15 @@ int Optimizer::PoseOptimization(Frame* pFrame)
                 nBad++;
             }
             else
+            {
                 pFrame->mvbOutlier[vnIndexStereo[i]] = false;
+            }
         }
 
         if (graph.size() < 10)
+        {
             break;
+        }
     }
 
     Verbose::Print(Verbose::VERBOSITY_QUIET)
@@ -826,10 +900,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         gtsam::Pose3 Twc = sophusToGTSAMPose(pKFi->GetPose().inverse());
         initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc);
         if (pKFi->mnId == pMap->GetInitKFid())
+        {
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc,
                                                        gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
+        }
         if (pKFi->mnId > maxKFid)
+        {
             maxKFid = pKFi->mnId;
+        }
         pCurrentMap->msOptKFs.insert(pKFi->mnId);
     }
     num_OptKF = static_cast<int>(lLocalKeyFrames.size());
@@ -841,7 +919,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc,
                                                    gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
         if (pKFi->mnId > maxKFid)
+        {
             maxKFid = pKFi->mnId;
+        }
         pCurrentMap->msFixedKFs.insert(pKFi->mnId);
     }
 
@@ -862,11 +942,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         {
             KeyFrame* pKFi = mit.first;
             if (pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+            {
                 continue;
+            }
             const int leftIndex = std::get<0>(mit.second);
             if (leftIndex == -1)
+            {
                 continue;
-
+            }
             const gtsam::Key poseK = poseKey(static_cast<uint32_t>(pKFi->mnId));
             const double invSigma2 = static_cast<double>(pKFi->mvInvLevelSigma2[pKFi->mvKeysUn[leftIndex].octave]);
 
@@ -874,16 +957,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             {
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
-                    graph.add(
-                        boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                            obs, noise, poseK, pk, cal));
-                }
-                else
-                    graph.add(boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKFi->mpCamera,
-                                                                          gtsam::Pose3()));
+                auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
+                graph.add(
+                    boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                        obs, noise, poseK, pk, cal));
                 nEdges++;
                 monoEdges.push_back(std::make_tuple(pKFi, pMP, leftIndex));
             }
@@ -892,16 +969,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 const float kp_ur = pKFi->mvuRight[leftIndex];
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y, kp_ur);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
-                    graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        obs, noise, poseK, pk, cal));
-                }
-                else
-                    graph.add(
-                        boost::make_shared<FisheyeStereoFactor>(poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                pKFi->mbf, noise, pKFi->mpCamera, gtsam::Pose3()));
+                auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
+                graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
+                                                                                                      pk, cal));
                 nEdges++;
                 stereoEdges.push_back(std::make_tuple(pKFi, pMP, leftIndex));
             }
@@ -911,13 +981,16 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     num_MPs = nPoints;
 
     if (pbStopFlag && *pbStopFlag)
+    {
         return;
-
+    }
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(10);
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
     if (pMap->IsInertial())
+    {
         params.setlambdaInitial(100.0);
+    }
     gtsam::Ordering ordering = gtsam::Ordering::ColamdConstrainedFirst(graph, landmarkKeys);
     gtsam::LevenbergMarquardtOptimizer opt(graph, initial, ordering, params);
     gtsam::Values result;
@@ -926,14 +999,17 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         for (int it = 0; it < 10; it++)
         {
             if (*pbStopFlag)
+            {
                 break;
+            }
             opt.iterate();
         }
         result = opt.values();
     }
     else
+    {
         result = opt.optimize();
-
+    }
     (void)monoEdges;
     (void)stereoEdges;
 
@@ -982,7 +1058,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for (KeyFrame* pKF : vpKFs)
     {
         if (pKF->isBad())
+        {
             continue;
+        }
         const int nIDi = pKF->mnId;
         gtsam::Similarity3 Siw;
         auto it = CorrectedSim3.find(pKF);
@@ -999,8 +1077,10 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         }
         initial.insert(sim3Key(nIDi), Siw);
         if (pKF->mnId == pMap->GetInitKFid())
+        {
             graph.add(gtsam::PriorFactor<gtsam::Similarity3>(sim3Key(nIDi), Siw,
                                                              gtsam::noiseModel::Isotropic::Sigma(7, 1e-6)));
+        }
     }
 
     std::set<std::pair<long unsigned int, long unsigned int>> sInsertedEdges;
@@ -1014,7 +1094,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         {
             const long unsigned int nIDj = pKFn->mnId;
             if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) && pKF->GetWeight(pKFn) < minFeat)
+            {
                 continue;
+            }
             gtsam::Similarity3 Sji = vScw[nIDj].compose(Swi);
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(nIDj), Sji,
                                                                                    sim3Noise));
@@ -1025,15 +1107,20 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for (KeyFrame* pKF : vpKFs)
     {
         if (pKF->isBad())
+        {
             continue;
+        }
         const int nIDi = pKF->mnId;
         gtsam::Similarity3 Swi;
         auto iti = NonCorrectedSim3.find(pKF);
         if (iti != NonCorrectedSim3.end())
+        {
             Swi = iti->second.inverse();
+        }
         else
+        {
             Swi = vScw[nIDi].inverse();
-
+        }
         KeyFrame* pParentKF = pKF->GetParent();
         if (pParentKF)
         {
@@ -1041,9 +1128,13 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             gtsam::Similarity3 Sjw;
             auto itj = NonCorrectedSim3.find(pParentKF);
             if (itj != NonCorrectedSim3.end())
+            {
                 Sjw = itj->second;
+            }
             else
+            {
                 Sjw = vScw[nIDj];
+            }
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(nIDj),
                                                                                    Sjw.compose(Swi), sim3Noise));
         }
@@ -1051,13 +1142,19 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         for (KeyFrame* pLKF : pKF->GetLoopEdges())
         {
             if (pLKF->mnId >= pKF->mnId)
+            {
                 continue;
+            }
             gtsam::Similarity3 Slw;
             auto itl = NonCorrectedSim3.find(pLKF);
             if (itl != NonCorrectedSim3.end())
+            {
                 Slw = itl->second;
+            }
             else
+            {
                 Slw = vScw[pLKF->mnId];
+            }
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(pLKF->mnId),
                                                                                    Slw.compose(Swi), sim3Noise));
         }
@@ -1065,15 +1162,23 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         for (KeyFrame* pKFn : pKF->GetCovisiblesByWeight(minFeat))
         {
             if (!pKFn || pKFn == pParentKF || pKF->hasChild(pKFn) || pKFn->isBad() || pKFn->mnId >= pKF->mnId)
+            {
                 continue;
+            }
             if (sInsertedEdges.count(std::make_pair(std::min(pKF->mnId, pKFn->mnId), std::max(pKF->mnId, pKFn->mnId))))
+            {
                 continue;
+            }
             gtsam::Similarity3 Snw;
             auto itn = NonCorrectedSim3.find(pKFn);
             if (itn != NonCorrectedSim3.end())
+            {
                 Snw = itn->second;
+            }
             else
+            {
                 Snw = vScw[pKFn->mnId];
+            }
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(pKFn->mnId),
                                                                                    Snw.compose(Swi), sim3Noise));
         }
@@ -1083,9 +1188,13 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             gtsam::Similarity3 Spw;
             auto itp = NonCorrectedSim3.find(pKF->mPrevKF);
             if (itp != NonCorrectedSim3.end())
+            {
                 Spw = itp->second;
+            }
             else
+            {
                 Spw = vScw[pKF->mPrevKF->mnId];
+            }
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(
                 sim3Key(nIDi), sim3Key(pKF->mPrevKF->mnId), Spw.compose(Swi), sim3Noise));
         }
@@ -1102,7 +1211,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for (KeyFrame* pKFi : vpKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         gtsam::Similarity3 CorrectedSiw = result.at<gtsam::Similarity3>(sim3Key(nIDi));
         vCorrectedSwc[nIDi] = CorrectedSiw.inverse();
@@ -1117,7 +1228,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for (MapPoint* pMP : vpMPs)
     {
         if (pMP->isBad())
+        {
             continue;
+        }
         int nIDr =
             (pMP->mnCorrectedByKF == pCurKF->mnId) ? pMP->mnCorrectedReference : pMP->GetReferenceKeyFrame()->mnId;
         const gtsam::Similarity3& Srw = vScw[nIDr];
@@ -1151,7 +1264,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
     for (KeyFrame* pKFi : vpFixedKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         Sophus::SE3d Tcw = pKFi->GetPose().cast<double>();
         gtsam::Similarity3 Siw(gtsam::Rot3(Tcw.rotationMatrix()), gtsam::Point3(Tcw.translation()), 1.0);
@@ -1167,7 +1282,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
     for (KeyFrame* pKFi : vpFixedCorrectedKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         Sophus::SE3d Tcw = pKFi->GetPose().cast<double>();
         gtsam::Similarity3 Siw(gtsam::Rot3(Tcw.rotationMatrix()), gtsam::Point3(Tcw.translation()), 1.0);
@@ -1186,10 +1303,14 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
     for (KeyFrame* pKFi : vpNonFixedKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         if (sIdKF.count(nIDi))
+        {
             continue;
+        }
         Sophus::SE3d Tcw = pKFi->GetPose().cast<double>();
         gtsam::Similarity3 Siw(gtsam::Rot3(Tcw.rotationMatrix()), gtsam::Point3(Tcw.translation()), 1.0);
         vScw[nIDi] = Siw;
@@ -1224,7 +1345,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
         for (KeyFrame* pLKF : pKFi->GetLoopEdges())
         {
             if (spKFs.find(pLKF) == spKFs.end() || pLKF->mnId >= pKFi->mnId)
+            {
                 continue;
+            }
             gtsam::Similarity3 Slw =
                 (vpGoodPose[nIDi] && vpGoodPose[pLKF->mnId]) ? vCorrectedSwc[pLKF->mnId].inverse() : vScw[pLKF->mnId];
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(pLKF->mnId),
@@ -1236,9 +1359,13 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
         {
             if (!pKFn || pKFn == pParentKFi || pKFi->hasChild(pKFn) || sLoopEdges.count(pKFn) ||
                 spKFs.find(pKFn) == spKFs.end())
+            {
                 continue;
+            }
             if (pKFn->isBad() || pKFn->mnId >= pKFi->mnId)
+            {
                 continue;
+            }
             gtsam::Similarity3 Snw =
                 (vpGoodPose[nIDi] && vpGoodPose[pKFn->mnId]) ? vCorrectedSwc[pKFn->mnId].inverse() : vScw[pKFn->mnId];
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(pKFn->mnId),
@@ -1257,7 +1384,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
     for (KeyFrame* pKFi : vpNonFixedKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         gtsam::Similarity3 CorrectedSiw = result.at<gtsam::Similarity3>(sim3Key(nIDi));
         vCorrectedSwc[nIDi] = CorrectedSiw.inverse();
@@ -1274,7 +1403,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
     for (MapPoint* pMPi : vpNonCorrectedMPs)
     {
         if (pMPi->isBad())
+        {
             continue;
+        }
         KeyFrame* pRefKF = pMPi->GetReferenceKeyFrame();
         while (pRefKF && pRefKF->isBad())
         {
@@ -1282,7 +1413,9 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>&
             pRefKF = pMPi->GetReferenceKeyFrame();
         }
         if (!pRefKF || !vpBadPose[pRefKF->mnId])
+        {
             continue;
+        }
         Sophus::SE3f TNonCorrectedwr = pRefKF->mTwcBefMerge;
         Sophus::SE3f Twr = pRefKF->GetPoseInverse();
         Eigen::Vector3f eigCorrectedP3Dw = Twr * TNonCorrectedwr.inverse() * pMPi->GetWorldPos();
@@ -1318,7 +1451,9 @@ int Optimizer::OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
     for (int i = 0; i < N; i++)
     {
         if (!vpMatches1[i])
+        {
             continue;
+        }
         MapPoint* pMP1 = vpMapPoints1[i];
         MapPoint* pMP2 = vpMatches1[i];
         const int i2 = std::get<0>(pMP2->GetIndexInKeyFrame(pKF2));
@@ -1335,13 +1470,17 @@ int Optimizer::OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
             continue;
         }
         else
+        {
             continue;
-
+        }
         if (i2 < 0 && !bAllPoints)
+        {
             continue;
+        }
         if (P3D2c(2) <= 0)
+        {
             continue;
-
+        }
         nCorrespondences++;
         Eigen::Vector2d obs1(pKF1->mvKeysUn[i].pt.x, pKF1->mvKeysUn[i].pt.y);
         const double invSigma1 = static_cast<double>(pKF1->mvInvLevelSigma2[pKF1->mvKeysUn[i].octave]);
@@ -1369,8 +1508,9 @@ int Optimizer::OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
     }
 
     if (nCorrespondences < 10)
+    {
         return 0;
-
+    }
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(5);
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -1383,9 +1523,13 @@ int Optimizer::OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
         double e12 = 2.0 * vpF12[i]->error(result);
         double e21 = 2.0 * vpF21[i]->error(result);
         if (e12 > th2 || e21 > th2)
+        {
             vpMatches1[vnIndexEdge[i]] = nullptr;
+        }
         else
+        {
             inlierIdx.push_back(i);
+        }
     }
 
     int nMoreIterations = (inlierIdx.size() < 10) ? 0 : (inlierIdx.size() == vpF12.size() ? 5 : 10);
@@ -1410,14 +1554,20 @@ int Optimizer::OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint
     for (size_t i = 0; i < vpF12.size(); i++)
     {
         if (2.0 * vpF12[i]->error(result) > th2 || 2.0 * vpF21[i]->error(result) > th2)
+        {
             vpMatches1[vnIndexEdge[i]] = nullptr;
+        }
         else
+        {
             nIn++;
+        }
     }
 
     gtsam::Similarity3 S12 = result.at<gtsam::Similarity3>(sim3K);
     if (bFixScale)
+    {
         S12 = gtsam::Similarity3(S12.rotation(), S12.translation(), 1.0);
+    }
     g2oS12 = S12;
     return nIn;
 }
@@ -1560,8 +1710,10 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
         gtsam::Pose3 Twb = sophusToGTSAMPose(pKFi->GetImuPose());
         initial.insert(imuPoseKey(static_cast<uint32_t>(pKFi->mnId)), Twb);
         if (fixed)
+        {
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(imuPoseKey(static_cast<uint32_t>(pKFi->mnId)), Twb,
                                                        gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
+        }
         if (pKFi->bImu)
         {
             initial.insert(velKey(static_cast<uint32_t>(pKFi->mnId)),
@@ -1581,17 +1733,24 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
 
     N = static_cast<int>(vpOptimizableKFs.size());
     for (int i = 0; i < N; i++)
+    {
         addKFToGraph(vpOptimizableKFs[i], false);
+    }
     for (KeyFrame* pKFi : lpOptVisKFs)
+    {
         addKFToGraph(pKFi, false);
+    }
     for (KeyFrame* pKFi : lFixedKeyFrames)
+    {
         addKFToGraph(pKFi, true);
-
+    }
     for (int i = 0; i < N; i++)
     {
         KeyFrame* pKFi = vpOptimizableKFs[i];
         if (!pKFi->mPrevKF || !pKFi->bImu || !pKFi->mPrevKF->bImu || !pKFi->mpImuPreintegrated)
+        {
             continue;
+        }
         pKFi->mpImuPreintegrated->SetNewBias(pKFi->mPrevKF->GetImuBias());
         gtsam::Key p1 = imuPoseKey(static_cast<uint32_t>(pKFi->mPrevKF->mnId));
         gtsam::Key v1 = velKey(static_cast<uint32_t>(pKFi->mPrevKF->mnId));
@@ -1609,10 +1768,13 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
 
     std::map<int, int> mVisEdges;
     for (int i = 0; i < N; i++)
+    {
         mVisEdges[vpOptimizableKFs[i]->mnId] = 0;
+    }
     for (KeyFrame* pKFi : lFixedKeyFrames)
+    {
         mVisEdges[pKFi->mnId] = 0;
-
+    }
     std::vector<std::tuple<KeyFrame*, MapPoint*, bool>> monoEdges;
     std::vector<std::tuple<KeyFrame*, MapPoint*>> stereoEdges;
     for (MapPoint* pMP : lLocalMapPoints)
@@ -1626,10 +1788,14 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
             KeyFrame* pKFi = mit.first;
             if ((pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId) || pKFi->isBad() ||
                 pKFi->GetMap() != pCurrentMap)
+            {
                 continue;
+            }
             const int leftIndex = std::get<0>(mit.second);
             if (leftIndex == -1)
+            {
                 continue;
+            }
             gtsam::Key poseK = imuPoseKey(static_cast<uint32_t>(pKFi->mnId));
             gtsam::Pose3 Tbc_kf = sophusToGTSAMPose(pKFi->mImuCalib.mTbc);
             double invSigma2 = static_cast<double>(pKFi->mvInvLevelSigma2[pKFi->mvKeysUn[leftIndex].octave]);
@@ -1651,8 +1817,10 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                             obs, noise, poseK, pk, cal, Tbc_kf));
                 }
                 else
+                {
                     graph.add(
                         boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKFi->mpCamera, Tbc_kf));
+                }
                 monoEdges.push_back(std::make_tuple(pKFi, pMP, pMP->mTrackDepth < 10.f));
             }
             else
@@ -1661,7 +1829,9 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y,
                                         pKFi->mvuRight[leftIndex]);
                 if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
+                {
                     invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(Eigen::Vector2d(obs.uL(), obs.v())));
+                }
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
                 if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
                 {
@@ -1670,25 +1840,32 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                         obs, noise, poseK, pk, cal, Tbc_kf));
                 }
                 else
+                {
                     graph.add(boost::make_shared<FisheyeStereoFactor>(poseK, pk,
                                                                       Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
                                                                       pKFi->mbf, noise, pKFi->mpCamera, Tbc_kf));
+                }
                 stereoEdges.push_back(std::make_tuple(pKFi, pMP));
             }
         }
     }
 
     for (const auto& me : mVisEdges)
+    {
         assert(me.second >= 3);
-
+    }
     double err0 = graph.error(initial);
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(opt_it);
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
     if (bLarge)
+    {
         params.setlambdaInitial(1e-2);
+    }
     else
+    {
         params.setlambdaInitial(1e0);
+    }
     gtsam::Ordering ordering = gtsam::Ordering::ColamdConstrainedFirst(graph, landmarkKeys);
     gtsam::LevenbergMarquardtOptimizer opt(graph, initial, ordering, params);
     gtsam::Values result;
@@ -1697,19 +1874,24 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
         for (int it = 0; it < opt_it; it++)
         {
             if (*pbStopFlag)
+            {
                 break;
+            }
             opt.iterate();
         }
         result = opt.values();
     }
     else
+    {
         result = opt.optimize();
+    }
     double err_end = graph.error(result);
 
     std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
     if ((2 * err0 < err_end || std::isnan(err0) || std::isnan(err_end)) && !bLarge)
+    {
         return;
-
+    }
     size_t monoIdx = 0, stereoIdx = 0;
     for (const auto& f : graph)
     {
@@ -1748,8 +1930,9 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
     }
 
     for (KeyFrame* pKFi : lFixedKeyFrames)
+    {
         pKFi->mnBAFixedForKF = 0;
-
+    }
     for (KeyFrame* pKFi : vpOptimizableKFs)
     {
         gtsam::Pose3 Twb = result.at<gtsam::Pose3>(imuPoseKey(static_cast<uint32_t>(pKFi->mnId)));
@@ -1901,10 +2084,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (KeyFrame* pKFi : vpFixedKF)
     {
         if (pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+        {
             continue;
+        }
         pKFi->mnBALocalForMerge = pMainKF->mnId;
         if (pKFi->mnId > maxKFid)
+        {
             maxKFid = pKFi->mnId;
+        }
         for (MapPoint* pMPi : pKFi->GetMapPoints())
         {
             if (pMPi && !pMPi->isBad() && pMPi->GetMap() == pCurrentMap && pMPi->mnBALocalForMerge != pMainKF->mnId)
@@ -1917,10 +2104,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (KeyFrame* pKFi : vpAdjustKF)
     {
         if (pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+        {
             continue;
+        }
         pKFi->mnBALocalForMerge = pMainKF->mnId;
         if (pKFi->mnId > maxKFid)
+        {
             maxKFid = pKFi->mnId;
+        }
         for (MapPoint* pMPi : pKFi->GetMapPoints())
         {
             if (pMPi && !pMPi->isBad() && pMPi->GetMap() == pCurrentMap && pMPi->mnBALocalForMerge != pMainKF->mnId)
@@ -1947,7 +2138,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (KeyFrame* pKFi : vpFixedKF)
     {
         if (pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+        {
             continue;
+        }
         Sophus::SE3f Tcw = pKFi->GetPose();
         gtsam::Pose3 Twc = sophusToGTSAMPose(Tcw.inverse());
         gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
@@ -1957,7 +2150,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (KeyFrame* pKFi : vpAdjustKF)
     {
         if (pKFi->isBad() || pKFi->GetMap() != pCurrentMap)
+        {
             continue;
+        }
         gtsam::Pose3 Twc = sophusToGTSAMPose(pKFi->GetPose().inverse());
         initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc);
     }
@@ -1965,7 +2160,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (MapPoint* pMPi : vpMPs)
     {
         if (pMPi->isBad())
+        {
             continue;
+        }
         gtsam::Point3 Xw(pMPi->GetWorldPos().cast<double>());
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMPi->mnId + maxKFid + 1));
         initial.insert(pk, Xw);
@@ -1975,7 +2172,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
         {
             KeyFrame* pKF = mit.first;
             if (pKF->isBad() || pKF->mnBALocalForMerge != pMainKF->mnId || !pKF->GetMapPoint(std::get<0>(mit.second)))
+            {
                 continue;
+            }
             const int idx = std::get<0>(mit.second);
             const cv::KeyPoint& kpUn = pKF->mvKeysUn[idx];
             double invSigma2 = static_cast<double>(pKF->mvInvLevelSigma2[kpUn.octave]);
@@ -1987,15 +2186,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
                 Eigen::Vector2d obs(kpUn.pt.x, kpUn.pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
                 boost::shared_ptr<gtsam::NonlinearFactor> f;
-                if (pKF->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKF->mpCamera));
-                    f = boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                        obs, noise, poseK, pk, cal);
-                }
-                else
-                    f = boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKF->mpCamera,
-                                                                    gtsam::Pose3());
+                auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKF->mpCamera));
+                f = boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                    obs, noise, poseK, pk, cal);
                 graph.add(f);
                 monoRecs.push_back({pKF, pMPi, f});
                 mpObsKFs[pKF]++;
@@ -2006,15 +2199,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
                 gtsam::StereoPoint2 obs(kpUn.pt.x, kpUn.pt.y, pKF->mvuRight[idx]);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
                 boost::shared_ptr<gtsam::NonlinearFactor> f;
-                if (pKF->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKF->mpCamera, pKF->mbf));
-                    f = boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
-                                                                                                    pk, cal);
-                }
-                else
-                    f = boost::make_shared<FisheyeStereoFactor>(poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                pKF->mbf, noise, pKF->mpCamera, gtsam::Pose3());
+                auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKF->mpCamera, pKF->mbf));
+                f = boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK, pk,
+                                                                                                cal);
                 graph.add(f);
                 stereoRecs.push_back({pKF, pMPi, f});
                 mpObsKFs[pKF]++;
@@ -2023,8 +2210,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     }
 
     if (pbStopFlag && *pbStopFlag)
+    {
         return;
-
+    }
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(10);
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -2036,17 +2224,25 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (const EdgeRec& r : monoRecs)
     {
         if (r.pMP->isBad())
+        {
             continue;
+        }
         double err = 2.0 * r.factor->error(result);
         if (err > 5.991)
+        {
             vToErase.push_back({r.pKF, r.pMP});
+        }
     }
     for (const EdgeRec& r : stereoRecs)
     {
         if (r.pMP->isBad())
+        {
             continue;
+        }
         if (2.0 * r.factor->error(result) > 7.815)
+        {
             vToErase.push_back({r.pKF, r.pMP});
+        }
     }
 
     std::unique_lock<std::mutex> lock(pMainKF->GetMap()->mMutexMapUpdate);
@@ -2059,15 +2255,21 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> 
     for (KeyFrame* pKFi : vpAdjustKF)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
         if (result.exists(k))
+        {
             pKFi->SetPose(gtsamToSophusPose(result.at<gtsam::Pose3>(k)).inverse());
+        }
     }
     for (MapPoint* pMPi : vpMPs)
     {
         if (pMPi->isBad())
+        {
             continue;
+        }
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMPi->mnId + maxKFid + 1));
         if (result.exists(pk))
         {
@@ -2287,13 +2489,16 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
         }
     }
     for (KeyFrame* pKFi : lFixedKeyFrames)
+    {
         addKFPrior(pKFi);
-
+    }
     for (int i = 0; i < N; i++)
     {
         KeyFrame* pKFi = vpOptimizableKFs[i];
         if (!pKFi->mPrevKF || !pKFi->bImu || !pKFi->mPrevKF->bImu || !pKFi->mpImuPreintegrated)
+        {
             continue;
+        }
         pKFi->mpImuPreintegrated->SetNewBias(pKFi->mPrevKF->GetImuBias());
         gtsam::Key p1 = imuPoseKey(static_cast<uint32_t>(pKFi->mPrevKF->mnId));
         gtsam::Key v1 = velKey(static_cast<uint32_t>(pKFi->mPrevKF->mnId));
@@ -2319,7 +2524,9 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
     for (MapPoint* pMP : lLocalMapPoints)
     {
         if (!pMP)
+        {
             continue;
+        }
         gtsam::Point3 Xw(pMP->GetWorldPos().cast<double>());
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + iniMPid + 1));
         initial.insert(pk, Xw);
@@ -2329,7 +2536,9 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
             KeyFrame* pKFi = mit.first;
             if (!pKFi || ((pKFi->mnBALocalForKF != pCurrKF->mnId) && (pKFi->mnBAFixedForKF != pCurrKF->mnId)) ||
                 pKFi->mnId > maxKFid || pKFi->isBad())
+            {
                 continue;
+            }
             int idx = std::get<0>(mit.second);
             const cv::KeyPoint& kpUn = pKFi->mvKeysUn[idx];
             double invSigma2 = static_cast<double>(pKFi->mvInvLevelSigma2[kpUn.octave]);
@@ -2339,11 +2548,8 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
                 Eigen::Vector2d obs(kpUn.pt.x, kpUn.pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
                 boost::shared_ptr<gtsam::NonlinearFactor> f;
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                    f = boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                        obs, noise, poseK, pk, boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera)), Tbc);
-                else
-                    f = boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKFi->mpCamera, Tbc);
+                f = boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                    obs, noise, poseK, pk, boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera)), Tbc);
                 graph.add(f);
                 monoRecs.push_back({pKFi, pMP, f});
             }
@@ -2352,13 +2558,9 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
                 gtsam::StereoPoint2 obs(kpUn.pt.x, kpUn.pt.y, pKFi->mvuRight[idx]);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
                 boost::shared_ptr<gtsam::NonlinearFactor> f;
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                    f = boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        obs, noise, poseK, pk,
-                        boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf)), Tbc);
-                else
-                    f = boost::make_shared<FisheyeStereoFactor>(poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                pKFi->mbf, noise, pKFi->mpCamera, Tbc);
+                f = boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
+                    obs, noise, poseK, pk,
+                    boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf)), Tbc);
                 graph.add(f);
                 stereoRecs.push_back({pKFi, pMP, f});
             }
@@ -2366,7 +2568,9 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
     }
 
     if (pbStopFlag && *pbStopFlag)
+    {
         return;
+    }
     gtsam::LevenbergMarquardtParams params;
     params.setMaxIterations(8);
     params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -2378,16 +2582,24 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
     for (const VisRec& r : monoRecs)
     {
         if (r.pMP->isBad())
+        {
             continue;
+        }
         if (2.0 * r.f->error(result) > 5.991)
+        {
             vToErase.push_back({r.pKF, r.pMP});
+        }
     }
     for (const VisRec& r : stereoRecs)
     {
         if (r.pMP->isBad())
+        {
             continue;
+        }
         if (2.0 * r.f->error(result) > 7.815)
+        {
             vToErase.push_back({r.pKF, r.pMP});
+        }
     }
     std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
     for (const auto& p : vToErase)
@@ -2400,7 +2612,9 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
     {
         gtsam::Key pk = imuPoseKey(static_cast<uint32_t>(pKFi->mnId));
         if (!result.exists(pk))
+        {
             return;
+        }
         gtsam::Pose3 Twb = result.at<gtsam::Pose3>(pk);
         gtsam::Pose3 Tcw = (Twb * Tbc).inverse();
         pKFi->SetPose(gtsamToSophusPose(Tcw));
@@ -2411,16 +2625,23 @@ void Optimizer::MergeInertialBA(KeyFrame* pCurrKF, KeyFrame* pMergeKF, bool* pbS
             gtsam::Key vk = velKey(static_cast<uint32_t>(pKFi->mnId));
             gtsam::Key bk = biasKey(static_cast<uint32_t>(pKFi->mnId));
             if (result.exists(vk))
+            {
                 pKFi->SetVelocity(result.at<gtsam::Vector3>(vk).cast<float>());
+            }
             if (result.exists(bk))
+            {
                 pKFi->SetNewBias(fromGTSAMBias(result.at<gtsam::imuBias::ConstantBias>(bk)));
+            }
         }
     };
     for (int i = 0; i < N; i++)
+    {
         setKFFromResult(vpOptimizableKFs[i]);
+    }
     for (int i = 0; i < Ncov; i++)
+    {
         setKFFromResult(vpOptimizableCovKFs[i]);
-
+    }
     for (MapPoint* pMP : lLocalMapPoints)
     {
         gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + iniMPid + 1));
@@ -2491,7 +2712,9 @@ int Optimizer::PoseInertialOptimizationLastKeyFrame(Frame* pFrame, bool bRecInit
         {
             MapPoint* pMP = pFrame->mvpMapPoints[i];
             if (!pMP)
+            {
                 continue;
+            }
             Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
             if ((!bRight && pFrame->mvuRight[i] < 0) || (bRight && i < Nleft))
             {
@@ -2544,18 +2767,28 @@ int Optimizer::PoseInertialOptimizationLastKeyFrame(Frame* pFrame, bool bRecInit
     {
         gtsam::NonlinearFactorGraph activeGraph;
         for (size_t i = 0; i < vpFactorsMono.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 activeGraph.add(vpFactorsMono[i]);
+            }
+        }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 activeGraph.add(vpFactorsStereo[i]);
+            }
+        }
         activeGraph.add(priorP4);
         activeGraph.add(priorV5);
         activeGraph.add(priorB6);
         activeGraph.add(inertialFactor);
         activeGraph.add(betweenBias);
         if (activeGraph.size() < 10)
+        {
             break;
+        }
         gtsam::LevenbergMarquardtParams params;
         params.setMaxIterations(its[it]);
         params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -2570,14 +2803,18 @@ int Optimizer::PoseInertialOptimizationLastKeyFrame(Frame* pFrame, bool bRecInit
             bool bClose = pFrame->mvpMapPoints[vnIndexMono[i]]->mTrackDepth < 10.f;
             pFrame->mvbOutlier[vnIndexMono[i]] = (err > chi2Mono[it] && !bClose) || (bClose && err > chi2close);
             if (pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 nBad++;
+            }
         }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
         {
             double err = 2.0 * vpFactorsStereo[i]->error(initial);
             pFrame->mvbOutlier[vnIndexStereo[i]] = (err > chi2Stereo[it]);
             if (pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 nBad++;
+            }
         }
     }
 
@@ -2585,15 +2822,27 @@ int Optimizer::PoseInertialOptimizationLastKeyFrame(Frame* pFrame, bool bRecInit
     {
         nBad = 0;
         for (size_t i = 0; i < vpFactorsMono.size(); i++)
+        {
             pFrame->mvbOutlier[vnIndexMono[i]] = (2.0 * vpFactorsMono[i]->error(initial) >= 18.0);
+        }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
+        {
             pFrame->mvbOutlier[vnIndexStereo[i]] = (2.0 * vpFactorsStereo[i]->error(initial) >= 24.0);
+        }
         for (size_t i = 0; i < vnIndexMono.size(); i++)
+        {
             if (pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 nBad++;
+            }
+        }
         for (size_t i = 0; i < vnIndexStereo.size(); i++)
+        {
             if (pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 nBad++;
+            }
+        }
     }
 
     gtsam::Pose3 Twb = initial.at<gtsam::Pose3>(poseK0);
@@ -2661,7 +2910,9 @@ int Optimizer::PoseInertialOptimizationLastFrame(Frame* pFrame, bool bRecInit)
         {
             MapPoint* pMP = pFrame->mvpMapPoints[i];
             if (!pMP)
+            {
                 continue;
+            }
             Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
             if ((!bRight && pFrame->mvuRight[i] < 0) || (bRight && i < Nleft))
             {
@@ -2715,17 +2966,29 @@ int Optimizer::PoseInertialOptimizationLastFrame(Frame* pFrame, bool bRecInit)
     {
         gtsam::NonlinearFactorGraph activeGraph;
         if (hasPrior)
+        {
             activeGraph.add(graph.at(0));
+        }
         activeGraph.add(graph.at(hasPrior ? 1 : 0));
         activeGraph.add(graph.at(hasPrior ? 2 : 1));
         for (size_t i = 0; i < vpFactorsMono.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 activeGraph.add(vpFactorsMono[i]);
+            }
+        }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
+        {
             if (!pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 activeGraph.add(vpFactorsStereo[i]);
+            }
+        }
         if (activeGraph.size() < 10)
+        {
             break;
+        }
         gtsam::LevenbergMarquardtParams params;
         params.setMaxIterations(its[it]);
         params.setVerbosity("SILENT");  // avoid convergence prints (relativeDecrease, newError, etc.)
@@ -2740,14 +3003,18 @@ int Optimizer::PoseInertialOptimizationLastFrame(Frame* pFrame, bool bRecInit)
             bool bClose = pFrame->mvpMapPoints[vnIndexMono[i]]->mTrackDepth < 10.f;
             pFrame->mvbOutlier[vnIndexMono[i]] = (err > chi2Mono[it] && !bClose) || (bClose && err > chi2close);
             if (pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 nBad++;
+            }
         }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
         {
             double err = 2.0 * vpFactorsStereo[i]->error(initial);
             pFrame->mvbOutlier[vnIndexStereo[i]] = (err > chi2Stereo[it]);
             if (pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 nBad++;
+            }
         }
     }
 
@@ -2755,15 +3022,27 @@ int Optimizer::PoseInertialOptimizationLastFrame(Frame* pFrame, bool bRecInit)
     {
         nBad = 0;
         for (size_t i = 0; i < vpFactorsMono.size(); i++)
+        {
             pFrame->mvbOutlier[vnIndexMono[i]] = (2.0 * vpFactorsMono[i]->error(initial) >= 18.0);
+        }
         for (size_t i = 0; i < vpFactorsStereo.size(); i++)
+        {
             pFrame->mvbOutlier[vnIndexStereo[i]] = (2.0 * vpFactorsStereo[i]->error(initial) >= 24.0);
+        }
         for (size_t i = 0; i < vnIndexMono.size(); i++)
+        {
             if (pFrame->mvbOutlier[vnIndexMono[i]])
+            {
                 nBad++;
+            }
+        }
         for (size_t i = 0; i < vnIndexStereo.size(); i++)
+        {
             if (pFrame->mvbOutlier[vnIndexStereo[i]])
+            {
                 nBad++;
+            }
+        }
     }
 
     gtsam::Pose3 Twb = initial.at<gtsam::Pose3>(poseK0);
@@ -2801,7 +3080,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for (KeyFrame* pKF : vpKFs)
     {
         if (pKF->isBad())
+        {
             continue;
+        }
         const int nIDi = pKF->mnId;
         gtsam::Pose3 Tcw;
         auto it = CorrectedSim3.find(pKF);
@@ -2820,8 +3101,10 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         }
         initial.insert(poseKey(nIDi), Tcw);
         if (pKF == pLoopKF)
+        {
             graph.add(
                 gtsam::PriorFactor<gtsam::Pose3>(poseKey(nIDi), Tcw, gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
+        }
     }
 
     std::set<std::pair<long unsigned int, long unsigned int>> sInsertedEdges;
@@ -2842,7 +3125,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         {
             const long unsigned int nIDj = pKFn->mnId;
             if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) && pKF->GetWeight(pKFn) < minFeat)
+            {
                 continue;
+            }
             gtsam::Similarity3 Sij = Siw.compose(vScw[nIDj].inverse());
             add4DoFEdge(nIDi, nIDj, Sij);
             sInsertedEdges.insert(std::make_pair(std::min(nIDi, nIDj), std::max(nIDi, nIDj)));
@@ -2852,7 +3137,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for (KeyFrame* pKF : vpKFs)
     {
         if (pKF->isBad())
+        {
             continue;
+        }
         const int nIDi = pKF->mnId;
         gtsam::Similarity3 Siw =
             (NonCorrectedSim3.find(pKF) != NonCorrectedSim3.end()) ? NonCorrectedSim3.find(pKF)->second : vScw[nIDi];
@@ -2878,7 +3165,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         for (KeyFrame* pLKF : sLoopEdges)
         {
             if (pLKF->mnId >= pKF->mnId)
+            {
                 continue;
+            }
             gtsam::Similarity3 Swl = (NonCorrectedSim3.find(pLKF) != NonCorrectedSim3.end())
                                          ? NonCorrectedSim3.find(pLKF)->second.inverse()
                                          : vScw[pLKF->mnId].inverse();
@@ -2888,11 +3177,17 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         {
             if (!pKFn || pKFn == pParentKF || pKFn == prevKF || pKFn == pKF->mNextKF || pKF->hasChild(pKFn) ||
                 sLoopEdges.count(pKFn))
+            {
                 continue;
+            }
             if (pKFn->isBad() || pKFn->mnId >= pKF->mnId)
+            {
                 continue;
+            }
             if (sInsertedEdges.count(std::make_pair(std::min(pKF->mnId, pKFn->mnId), std::max(pKF->mnId, pKFn->mnId))))
+            {
                 continue;
+            }
             gtsam::Similarity3 Swn = (NonCorrectedSim3.find(pKFn) != NonCorrectedSim3.end())
                                          ? NonCorrectedSim3.find(pKFn)->second.inverse()
                                          : vScw[pKFn->mnId].inverse();
@@ -2910,7 +3205,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for (KeyFrame* pKFi : vpKFs)
     {
         if (pKFi->isBad())
+        {
             continue;
+        }
         const int nIDi = pKFi->mnId;
         gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(poseKey(nIDi));
         gtsam::Similarity3 CorrectedSiw(Tcw.rotation(), Tcw.translation(), 1.0);
@@ -2922,7 +3219,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for (MapPoint* pMP : vpMPs)
     {
         if (pMP->isBad())
+        {
             continue;
+        }
         int nIDr = pMP->GetReferenceKeyFrame()->mnId;
         const gtsam::Similarity3& Srw = vScw[nIDr];
         const gtsam::Similarity3& correctedSwr = vCorrectedSwc[nIDr];
