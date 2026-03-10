@@ -1,3 +1,7 @@
+# feature_extractor sub-library (FeatureExtractor base class + ORBFeatureExtractor)
+# Must be added before the main library so the target exists when linked below.
+add_subdirectory(feature_extractor)
+
 # ORB_SLAM3 library
 
 add_library(${PROJECT_NAME} SHARED
@@ -5,7 +9,7 @@ add_library(${PROJECT_NAME} SHARED
     Tracking.cc
     LocalMapping.cc
     LoopClosing.cc
-    ORBextractor.cc
+    # ORBextractor.cc is retired — logic now lives in feature_extractor
     ORBmatcher.cc
     Converter.cc
     MapPoint.cc
@@ -41,6 +45,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
+    feature_extractor
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
     ${Pangolin_LIBRARIES}

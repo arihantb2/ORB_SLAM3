@@ -342,8 +342,8 @@ void LocalMapping::ProcessNewKeyFrame()
             << "] PROCESS_NEW_KEYFRAME: Scaling factor: " << scaling_factor << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
-            << pkfId << "c" << cfId << "_c" << pkfId << ":" << p_c1c2_c1.transpose() << ": " << p_c1c2_c1.norm()
-            << " m" << std::endl;
+            << pkfId << "c" << cfId << "_c" << pkfId << ":" << p_c1c2_c1.transpose() << ": " << p_c1c2_c1.norm() << " m"
+            << std::endl;
         Verbose::Print(Verbose::VERBOSITY_QUIET)
             << "[" << mpCurrentKeyFrame->mnFrameId << ": " << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
             << pkfId << "priorc" << cfId << "prior_c" << pkfId << ": " << p_c1priorc2prior_c1.transpose() << ": "
