@@ -249,6 +249,104 @@ private:
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PinholeMonoPoseTcwFactor / PinholeStereoPoseTcwFactor
+//   Pinhole-only unary factors on Pose3, interpreted as Tcw (world-to-camera).
+//   Used by visual-only PoseOptimization (no IMU body frame).
+// ─────────────────────────────────────────────────────────────────────────────
+class PinholeMonoPoseTcwFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3>;
+
+    PinholeMonoPoseTcwFactor(const gtsam::Key& poseKey, const Eigen::Vector3d& Xw, const Eigen::Vector2d& obs,
+                             const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
+        : Base(noise, poseKey), Xw_(Xw), obs_(obs), pCamera_(pCamera)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& Tcw,
+                                boost::optional<gtsam::Matrix&> H = boost::none) const override;
+
+private:
+    Eigen::Vector3d Xw_;
+    Eigen::Vector2d obs_;
+    GeometricCamera* pCamera_;
+};
+
+class PinholeStereoPoseTcwFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3>;
+
+    PinholeStereoPoseTcwFactor(const gtsam::Key& poseKey, const Eigen::Vector3d& Xw,
+                               const Eigen::Vector3d& obs,  // [ul, v, ur]
+                               double bf, const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
+        : Base(noise, poseKey), Xw_(Xw), obs_(obs), bf_(bf), pCamera_(pCamera)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& Tcw,
+                                boost::optional<gtsam::Matrix&> H = boost::none) const override;
+
+private:
+    Eigen::Vector3d Xw_;
+    Eigen::Vector3d obs_;  // [ul, v, ur]
+    double bf_;
+    GeometricCamera* pCamera_;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PinholeMonoTcwFactor / PinholeStereoTcwFactor
+//   Pinhole-only binary factors: Pose3(Tcw) × Point3(Xw) → ℝ² / ℝ³.
+//   Used by LocalBundleAdjustment with Tcw-parametrized camera poses.
+// ─────────────────────────────────────────────────────────────────────────────
+class PinholeMonoTcwFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
+
+    PinholeMonoTcwFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey, const Eigen::Vector2d& obs,
+                         const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
+        : Base(noise, poseKey, pointKey), obs_(obs), pCamera_(pCamera)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& Tcw, const gtsam::Point3& Xw,
+                                boost::optional<gtsam::Matrix&> H1 = boost::none,
+                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
+
+private:
+    Eigen::Vector2d obs_;
+    GeometricCamera* pCamera_;
+};
+
+class PinholeStereoTcwFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
+
+    PinholeStereoTcwFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey,
+                           const Eigen::Vector3d& obs,  // [ul, v, ur]
+                           double bf, const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera)
+        : Base(noise, poseKey, pointKey), obs_(obs), bf_(bf), pCamera_(pCamera)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& Tcw, const gtsam::Point3& Xw,
+                                boost::optional<gtsam::Matrix&> H1 = boost::none,
+                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
+
+private:
+    Eigen::Vector3d obs_;
+    double bf_;
+    GeometricCamera* pCamera_;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FisheyeProjectionFactor
 //   Replaces EdgeMono / EdgeSE3ProjectXYZ for fisheye (Metashape) cameras.
 //   Binary factor: Pose3(Twb) × Point3(Xw) → ℝ².

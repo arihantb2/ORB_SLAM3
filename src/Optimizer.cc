@@ -685,14 +685,14 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     const gtsam::Key poseK = poseKey(0);
     const int N = pFrame->N;
 
-    std::vector<boost::shared_ptr<MonoOnlyPoseFactor>> vpFactorsMono;
-    std::vector<boost::shared_ptr<StereoOnlyPoseFactor>> vpFactorsStereo;
+    std::vector<boost::shared_ptr<PinholeMonoPoseTcwFactor>> vpFactorsMono;
+    std::vector<boost::shared_ptr<PinholeStereoPoseTcwFactor>> vpFactorsStereo;
     std::vector<size_t> vnIndexMono, vnIndexStereo;
     int nInitialCorrespondences = 0;
 
-    gtsam::Pose3 Twc = sophusToGTSAMPose(pFrame->GetPose().inverse());
+    gtsam::Pose3 Tcw = sophusToGTSAMPose(pFrame->GetPose());
     gtsam::Values initial;
-    initial.insert(poseK, Twc);
+    initial.insert(poseK, Tcw);
 
     {
         std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
@@ -713,7 +713,7 @@ int Optimizer::PoseOptimization(Frame* pFrame)
                 Eigen::Vector2d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y);
                 auto noise = makeHuberNoise(2, 5.991, invSigma2);
                 vpFactorsMono.push_back(
-                    boost::make_shared<MonoOnlyPoseFactor>(poseK, Xw, obs, noise, pFrame->mpCamera, gtsam::Pose3()));
+                    boost::make_shared<PinholeMonoPoseTcwFactor>(poseK, Xw, obs, noise, pFrame->mpCamera));
                 vnIndexMono.push_back(static_cast<size_t>(i));
             }
             else
@@ -722,8 +722,8 @@ int Optimizer::PoseOptimization(Frame* pFrame)
                 pFrame->mvbOutlier[i] = false;
                 Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
                 auto noise = makeHuberNoise(3, 7.815, invSigma2);
-                vpFactorsStereo.push_back(boost::make_shared<StereoOnlyPoseFactor>(poseK, Xw, obs, pFrame->mbf, noise,
-                                                                                   pFrame->mpCamera, gtsam::Pose3()));
+                vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(
+                    poseK, Xw, obs, pFrame->mbf, noise, pFrame->mpCamera));
                 vnIndexStereo.push_back(static_cast<size_t>(i));
             }
         }
@@ -804,8 +804,8 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nOutliers=" << nBad << std::endl;
 
-    gtsam::Pose3 Twc_final = initial.at<gtsam::Pose3>(poseK);
-    pFrame->SetPose(gtsamToSophusPose(Twc_final).inverse());
+    gtsam::Pose3 Tcw_final = initial.at<gtsam::Pose3>(poseK);
+    pFrame->SetPose(gtsamToSophusPose(Tcw_final));
     return nInitialCorrespondences - nBad;
 }
 
@@ -897,11 +897,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
 
     for (KeyFrame* pKFi : lLocalKeyFrames)
     {
-        gtsam::Pose3 Twc = sophusToGTSAMPose(pKFi->GetPose().inverse());
-        initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc);
+        gtsam::Pose3 Tcw = sophusToGTSAMPose(pKFi->GetPose());
+        initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw);
         if (pKFi->mnId == pMap->GetInitKFid())
         {
-            graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc,
+            graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw,
                                                        gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
         }
         if (pKFi->mnId > maxKFid)
@@ -914,9 +914,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
 
     for (KeyFrame* pKFi : lFixedCameras)
     {
-        gtsam::Pose3 Twc = sophusToGTSAMPose(pKFi->GetPose().inverse());
-        initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc);
-        graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Twc,
+        gtsam::Pose3 Tcw = sophusToGTSAMPose(pKFi->GetPose());
+        initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw);
+        graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw,
                                                    gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
         if (pKFi->mnId > maxKFid)
         {
@@ -957,10 +957,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             {
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
-                auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
+                assert(pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE);
                 graph.add(
-                    boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                        obs, noise, poseK, pk, cal));
+                    boost::make_shared<PinholeMonoTcwFactor>(poseK, pk, obs, noise, pKFi->mpCamera));
+
                 nEdges++;
                 monoEdges.push_back(std::make_tuple(pKFi, pMP, leftIndex));
             }
@@ -969,9 +969,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 const float kp_ur = pKFi->mvuRight[leftIndex];
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y, kp_ur);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
-                auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
-                graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
-                                                                                                      pk, cal));
+                assert(pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE);
+                graph.add(boost::make_shared<PinholeStereoTcwFactor>(
+                    poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()), pKFi->mbf, noise, pKFi->mpCamera));
+
                 nEdges++;
                 stereoEdges.push_back(std::make_tuple(pKFi, pMP, leftIndex));
             }
@@ -1020,8 +1021,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
         if (result.exists(k))
         {
-            gtsam::Pose3 Twc = result.at<gtsam::Pose3>(k);
-            pKFi->SetPose(gtsamToSophusPose(Twc).inverse());
+            gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(k);
+            pKFi->SetPose(gtsamToSophusPose(Tcw));
         }
     }
 

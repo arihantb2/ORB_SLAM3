@@ -122,7 +122,8 @@ gtsam::Pose3 sophusToGTSAMPose(const Sophus::SE3f& T)
 
 Sophus::SE3f gtsamToSophusPose(const gtsam::Pose3& P)
 {
-    const Eigen::Matrix3f R = P.rotation().matrix().cast<float>();
+    Eigen::Matrix3f R = P.rotation().matrix().cast<float>();
+    R = NormalizeRotation(R);
     const Eigen::Vector3f t = P.translation().cast<float>();
     return Sophus::SE3f(R, t);
 }
@@ -310,6 +311,210 @@ gtsam::Vector StereoOnlyPoseFactor::evaluateError(const gtsam::Pose3& Twb, boost
 bool StereoOnlyPoseFactor::isDepthPositive(const gtsam::Pose3& Twb) const
 {
     return transformToCamera(Twb, Tbc_, Xw_)(2) > 0.0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PinholeMonoPoseTcwFactor / PinholeStereoPoseTcwFactor
+// ─────────────────────────────────────────────────────────────────────────────
+gtsam::Vector PinholeMonoPoseTcwFactor::evaluateError(const gtsam::Pose3& Tcw,
+                                                      boost::optional<gtsam::Matrix&> H) const
+{
+    assert(pCamera_ && pCamera_->GetType() == GeometricCamera::CAM_PINHOLE);
+
+    const gtsam::Point3 Xw_p(Xw_.x(), Xw_.y(), Xw_.z());
+    gtsam::Matrix36 dXc_dTcw;
+    gtsam::Point3 Xc_p;
+
+    if (H)
+    {
+        Xc_p = Tcw.transformFrom(Xw_p, dXc_dTcw, boost::none);
+    }
+    else
+    {
+        Xc_p = Tcw.transformFrom(Xw_p);
+    }
+
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    if (Xc.z() <= 0.0)
+    {
+        if (H)
+        {
+            *H = Eigen::Matrix<double, 2, 6>::Zero();
+        }
+        return Eigen::Vector2d(1e6, 1e6);
+    }
+
+    const Eigen::Matrix<double, 2, 3> dProj_dXc = pCamera_->projectJac(Xc);
+    const Eigen::Vector2d proj = pCamera_->project(Xc);
+
+    if (H)
+    {
+        *H = -dProj_dXc * dXc_dTcw;
+    }
+
+    return obs_ - proj;
+}
+
+gtsam::Vector PinholeStereoPoseTcwFactor::evaluateError(const gtsam::Pose3& Tcw,
+                                                        boost::optional<gtsam::Matrix&> H) const
+{
+    assert(pCamera_ && pCamera_->GetType() == GeometricCamera::CAM_PINHOLE);
+
+    const gtsam::Point3 Xw_p(Xw_.x(), Xw_.y(), Xw_.z());
+    gtsam::Matrix36 dXc_dTcw;
+    gtsam::Point3 Xc_p;
+
+    if (H)
+    {
+        Xc_p = Tcw.transformFrom(Xw_p, dXc_dTcw, boost::none);
+    }
+    else
+    {
+        Xc_p = Tcw.transformFrom(Xw_p);
+    }
+
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    if (Xc.z() <= 0.0)
+    {
+        if (H)
+        {
+            *H = Eigen::Matrix<double, 3, 6>::Zero();
+        }
+        return Eigen::Vector3d(1e6, 1e6, 1e6);
+    }
+
+    Eigen::Matrix<double, 2, 3> proj_jac = pCamera_->projectJac(Xc);
+    Eigen::Matrix<double, 3, 3> dStereo_dXc;
+    dStereo_dXc.block<2, 3>(0, 0) = proj_jac;
+    dStereo_dXc.block<1, 3>(2, 0) = proj_jac.block<1, 3>(0, 0);
+    const double invZ2 = 1.0 / (Xc.z() * Xc.z());
+    dStereo_dXc(2, 2) += bf_ * invZ2;
+
+    const Eigen::Vector2d proj2 = pCamera_->project(Xc);
+    Eigen::Vector3d proj3;
+    proj3(0) = proj2(0);
+    proj3(1) = proj2(1);
+    proj3(2) = proj2(0) - bf_ / Xc.z();
+
+    if (H)
+    {
+        *H = -dStereo_dXc * dXc_dTcw;
+    }
+
+    return obs_ - proj3;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PinholeMonoTcwFactor / PinholeStereoTcwFactor
+// ─────────────────────────────────────────────────────────────────────────────
+gtsam::Vector PinholeMonoTcwFactor::evaluateError(const gtsam::Pose3& Tcw, const gtsam::Point3& Xw,
+                                                  boost::optional<gtsam::Matrix&> H1,
+                                                  boost::optional<gtsam::Matrix&> H2) const
+{
+    assert(pCamera_ && pCamera_->GetType() == GeometricCamera::CAM_PINHOLE);
+
+    gtsam::Matrix36 dXc_dTcw;
+    gtsam::Matrix33 dXc_dXw;
+    gtsam::Point3 Xc_p;
+
+    if (H1 || H2)
+    {
+        Xc_p = Tcw.transformFrom(Xw,
+                                 H1 ? &dXc_dTcw : nullptr,
+                                 H2 ? &dXc_dXw : nullptr);
+    }
+    else
+    {
+        Xc_p = Tcw.transformFrom(Xw);
+    }
+
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    if (Xc.z() <= 0.0)
+    {
+        if (H1)
+        {
+            *H1 = Eigen::Matrix<double, 2, 6>::Zero();
+        }
+        if (H2)
+        {
+            *H2 = Eigen::Matrix<double, 2, 3>::Zero();
+        }
+        return Eigen::Vector2d(1e6, 1e6);
+    }
+
+    const Eigen::Matrix<double, 2, 3> dProj_dXc = pCamera_->projectJac(Xc);
+    const Eigen::Vector2d proj = pCamera_->project(Xc);
+
+    if (H1)
+    {
+        *H1 = -dProj_dXc * dXc_dTcw;
+    }
+    if (H2)
+    {
+        *H2 = -dProj_dXc * dXc_dXw;
+    }
+
+    return obs_ - proj;
+}
+
+gtsam::Vector PinholeStereoTcwFactor::evaluateError(const gtsam::Pose3& Tcw, const gtsam::Point3& Xw,
+                                                    boost::optional<gtsam::Matrix&> H1,
+                                                    boost::optional<gtsam::Matrix&> H2) const
+{
+    assert(pCamera_ && pCamera_->GetType() == GeometricCamera::CAM_PINHOLE);
+
+    gtsam::Matrix36 dXc_dTcw;
+    gtsam::Matrix33 dXc_dXw;
+    gtsam::Point3 Xc_p;
+
+    if (H1 || H2)
+    {
+        Xc_p = Tcw.transformFrom(Xw,
+                                 H1 ? &dXc_dTcw : nullptr,
+                                 H2 ? &dXc_dXw : nullptr);
+    }
+    else
+    {
+        Xc_p = Tcw.transformFrom(Xw);
+    }
+
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    if (Xc.z() <= 0.0)
+    {
+        if (H1)
+        {
+            *H1 = Eigen::Matrix<double, 3, 6>::Zero();
+        }
+        if (H2)
+        {
+            *H2 = Eigen::Matrix<double, 3, 3>::Zero();
+        }
+        return Eigen::Vector3d(1e6, 1e6, 1e6);
+    }
+
+    Eigen::Matrix<double, 2, 3> proj_jac = pCamera_->projectJac(Xc);
+    Eigen::Matrix<double, 3, 3> dStereo_dXc;
+    dStereo_dXc.block<2, 3>(0, 0) = proj_jac;
+    dStereo_dXc.block<1, 3>(2, 0) = proj_jac.block<1, 3>(0, 0);
+    const double invZ2 = 1.0 / (Xc.z() * Xc.z());
+    dStereo_dXc(2, 2) += bf_ * invZ2;
+
+    const Eigen::Vector2d proj2 = pCamera_->project(Xc);
+    Eigen::Vector3d proj3;
+    proj3(0) = proj2(0);
+    proj3(1) = proj2(1);
+    proj3(2) = proj2(0) - bf_ / Xc.z();
+
+    if (H1)
+    {
+        *H1 = -dStereo_dXc * dXc_dTcw;
+    }
+    if (H2)
+    {
+        *H2 = -dStereo_dXc * dXc_dXw;
+    }
+
+    return obs_ - proj3;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
