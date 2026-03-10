@@ -939,7 +939,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             {
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
-                assert(pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE);
                 graph.add(boost::make_shared<PinholeMonoTcwFactor>(poseK, pk, obs, noise, pKFi->mpCamera));
 
                 nEdges++;
@@ -950,7 +949,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 const float kp_ur = pKFi->mvuRight[leftIndex];
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y, kp_ur);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
-                assert(pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE);
                 graph.add(boost::make_shared<PinholeStereoTcwFactor>(
                     poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()), pKFi->mbf, noise, pKFi->mpCamera));
 
@@ -1781,11 +1779,8 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
             gtsam::Key poseK = imuPoseKey(static_cast<uint32_t>(pKFi->mnId));
             gtsam::Pose3 Tbc_kf = sophusToGTSAMPose(pKFi->mImuCalib.mTbc);
             double invSigma2 = static_cast<double>(pKFi->mvInvLevelSigma2[pKFi->mvKeysUn[leftIndex].octave]);
-            if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-            {
-                Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
-                invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(obs));
-            }
+            Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
+            invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(obs));
             if (pKFi->mvuRight[leftIndex] < 0)
             {
                 mVisEdges[pKFi->mnId]++;
@@ -1802,10 +1797,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                 mVisEdges[pKFi->mnId]++;
                 gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y,
                                         pKFi->mvuRight[leftIndex]);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(Eigen::Vector2d(obs.uL(), obs.v())));
-                }
+                invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(Eigen::Vector2d(obs.uL(), obs.v())));
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
                 auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
                 graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
