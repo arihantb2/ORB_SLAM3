@@ -235,103 +235,6 @@ TEST(GTSAMFactors, PinholeStereoPoseTcwFactor)
 }
 
 // -----------------------------------------------------------------------------
-// FisheyeProjectionFactor
-// -----------------------------------------------------------------------------
-TEST(GTSAMFactors, FisheyeProjectionFactor)
-{
-    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
-    Pinhole camera(params);
-    const gtsam::Pose3 Tbc = gtsam::Pose3::Identity();
-    const Eigen::Vector3d Xw_eig(1.5, -0.2, 4.0);
-    const gtsam::Point3 Xw(Xw_eig.x(), Xw_eig.y(), Xw_eig.z());
-
-    // World-to-body pose (here body == camera).
-    const gtsam::Pose3 Twb(gtsam::Rot3::RzRyRx(0.1, -0.05, 0.02), gtsam::Point3(0.1, -0.05, 0.2));
-
-    // Compute ideal observation by projecting with the same convention as the factor.
-    const gtsam::Pose3 Twc = Twb.compose(Tbc);
-    const gtsam::Pose3 Tcw = Twc.inverse();
-    const gtsam::Point3 Xc = Tcw.transformFrom(Xw);
-    const Eigen::Vector3d Xc_eig(Xc.x(), Xc.y(), Xc.z());
-    const Eigen::Vector2d obs = camera.project(Xc_eig);
-
-    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(2);
-    FisheyeProjectionFactor factor(poseKey(0), pointKey(0), obs, noise, &camera, Tbc);
-
-    // Error at consistent state should be ~0.
-    gtsam::Vector err = factor.evaluateError(Twb, Xw, boost::none, boost::none);
-    EXPECT_NEAR(0.0, err.norm(), kTolError) << "FisheyeProjectionFactor error at consistent state";
-
-    gtsam::Pose3 Twb_pert = Twb.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
-    gtsam::Vector err_pert = factor.evaluateError(Twb_pert, Xw, boost::none, boost::none);
-    EXPECT_GT(err_pert.norm(), kTolError) << "FisheyeProjectionFactor non-zero error check";
-
-    // Check Jacobians vs numerical derivatives.
-    gtsam::Matrix H1_analytical(2, 6), H2_analytical(2, 3);
-    factor.evaluateError(Twb, Xw, H1_analytical, H2_analytical);
-
-    auto err_fn = [&factor](const gtsam::Pose3& Twb_, const gtsam::Point3& Xw_) -> gtsam::Vector
-    {
-        return factor.evaluateError(Twb_, Xw_, boost::none, boost::none);
-    };
-    Eigen::MatrixXd H1_num =
-        gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Twb, Xw);
-    Eigen::MatrixXd H2_num =
-        gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Twb, Xw);
-
-    ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "FisheyeProjectionFactor H_pose");
-    ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "FisheyeProjectionFactor H_point");
-}
-
-// -----------------------------------------------------------------------------
-// FisheyeStereoFactor
-// -----------------------------------------------------------------------------
-TEST(GTSAMFactors, FisheyeStereoFactor)
-{
-    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
-    Pinhole camera(params);
-    const double bf = 100.0;
-    const gtsam::Pose3 Tbc = gtsam::Pose3::Identity();
-    const Eigen::Vector3d Xw_eig(1.0, 0.3, 3.5);
-    const gtsam::Point3 Xw(Xw_eig.x(), Xw_eig.y(), Xw_eig.z());
-
-    const gtsam::Pose3 Twb(gtsam::Rot3::RzRyRx(-0.05, 0.02, 0.03), gtsam::Point3(-0.1, 0.05, 0.15));
-    const gtsam::Pose3 Twc = Twb.compose(Tbc);
-    const gtsam::Pose3 Tcw = Twc.inverse();
-    const gtsam::Point3 Xc = Tcw.transformFrom(Xw);
-    const Eigen::Vector3d Xc_eig(Xc.x(), Xc.y(), Xc.z());
-
-    const Eigen::Vector2d proj2 = camera.project(Xc_eig);
-    Eigen::Vector3d obs3;
-    obs3 << proj2(0), proj2(1), proj2(0) - bf / Xc_eig(2);
-
-    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(3);
-    FisheyeStereoFactor factor(poseKey(0), pointKey(0), obs3, bf, noise, &camera, Tbc);
-
-    gtsam::Vector err = factor.evaluateError(Twb, Xw, boost::none, boost::none);
-    EXPECT_NEAR(0.0, err.norm(), kTolError) << "FisheyeStereoFactor error at consistent state";
-
-    gtsam::Pose3 Twb_pert = Twb.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
-    gtsam::Vector err_pert = factor.evaluateError(Twb_pert, Xw, boost::none, boost::none);
-    EXPECT_GT(err_pert.norm(), kTolError) << "FisheyeStereoFactor non-zero error check";
-
-    gtsam::Matrix H1_analytical(3, 6), H2_analytical(3, 3);
-    factor.evaluateError(Twb, Xw, H1_analytical, H2_analytical);
-
-    auto err_fn = [&factor](const gtsam::Pose3& Twb_, const gtsam::Point3& Xw_) -> gtsam::Vector
-    {
-        return factor.evaluateError(Twb_, Xw_, boost::none, boost::none);
-    };
-    Eigen::MatrixXd H1_num =
-        gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Twb, Xw);
-    Eigen::MatrixXd H2_num =
-        gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Twb, Xw);
-
-    ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "FisheyeStereoFactor H_pose");
-    ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "FisheyeStereoFactor H_point");
-}
-
-// -----------------------------------------------------------------------------
 // PinholeMonoTcwFactor
 // -----------------------------------------------------------------------------
 TEST(GTSAMFactors, PinholeMonoTcwFactor)
@@ -359,10 +262,8 @@ TEST(GTSAMFactors, PinholeMonoTcwFactor)
     {
         return factor.evaluateError(Tcw_, Xw_, boost::none, boost::none);
     };
-    Eigen::MatrixXd H1_num =
-        gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
-    Eigen::MatrixXd H2_num =
-        gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H1_num = gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H2_num = gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
 
     ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "PinholeMonoTcwFactor H_pose");
     ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "PinholeMonoTcwFactor H_point");
@@ -400,10 +301,8 @@ TEST(GTSAMFactors, PinholeStereoTcwFactor)
     {
         return factor.evaluateError(Tcw_, Xw_, boost::none, boost::none);
     };
-    Eigen::MatrixXd H1_num =
-        gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
-    Eigen::MatrixXd H2_num =
-        gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H1_num = gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H2_num = gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
 
     ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "PinholeStereoTcwFactor H_pose");
     ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "PinholeStereoTcwFactor H_point");

@@ -21,11 +21,11 @@
 
 #include <list>
 #include <mutex>
-#include <unordered_map>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -59,22 +59,22 @@ class GeometricCamera;
 struct MatchedKeypoint
 {
     int current_kp_idx = -1;  // Index into current Frame's mvKeysUn
-    int source_kp_idx = -1;  // Index into source Frame's/KF's mvKeysUn; -1 if unknown
+    int source_kp_idx = -1;   // Index into source Frame's/KF's mvKeysUn; -1 if unknown
     cv::KeyPoint current_kp;  // Keypoint in current frame (undistorted)
-    cv::KeyPoint source_kp;  // Keypoint in source frame/KF (undistorted)
-    bool is_inlier = false;  // True if this match survives pose optimization
+    cv::KeyPoint source_kp;   // Keypoint in source frame/KF (undistorted)
+    bool is_inlier = false;   // True if this match survives pose optimization
 };
 
 // A map point that is currently observed in the current frame, with its
 // 3D position expressed in both world and camera frames.
 struct MapPointObservation
 {
-    int keypoint_idx = -1;  // Index into current Frame's mvKeysUn
-    cv::KeyPoint keypoint;  // Keypoint in current frame (undistorted)
-    Eigen::Vector3f pos_world;  // MapPoint world position (GetWorldPos())
-    Eigen::Vector3f pos_camera;  // pos_world transformed to camera frame: Tcw * pos_world
+    int keypoint_idx = -1;           // Index into current Frame's mvKeysUn
+    cv::KeyPoint keypoint;           // Keypoint in current frame (undistorted)
+    Eigen::Vector3f pos_world;       // MapPoint world position (GetWorldPos())
+    Eigen::Vector3f pos_camera;      // pos_world transformed to camera frame: Tcw * pos_world
     unsigned long map_point_id = 0;  // MapPoint::mnId — unique across the map
-    bool is_inlier = true;  // False if marked as outlier by pose optimization
+    bool is_inlier = true;           // False if marked as outlier by pose optimization
 };
 
 // All ORB keypoints detected in the current frame, plus stereo matching
@@ -110,11 +110,11 @@ struct FrameKeypointData
 // inline via Frame::UnprojectStereo(). Empty for monocular.
 struct NewMapPointCandidate
 {
-    int keypoint_idx = -1;  // Index into current Frame's mvKeysUn
-    cv::KeyPoint left_kp;  // Left undistorted keypoint
-    cv::KeyPoint right_kp;  // Reconstructed right keypoint (pt.x = mvuRight[i])
-    float depth = -1.f;  // Stereo depth in metres (Frame::mvDepth[i])
-    Eigen::Vector3f pos_world;  // 3D world position (from UnprojectStereo)
+    int keypoint_idx = -1;       // Index into current Frame's mvKeysUn
+    cv::KeyPoint left_kp;        // Left undistorted keypoint
+    cv::KeyPoint right_kp;       // Reconstructed right keypoint (pt.x = mvuRight[i])
+    float depth = -1.f;          // Stereo depth in metres (Frame::mvDepth[i])
+    Eigen::Vector3f pos_world;   // 3D world position (from UnprojectStereo)
     Eigen::Vector3f pos_camera;  // 3D camera-frame position: Tcw * pos_world
 };
 

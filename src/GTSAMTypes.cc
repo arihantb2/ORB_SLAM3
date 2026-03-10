@@ -63,11 +63,15 @@ Eigen::Vector3d LogSO3(const Eigen::Matrix3d& R)
     w << (R(2, 1) - R(1, 2)) / 2.0, (R(0, 2) - R(2, 0)) / 2.0, (R(1, 0) - R(0, 1)) / 2.0;
     const double costheta = (tr - 1.0) * 0.5;
     if (costheta > 1.0 || costheta < -1.0)
+    {
         return w;
+    }
     const double theta = std::acos(costheta);
     const double s = std::sin(theta);
     if (std::fabs(s) < 1e-5)
+    {
         return w;
+    }
     return theta * w / s;
 }
 
@@ -85,7 +89,9 @@ Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z)
     Eigen::Matrix3d W;
     W << 0.0, -z, y, z, 0.0, -x, -y, x, 0.0;
     if (d < 1e-5)
+    {
         return Eigen::Matrix3d::Identity();
+    }
     return Eigen::Matrix3d::Identity() - W * (1.0 - std::cos(d)) / d2 + W * W * (d - std::sin(d)) / (d2 * d);
 }
 
@@ -101,7 +107,9 @@ Eigen::Matrix3d InverseRightJacobianSO3(const double x, const double y, const do
     Eigen::Matrix3d W;
     W << 0.0, -z, y, z, 0.0, -x, -y, x, 0.0;
     if (d < 1e-5)
+    {
         return Eigen::Matrix3d::Identity();
+    }
     return Eigen::Matrix3d::Identity() + W / 2.0 + W * W * (1.0 / d2 - (1.0 + std::cos(d)) / (2.0 * d * std::sin(d)));
 }
 
@@ -226,10 +234,13 @@ static Eigen::Vector3d transformToCamera(const gtsam::Pose3& Twb, const gtsam::P
         Eigen::Vector3d Xc = Twc.transformTo(Xw, dXc_dTwb ? &dXc_dTwc : nullptr, dXc_dXw ? &dXc_dXw_local : nullptr);
 
         if (dXc_dTwb)
+        {
             *dXc_dTwb = dXc_dTwc * dTwc_dTwb;
+        }
         if (dXc_dXw)
+        {
             *dXc_dXw = dXc_dXw_local;
-
+        }
         return Xc;
     }
     else
@@ -252,7 +263,9 @@ gtsam::Vector MonoOnlyPoseFactor::evaluateError(const gtsam::Pose3& Twb, boost::
     {
         // Behind camera — return large error, zero Jacobian
         if (H)
+        {
             *H = Eigen::Matrix<double, 2, 6>::Zero();
+        }
         return Eigen::Vector2d(1e6, 1e6);
     }
 
@@ -260,8 +273,9 @@ gtsam::Vector MonoOnlyPoseFactor::evaluateError(const gtsam::Pose3& Twb, boost::
     const Eigen::Vector2d proj = pCamera_->project(Xc);
 
     if (H)
+    {
         *H = -dProj_dXc * dXc_dTwb;
-
+    }
     return obs_ - proj;
 }
 
@@ -283,7 +297,9 @@ gtsam::Vector StereoOnlyPoseFactor::evaluateError(const gtsam::Pose3& Twb, boost
     if (Xc(2) <= 0.0)
     {
         if (H)
+        {
             *H = Eigen::Matrix<double, 3, 6>::Zero();
+        }
         return Eigen::Vector3d(1e6, 1e6, 1e6);
     }
 
@@ -303,8 +319,9 @@ gtsam::Vector StereoOnlyPoseFactor::evaluateError(const gtsam::Pose3& Twb, boost
     proj3(2) = proj2(0) - bf_ / Xc(2);
 
     if (H)
+    {
         *H = -dStereo_dXc * dXc_dTwb;
-
+    }
     return obs_ - proj3;
 }
 
@@ -316,8 +333,7 @@ bool StereoOnlyPoseFactor::isDepthPositive(const gtsam::Pose3& Twb) const
 // ─────────────────────────────────────────────────────────────────────────────
 // PinholeMonoPoseTcwFactor / PinholeStereoPoseTcwFactor
 // ─────────────────────────────────────────────────────────────────────────────
-gtsam::Vector PinholeMonoPoseTcwFactor::evaluateError(const gtsam::Pose3& Tcw,
-                                                      boost::optional<gtsam::Matrix&> H) const
+gtsam::Vector PinholeMonoPoseTcwFactor::evaluateError(const gtsam::Pose3& Tcw, boost::optional<gtsam::Matrix&> H) const
 {
     assert(pCamera_ && pCamera_->GetType() == GeometricCamera::CAM_PINHOLE);
 
@@ -419,9 +435,7 @@ gtsam::Vector PinholeMonoTcwFactor::evaluateError(const gtsam::Pose3& Tcw, const
 
     if (H1 || H2)
     {
-        Xc_p = Tcw.transformFrom(Xw,
-                                 H1 ? &dXc_dTcw : nullptr,
-                                 H2 ? &dXc_dXw : nullptr);
+        Xc_p = Tcw.transformFrom(Xw, H1 ? &dXc_dTcw : nullptr, H2 ? &dXc_dXw : nullptr);
     }
     else
     {
@@ -469,9 +483,7 @@ gtsam::Vector PinholeStereoTcwFactor::evaluateError(const gtsam::Pose3& Tcw, con
 
     if (H1 || H2)
     {
-        Xc_p = Tcw.transformFrom(Xw,
-                                 H1 ? &dXc_dTcw : nullptr,
-                                 H2 ? &dXc_dXw : nullptr);
+        Xc_p = Tcw.transformFrom(Xw, H1 ? &dXc_dTcw : nullptr, H2 ? &dXc_dXw : nullptr);
     }
     else
     {
@@ -515,96 +527,6 @@ gtsam::Vector PinholeStereoTcwFactor::evaluateError(const gtsam::Pose3& Tcw, con
     }
 
     return obs_ - proj3;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FisheyeProjectionFactor
-// ─────────────────────────────────────────────────────────────────────────────
-gtsam::Vector FisheyeProjectionFactor::evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
-                                                     boost::optional<gtsam::Matrix&> H1,
-                                                     boost::optional<gtsam::Matrix&> H2) const
-{
-    Eigen::Matrix<double, 3, 6> dXc_dTwb;
-    Eigen::Matrix<double, 3, 3> dXc_dXw;
-    boost::optional<Eigen::Matrix<double, 3, 6>&> optTwb =
-        (H1 || H2) ? boost::optional<Eigen::Matrix<double, 3, 6>&>(dXc_dTwb) : boost::none;
-    boost::optional<Eigen::Matrix<double, 3, 3>&> optXw =
-        (H1 || H2) ? boost::optional<Eigen::Matrix<double, 3, 3>&>(dXc_dXw) : boost::none;
-    Eigen::Vector3d Xc = transformToCamera(Twb, Tbc_, Xw, optTwb, optXw);
-
-    if (Xc(2) <= 0.0)
-    {
-        if (H1)
-            *H1 = Eigen::Matrix<double, 2, 6>::Zero();
-        if (H2)
-            *H2 = Eigen::Matrix<double, 2, 3>::Zero();
-        return Eigen::Vector2d(1e6, 1e6);
-    }
-
-    const Eigen::Matrix<double, 2, 3> dProj_dXc = pCamera_->projectJac(Xc);
-    const Eigen::Vector2d proj = pCamera_->project(Xc);
-
-    if (H1)
-        *H1 = -dProj_dXc * dXc_dTwb;
-    if (H2)
-        *H2 = -dProj_dXc * dXc_dXw;
-
-    return obs_ - proj;
-}
-
-bool FisheyeProjectionFactor::isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const
-{
-    return transformToCamera(Twb, Tbc_, Xw)(2) > 0.0;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FisheyeStereoFactor
-// ─────────────────────────────────────────────────────────────────────────────
-gtsam::Vector FisheyeStereoFactor::evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
-                                                 boost::optional<gtsam::Matrix&> H1,
-                                                 boost::optional<gtsam::Matrix&> H2) const
-{
-    Eigen::Matrix<double, 3, 6> dXc_dTwb;
-    Eigen::Matrix<double, 3, 3> dXc_dXw;
-    boost::optional<Eigen::Matrix<double, 3, 6>&> optTwb =
-        (H1 || H2) ? boost::optional<Eigen::Matrix<double, 3, 6>&>(dXc_dTwb) : boost::none;
-    boost::optional<Eigen::Matrix<double, 3, 3>&> optXw =
-        (H1 || H2) ? boost::optional<Eigen::Matrix<double, 3, 3>&>(dXc_dXw) : boost::none;
-    Eigen::Vector3d Xc = transformToCamera(Twb, Tbc_, Xw, optTwb, optXw);
-
-    if (Xc(2) <= 0.0)
-    {
-        if (H1)
-            *H1 = Eigen::Matrix<double, 3, 6>::Zero();
-        if (H2)
-            *H2 = Eigen::Matrix<double, 3, 3>::Zero();
-        return Eigen::Vector3d(1e6, 1e6, 1e6);
-    }
-
-    Eigen::Matrix<double, 2, 3> proj_jac = pCamera_->projectJac(Xc);
-    Eigen::Matrix<double, 3, 3> dStereo_dXc;
-    dStereo_dXc.block<2, 3>(0, 0) = proj_jac;
-    dStereo_dXc.block<1, 3>(2, 0) = proj_jac.block<1, 3>(0, 0);
-    const double invZ2 = 1.0 / (Xc(2) * Xc(2));
-    dStereo_dXc(2, 2) += bf_ * invZ2;
-
-    Eigen::Vector2d proj2 = pCamera_->project(Xc);
-    Eigen::Vector3d proj3;
-    proj3(0) = proj2(0);
-    proj3(1) = proj2(1);
-    proj3(2) = proj2(0) - bf_ / Xc(2);
-
-    if (H1)
-        *H1 = -dStereo_dXc * dXc_dTwb;
-    if (H2)
-        *H2 = -dStereo_dXc * dXc_dXw;
-
-    return obs_ - proj3;
-}
-
-bool FisheyeStereoFactor::isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const
-{
-    return transformToCamera(Twb, Tbc_, Xw)(2) > 0.0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

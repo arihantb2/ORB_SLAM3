@@ -347,69 +347,6 @@ private:
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FisheyeProjectionFactor
-//   Replaces EdgeMono / EdgeSE3ProjectXYZ for fisheye (Metashape) cameras.
-//   Binary factor: Pose3(Twb) × Point3(Xw) → ℝ².
-//   For pinhole cameras use gtsam::GenericProjectionFactor instead.
-// ─────────────────────────────────────────────────────────────────────────────
-class FisheyeProjectionFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
-
-    FisheyeProjectionFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey, const Eigen::Vector2d& obs,
-                            const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
-                            const gtsam::Pose3& Tbc = gtsam::Pose3())
-        : Base(noise, poseKey, pointKey), obs_(obs), pCamera_(pCamera), Tbc_(Tbc)
-    {
-    }
-
-    gtsam::Vector evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
-                                boost::optional<gtsam::Matrix&> H1 = boost::none,
-                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
-
-    bool isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const;
-
-private:
-    Eigen::Vector2d obs_;
-    GeometricCamera* pCamera_;
-    gtsam::Pose3 Tbc_;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FisheyeStereoFactor
-//   Replaces EdgeStereo for fisheye cameras.
-//   Binary factor: Pose3(Twb) × Point3(Xw) → ℝ³  ([ul, v, ur]).
-// ─────────────────────────────────────────────────────────────────────────────
-class FisheyeStereoFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
-
-    FisheyeStereoFactor(const gtsam::Key& poseKey, const gtsam::Key& pointKey,
-                        const Eigen::Vector3d& obs,  // [ul, v, ur]
-                        double bf, const gtsam::SharedNoiseModel& noise, GeometricCamera* pCamera,
-                        const gtsam::Pose3& Tbc = gtsam::Pose3())
-        : Base(noise, poseKey, pointKey), obs_(obs), bf_(bf), pCamera_(pCamera), Tbc_(Tbc)
-    {
-    }
-
-    gtsam::Vector evaluateError(const gtsam::Pose3& Twb, const gtsam::Point3& Xw,
-                                boost::optional<gtsam::Matrix&> H1 = boost::none,
-                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override;
-
-    bool isDepthPositive(const gtsam::Pose3& Twb, const gtsam::Point3& Xw) const;
-
-private:
-    Eigen::Vector3d obs_;
-    double bf_;
-    GeometricCamera* pCamera_;
-    gtsam::Pose3 Tbc_;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // InertialFactor
 //   Replaces EdgeInertial (6-vertex multi-edge in g2o).
 //   Connects: pose1(Twb), vel1, bias1(ConstantBias), pose2(Twb), vel2.

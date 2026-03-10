@@ -289,19 +289,10 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
                 Eigen::Vector2d obs(pKF->mvKeysUn[leftIndex].pt.x, pKF->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise =
                     bRobust ? makeHuberNoise(2, 5.99, invSigma2) : makeIsotropicNoise(2, invSigma2);
-                if (pKF->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    boost::shared_ptr<gtsam::Cal3_S2> cal =
-                        boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKF->mpCamera));
-                    graph.add(
-                        boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                            obs, noise, poseK, pk, cal));
-                }
-                else
-                {
-                    graph.add(boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKF->mpCamera,
-                                                                          gtsam::Pose3()));
-                }
+                boost::shared_ptr<gtsam::Cal3_S2> cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKF->mpCamera));
+                graph.add(
+                    boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                        obs, noise, poseK, pk, cal));
                 nEdges++;
             }
             else
@@ -310,19 +301,10 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
                 gtsam::StereoPoint2 obs(pKF->mvKeysUn[leftIndex].pt.x, pKF->mvKeysUn[leftIndex].pt.y, kp_ur);
                 gtsam::SharedNoiseModel noise =
                     bRobust ? makeHuberNoise(3, 7.815, invSigma2) : makeIsotropicNoise(3, invSigma2);
-                if (pKF->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    boost::shared_ptr<gtsam::Cal3_S2Stereo> cal =
-                        boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKF->mpCamera, pKF->mbf));
-                    graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        obs, noise, poseK, pk, cal));
-                }
-                else
-                {
-                    graph.add(boost::make_shared<FisheyeStereoFactor>(poseK, pk,
-                                                                      Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                      pKF->mbf, noise, pKF->mpCamera, gtsam::Pose3()));
-                }
+                boost::shared_ptr<gtsam::Cal3_S2Stereo> cal =
+                    boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKF->mpCamera, pKF->mbf));
+                graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
+                                                                                                      pk, cal));
                 nEdges++;
             }
         }
@@ -722,8 +704,8 @@ int Optimizer::PoseOptimization(Frame* pFrame)
                 pFrame->mvbOutlier[i] = false;
                 Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
                 auto noise = makeHuberNoise(3, 7.815, invSigma2);
-                vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(
-                    poseK, Xw, obs, pFrame->mbf, noise, pFrame->mpCamera));
+                vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf,
+                                                                                         noise, pFrame->mpCamera));
                 vnIndexStereo.push_back(static_cast<size_t>(i));
             }
         }
@@ -958,8 +940,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
                 assert(pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE);
-                graph.add(
-                    boost::make_shared<PinholeMonoTcwFactor>(poseK, pk, obs, noise, pKFi->mpCamera));
+                graph.add(boost::make_shared<PinholeMonoTcwFactor>(poseK, pk, obs, noise, pKFi->mpCamera));
 
                 nEdges++;
                 monoEdges.push_back(std::make_tuple(pKFi, pMP, leftIndex));
@@ -1810,18 +1791,10 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                 mVisEdges[pKFi->mnId]++;
                 Eigen::Vector2d obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(2, 5.991, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
-                    graph.add(
-                        boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
-                            obs, noise, poseK, pk, cal, Tbc_kf));
-                }
-                else
-                {
-                    graph.add(
-                        boost::make_shared<FisheyeProjectionFactor>(poseK, pk, obs, noise, pKFi->mpCamera, Tbc_kf));
-                }
+                auto cal = boost::make_shared<gtsam::Cal3_S2>(toGTSAMCal(pKFi->mpCamera));
+                graph.add(
+                    boost::make_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>>(
+                        obs, noise, poseK, pk, cal, Tbc_kf));
                 monoEdges.push_back(std::make_tuple(pKFi, pMP, pMP->mTrackDepth < 10.f));
             }
             else
@@ -1834,18 +1807,9 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                     invSigma2 /= static_cast<double>(pKFi->mpCamera->uncertainty2(Eigen::Vector2d(obs.uL(), obs.v())));
                 }
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
-                if (pKFi->mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
-                {
-                    auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
-                    graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(
-                        obs, noise, poseK, pk, cal, Tbc_kf));
-                }
-                else
-                {
-                    graph.add(boost::make_shared<FisheyeStereoFactor>(poseK, pk,
-                                                                      Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()),
-                                                                      pKFi->mbf, noise, pKFi->mpCamera, Tbc_kf));
-                }
+                auto cal = boost::make_shared<gtsam::Cal3_S2Stereo>(toGTSAMStereoCal(pKFi->mpCamera, pKFi->mbf));
+                graph.add(boost::make_shared<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>>(obs, noise, poseK,
+                                                                                                      pk, cal, Tbc_kf));
                 stereoEdges.push_back(std::make_tuple(pKFi, pMP));
             }
         }
@@ -1896,8 +1860,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
     size_t monoIdx = 0, stereoIdx = 0;
     for (const auto& f : graph)
     {
-        if (dynamic_cast<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>*>(f.get()) ||
-            dynamic_cast<FisheyeProjectionFactor*>(f.get()))
+        if (dynamic_cast<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>*>(f.get()))
         {
             if (monoIdx < monoEdges.size())
             {
@@ -1913,8 +1876,7 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int&
                 monoIdx++;
             }
         }
-        else if (dynamic_cast<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>*>(f.get()) ||
-                 dynamic_cast<FisheyeStereoFactor*>(f.get()))
+        else if (dynamic_cast<gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>*>(f.get()))
         {
             if (stereoIdx < stereoEdges.size())
             {
