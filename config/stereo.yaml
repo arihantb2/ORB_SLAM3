@@ -110,6 +110,40 @@ Tracking.NewKF.MaxKFsInQueue: 3
 Tracking.LostResetMinKFs: 999999
 
 #--------------------------------------------------------------------------------------------
+# Local Mapping Parameters
+#--------------------------------------------------------------------------------------------
+# Minimum interval (seconds) between local bundle adjustments (non-inertial)
+LocalMapping.OptimizeEveryTSeconds: 5.0
+# Minimum keyframes in map before running local BA
+LocalMapping.MinKeyframesForLBA: 2
+
+# MapPoint culling: remove bad/redundant recent map points
+LocalMapping.MapPointCulling.MinObservationsMono: 2
+LocalMapping.MapPointCulling.MinObservationsStereo: 3
+LocalMapping.MapPointCulling.MinKFAgeForObsCheck: 2
+LocalMapping.MapPointCulling.MaxKFAgeInRecent: 3
+LocalMapping.MapPointCulling.MinFoundRatio: 0.25
+
+# CreateNewMapPoints: triangulation from covisible keyframes
+LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono: 30
+LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo: 10
+LocalMapping.CreateNewMapPoints.MatchRatio: 0.6
+LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio: 0.01
+LocalMapping.CreateNewMapPoints.MaxCosParallax: 0.9998
+LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor: 1.5
+
+# SearchInNeighbors: fuse duplicates and propagate map points
+LocalMapping.SearchInNeighbors.NumNeighborKFs: 30
+LocalMapping.SearchInNeighbors.NumSecondNeighbors: 20
+LocalMapping.SearchInNeighbors.MaxTemporalNeighbors: 20
+
+# KeyFrame culling: remove redundant keyframes
+LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
+LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3
+LocalMapping.KeyFrameCulling.MaxKeyframesToCheck: 100
+LocalMapping.KeyFrameCulling.EarlyExitAfterAbort: 20
+
+#--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 

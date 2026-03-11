@@ -40,8 +40,7 @@
 namespace ORB_SLAM3
 {
 
-LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
-                           const std::string& _strSeqName)
+LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial, Settings* settings)
     : mpSystem(pSys),
       mbMonocular(bMonocular),
       mbInertial(bInertial),
@@ -64,6 +63,12 @@ LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, 
       mIdxIteration(0),
       infoInertial(Eigen::MatrixXd::Zero(9, 9))
 {
+    if (!settings)
+    {
+        throw std::runtime_error("LocalMapping requires non-null Settings (File.version \"1.0\" config).");
+    }
+    loadFromSettings(settings);
+
     mnMatchesInliers = 0;
 
     mbBadImu = false;
@@ -72,6 +77,38 @@ LocalMapping::LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, 
 
     mNumLM = 0;
     mNumKFCulling = 0;
+}
+
+void LocalMapping::loadFromSettings(Settings* settings)
+{
+    mThFarPoints = settings->thFarPoints();
+    mbFarPoints = (mThFarPoints != 0);
+    if (mbFarPoints)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "Discard points further than " << mThFarPoints << " m from current camera" << std::endl;
+    }
+
+    mOptimizeEveryTSeconds = settings->localMappingOptimizeEveryTSeconds();
+    mMinKeyframesForLBA = settings->localMappingMinKeyframesForLBA();
+    mMPCullingMinObsMono = settings->localMappingMPCullingMinObsMono();
+    mMPCullingMinObsStereo = settings->localMappingMPCullingMinObsStereo();
+    mMPCullingMinKFAgeForObsCheck = settings->localMappingMPCullingMinKFAgeForObsCheck();
+    mMPCullingMaxKFAgeInRecent = settings->localMappingMPCullingMaxKFAgeInRecent();
+    mMPCullingMinFoundRatio = settings->localMappingMPCullingMinFoundRatio();
+    mCreateNewMapPointsCovisibilityMono = settings->localMappingCreateNewMapPointsCovisibilityMono();
+    mCreateNewMapPointsCovisibilityStereo = settings->localMappingCreateNewMapPointsCovisibilityStereo();
+    mCreateNewMapPointsMatchRatio = settings->localMappingCreateNewMapPointsMatchRatio();
+    mCreateNewMapPointsMinBaselineDepthRatio = settings->localMappingCreateNewMapPointsMinBaselineDepthRatio();
+    mCreateNewMapPointsMaxCosParallax = settings->localMappingCreateNewMapPointsMaxCosParallax();
+    mCreateNewMapPointsScaleConsistencyFactor = settings->localMappingCreateNewMapPointsScaleConsistencyFactor();
+    mSearchInNeighborsNumNeighborKFs = settings->localMappingSearchInNeighborsNumNeighborKFs();
+    mSearchInNeighborsNumSecondNeighbors = settings->localMappingSearchInNeighborsNumSecondNeighbors();
+    mSearchInNeighborsMaxTemporalNeighbors = settings->localMappingSearchInNeighborsMaxTemporalNeighbors();
+    mKeyFrameCullingRedundantRatio = settings->localMappingKeyFrameCullingRedundantRatio();
+    mKeyFrameCullingMinObsInOthers = settings->localMappingKeyFrameCullingMinObsInOthers();
+    mKeyFrameCullingMaxKeyframesToCheck = settings->localMappingKeyFrameCullingMaxKeyframesToCheck();
+    mKeyFrameCullingEarlyExitAfterAbort = settings->localMappingKeyFrameCullingEarlyExitAfterAbort();
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -128,18 +165,17 @@ bool LocalMapping::RunLoop()
             SearchInNeighbors();
         }
 
-        constexpr double OPTIMIZE_EVERY_T_SECONDS = 5.0;  // about 10 keyframes at 2 fps
-        constexpr double TIME_EPSILON = 0.1;              // 100ms
+        constexpr double LBA_TIME_EPSILON = 0.1;  // 100ms
         bool b_doLBA = true;
         if (prevOptimizedKFTimestamp > 0.0)
         {
             const auto time_since_last_optimize = mpCurrentKeyFrame->mTimeStamp - prevOptimizedKFTimestamp;
-            if (!mbInertial && time_since_last_optimize < OPTIMIZE_EVERY_T_SECONDS - TIME_EPSILON)
+            if (!mbInertial && time_since_last_optimize < mOptimizeEveryTSeconds - LBA_TIME_EPSILON)
             {
                 Verbose::Print(Verbose::VERBOSITY_QUIET)
                     << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                     << "] Skipping LBA because it's too soon (time_since_last_optimize=" << time_since_last_optimize
-                    << " s < OPTIMIZE_EVERY_T_SECONDS=" << OPTIMIZE_EVERY_T_SECONDS << " s)." << std::endl;
+                    << " s < OptimizeEveryTSeconds=" << mOptimizeEveryTSeconds << " s)." << std::endl;
                 b_doLBA = false;
             }
         }
@@ -152,7 +188,7 @@ bool LocalMapping::RunLoop()
 
         if (!CheckNewKeyFrames() && !stopRequested() && b_doLBA)
         {
-            if (mpAtlas->KeyFramesInMap() > 2)
+            if (mpAtlas->KeyFramesInMap() > mMinKeyframesForLBA)
             {
 
                 if (mbInertial && mpCurrentKeyFrame->GetMap()->isImuInitialized())
@@ -401,16 +437,7 @@ void LocalMapping::MapPointCulling()
     std::list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
 
-    int nThObs;
-    if (mbMonocular)
-    {
-        nThObs = 2;
-    }
-    else
-    {
-        nThObs = 3;
-    }
-    const int cnThObs = nThObs;
+    const int cnThObs = mbMonocular ? mMPCullingMinObsMono : mMPCullingMinObsStereo;
 
     int borrar = mlpRecentAddedMapPoints.size();
 
@@ -424,10 +451,10 @@ void LocalMapping::MapPointCulling()
             continue;
         }
 
-        const bool tooFewObservations =
-            ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs;
-        const bool tooOld = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= 3;
-        const bool lowFoundRatio = pMP->GetFoundRatio() < 0.25f;
+        const bool tooFewObservations = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= mMPCullingMinKFAgeForObsCheck &&
+                                        pMP->Observations() <= cnThObs;
+        const bool tooOld = ((int)nCurrentKFid - (int)pMP->mnFirstKFid) >= mMPCullingMaxKFAgeInRecent;
+        const bool lowFoundRatio = pMP->GetFoundRatio() < mMPCullingMinFoundRatio;
         const bool shouldErase = lowFoundRatio || tooFewObservations || tooOld;
         const bool shouldSetBad = lowFoundRatio || tooFewObservations;
 
@@ -449,15 +476,10 @@ void LocalMapping::MapPointCulling()
 void LocalMapping::CreateNewMapPoints()
 {
     // Retrieve neighbor keyframes in covisibility graph
-    int nn = 10;
-    // For stereo inertial case
-    if (mbMonocular)
-    {
-        nn = 30;
-    }
+    const int nn = mbMonocular ? mCreateNewMapPointsCovisibilityMono : mCreateNewMapPointsCovisibilityStereo;
     std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
-    if (mbInertial)
+    if (mbInertial)  // extend neighbor list with temporal prev KFs
     {
         KeyFrame* pKF = mpCurrentKeyFrame;
         int count = 0;
@@ -472,9 +494,7 @@ void LocalMapping::CreateNewMapPoints()
         }
     }
 
-    float th = 0.6f;
-
-    ORBmatcher matcher(th, false);
+    ORBmatcher matcher(mCreateNewMapPointsMatchRatio, false);
 
     Sophus::SE3<float> sophTcw1 = mpCurrentKeyFrame->GetPose();
     Eigen::Matrix<float, 3, 4> eigTcw1 = sophTcw1.matrix3x4();
@@ -490,7 +510,7 @@ void LocalMapping::CreateNewMapPoints()
     const float& invfx1 = mpCurrentKeyFrame->invfx;
     const float& invfy1 = mpCurrentKeyFrame->invfy;
 
-    const float ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
+    const float ratioFactor = mCreateNewMapPointsScaleConsistencyFactor * mpCurrentKeyFrame->mfScaleFactor;
     int countStereo = 0;
     int countStereoGoodProj = 0;
     int countStereoAttempt = 0;
@@ -523,7 +543,7 @@ void LocalMapping::CreateNewMapPoints()
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
             const float ratioBaselineDepth = baseline / medianDepthKF2;
 
-            if (ratioBaselineDepth < 0.01)
+            if (ratioBaselineDepth < mCreateNewMapPointsMinBaselineDepthRatio)
             {
                 continue;
             }
@@ -601,7 +621,7 @@ void LocalMapping::CreateNewMapPoints()
             bool bPointStereo = false;
             if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0 &&
                 (bStereo1 || bStereo2 || (cosParallaxRays < 0.9996 && mbInertial) ||
-                 (cosParallaxRays < 0.9998 && !mbInertial)))
+                 (cosParallaxRays < mCreateNewMapPointsMaxCosParallax && !mbInertial)))
             {
                 goodProj = GeometricTools::Triangulate(xn1, xn2, eigTcw1, eigTcw2, x3D);
                 if (!goodProj)
@@ -754,13 +774,8 @@ void LocalMapping::CreateNewMapPoints()
 
 void LocalMapping::SearchInNeighbors()
 {
-    // Retrieve neighbor keyframes
-    int nn = 30;  // 10 originally, changed to 30
-    // if (mbMonocular)
-    // {
-    //     nn = 30;
-    // }
-    const std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    const std::vector<KeyFrame*> vpNeighKFs =
+        mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(mSearchInNeighborsNumNeighborKFs);
     std::vector<KeyFrame*> vpTargetKFs;
     for (std::vector<KeyFrame*>::const_iterator vit = vpNeighKFs.begin(), vend = vpNeighKFs.end(); vit != vend; vit++)
     {
@@ -777,7 +792,8 @@ void LocalMapping::SearchInNeighbors()
     // Extend to some second neighbors if abort is not requested
     for (int i = 0, imax = vpTargetKFs.size(); i < imax; i++)
     {
-        const std::vector<KeyFrame*> vpSecondNeighKFs = vpTargetKFs[i]->GetBestCovisibilityKeyFrames(20);
+        const std::vector<KeyFrame*> vpSecondNeighKFs =
+            vpTargetKFs[i]->GetBestCovisibilityKeyFrames(mSearchInNeighborsNumSecondNeighbors);
         for (std::vector<KeyFrame*>::const_iterator vit2 = vpSecondNeighKFs.begin(), vend2 = vpSecondNeighKFs.end();
              vit2 != vend2; vit2++)
         {
@@ -800,7 +816,7 @@ void LocalMapping::SearchInNeighbors()
     if (true)  // mbInertial
     {
         KeyFrame* pKFi = mpCurrentKeyFrame->mPrevKF;
-        while (vpTargetKFs.size() < 20 && pKFi)
+        while (vpTargetKFs.size() < mSearchInNeighborsMaxTemporalNeighbors && pKFi)
         {
             if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
             {
@@ -972,7 +988,7 @@ void LocalMapping::KeyFrameCulling()
     mpCurrentKeyFrame->UpdateBestCovisibles();
     std::vector<KeyFrame*> vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
 
-    const float redundant_th = (mbInertial && !mbMonocular) ? 0.5f : 0.9f;
+    const float redundant_th = (mbInertial && !mbMonocular) ? 0.5f : mKeyFrameCullingRedundantRatio;
     const bool bInitImu = mpAtlas->isImuInitialized();
     int count = 0;
 
@@ -1002,8 +1018,7 @@ void LocalMapping::KeyFrameCulling()
         }
         const std::vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
 
-        int nObs = 3;
-        const int thObs = nObs;
+        const int thObs = mKeyFrameCullingMinObsInOthers;
         int nRedundantObservations = 0;
         int nMPs = 0;
         for (size_t i = 0, iend = vpMapPoints.size(); i < iend; i++)
@@ -1115,7 +1130,7 @@ void LocalMapping::KeyFrameCulling()
                 pKF->SetBadFlag();
             }
         }
-        if ((count > 20 && mbAbortBA) || count > 100)
+        if ((count > mKeyFrameCullingEarlyExitAfterAbort && mbAbortBA) || count > mKeyFrameCullingMaxKeyframesToCheck)
         {
             break;
         }

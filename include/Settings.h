@@ -124,6 +124,35 @@ public:
     float imageViewerScale() { return imageViewerScale_; }
 
     float thFarPoints() { return thFarPoints_; }
+    float localMappingOptimizeEveryTSeconds() { return localMappingOptimizeEveryTSeconds_; }
+    int localMappingMinKeyframesForLBA() { return localMappingMinKeyframesForLBA_; }
+    int localMappingMPCullingMinObsMono() { return localMappingMPCullingMinObsMono_; }
+    int localMappingMPCullingMinObsStereo() { return localMappingMPCullingMinObsStereo_; }
+    int localMappingMPCullingMinKFAgeForObsCheck() { return localMappingMPCullingMinKFAgeForObsCheck_; }
+    int localMappingMPCullingMaxKFAgeInRecent() { return localMappingMPCullingMaxKFAgeInRecent_; }
+    float localMappingMPCullingMinFoundRatio() { return localMappingMPCullingMinFoundRatio_; }
+    int localMappingCreateNewMapPointsCovisibilityMono() { return localMappingCreateNewMapPointsCovisibilityMono_; }
+    int localMappingCreateNewMapPointsCovisibilityStereo() { return localMappingCreateNewMapPointsCovisibilityStereo_; }
+    float localMappingCreateNewMapPointsMatchRatio() { return localMappingCreateNewMapPointsMatchRatio_; }
+    float localMappingCreateNewMapPointsMinBaselineDepthRatio()
+    {
+        return localMappingCreateNewMapPointsMinBaselineDepthRatio_;
+    }
+    float localMappingCreateNewMapPointsMaxCosParallax() { return localMappingCreateNewMapPointsMaxCosParallax_; }
+    float localMappingCreateNewMapPointsScaleConsistencyFactor()
+    {
+        return localMappingCreateNewMapPointsScaleConsistencyFactor_;
+    }
+    int localMappingSearchInNeighborsNumNeighborKFs() { return localMappingSearchInNeighborsNumNeighborKFs_; }
+    int localMappingSearchInNeighborsNumSecondNeighbors() { return localMappingSearchInNeighborsNumSecondNeighbors_; }
+    int localMappingSearchInNeighborsMaxTemporalNeighbors()
+    {
+        return localMappingSearchInNeighborsMaxTemporalNeighbors_;
+    }
+    float localMappingKeyFrameCullingRedundantRatio() { return localMappingKeyFrameCullingRedundantRatio_; }
+    int localMappingKeyFrameCullingMinObsInOthers() { return localMappingKeyFrameCullingMinObsInOthers_; }
+    int localMappingKeyFrameCullingMaxKeyframesToCheck() { return localMappingKeyFrameCullingMaxKeyframesToCheck_; }
+    int localMappingKeyFrameCullingEarlyExitAfterAbort() { return localMappingKeyFrameCullingEarlyExitAfterAbort_; }
     int monocularInitSearchWindowSize() { return monocularInitSearchWindowSize_; }
     int monocularInitMinKeypoints() { return monocularInitMinKeypoints_; }
     float monocularInitNNRatio() { return monocularInitNNRatio_; }
@@ -265,6 +294,26 @@ private:
          * Other stuff
          */
     float thFarPoints_;
+    float localMappingOptimizeEveryTSeconds_;
+    int localMappingMinKeyframesForLBA_;
+    int localMappingMPCullingMinObsMono_;
+    int localMappingMPCullingMinObsStereo_;
+    int localMappingMPCullingMinKFAgeForObsCheck_;
+    int localMappingMPCullingMaxKFAgeInRecent_;
+    float localMappingMPCullingMinFoundRatio_;
+    int localMappingCreateNewMapPointsCovisibilityMono_;
+    int localMappingCreateNewMapPointsCovisibilityStereo_;
+    float localMappingCreateNewMapPointsMatchRatio_;
+    float localMappingCreateNewMapPointsMinBaselineDepthRatio_;
+    float localMappingCreateNewMapPointsMaxCosParallax_;
+    float localMappingCreateNewMapPointsScaleConsistencyFactor_;
+    int localMappingSearchInNeighborsNumNeighborKFs_;
+    int localMappingSearchInNeighborsNumSecondNeighbors_;
+    int localMappingSearchInNeighborsMaxTemporalNeighbors_;
+    float localMappingKeyFrameCullingRedundantRatio_;
+    int localMappingKeyFrameCullingMinObsInOthers_;
+    int localMappingKeyFrameCullingMaxKeyframesToCheck_;
+    int localMappingKeyFrameCullingEarlyExitAfterAbort_;
     int monocularInitSearchWindowSize_;
     int monocularInitMinKeypoints_;
     float monocularInitNNRatio_;

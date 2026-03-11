@@ -524,6 +524,91 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
 
     thFarPoints_ = readParameter<float>(fSettings, "System.thFarPoints", found, false);
 
+    localMappingOptimizeEveryTSeconds_ =
+        readParameter<float>(fSettings, "LocalMapping.OptimizeEveryTSeconds", found, false);
+    if (!found)
+        localMappingOptimizeEveryTSeconds_ = 5.0f;
+
+    localMappingMinKeyframesForLBA_ = readParameter<int>(fSettings, "LocalMapping.MinKeyframesForLBA", found, false);
+    if (!found)
+        localMappingMinKeyframesForLBA_ = 2;
+
+    localMappingMPCullingMinObsMono_ =
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsMono", found, false);
+    if (!found)
+        localMappingMPCullingMinObsMono_ = 2;
+    localMappingMPCullingMinObsStereo_ =
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsStereo", found, false);
+    if (!found)
+        localMappingMPCullingMinObsStereo_ = 3;
+    localMappingMPCullingMinKFAgeForObsCheck_ =
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinKFAgeForObsCheck", found, false);
+    if (!found)
+        localMappingMPCullingMinKFAgeForObsCheck_ = 2;
+    localMappingMPCullingMaxKFAgeInRecent_ =
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MaxKFAgeInRecent", found, false);
+    if (!found)
+        localMappingMPCullingMaxKFAgeInRecent_ = 3;
+    localMappingMPCullingMinFoundRatio_ =
+        readParameter<float>(fSettings, "LocalMapping.MapPointCulling.MinFoundRatio", found, false);
+    if (!found)
+        localMappingMPCullingMinFoundRatio_ = 0.25f;
+
+    localMappingCreateNewMapPointsCovisibilityMono_ =
+        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsCovisibilityMono_ = 30;
+    localMappingCreateNewMapPointsCovisibilityStereo_ =
+        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsCovisibilityStereo_ = 10;
+    localMappingCreateNewMapPointsMatchRatio_ =
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MatchRatio", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsMatchRatio_ = 0.6f;
+    localMappingCreateNewMapPointsMinBaselineDepthRatio_ =
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsMinBaselineDepthRatio_ = 0.01f;
+    localMappingCreateNewMapPointsMaxCosParallax_ =
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MaxCosParallax", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsMaxCosParallax_ = 0.9998f;
+    localMappingCreateNewMapPointsScaleConsistencyFactor_ =
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor", found, false);
+    if (!found)
+        localMappingCreateNewMapPointsScaleConsistencyFactor_ = 1.5f;
+
+    localMappingSearchInNeighborsNumNeighborKFs_ =
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumNeighborKFs", found, false);
+    if (!found)
+        localMappingSearchInNeighborsNumNeighborKFs_ = 30;
+    localMappingSearchInNeighborsNumSecondNeighbors_ =
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumSecondNeighbors", found, false);
+    if (!found)
+        localMappingSearchInNeighborsNumSecondNeighbors_ = 20;
+    localMappingSearchInNeighborsMaxTemporalNeighbors_ =
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.MaxTemporalNeighbors", found, false);
+    if (!found)
+        localMappingSearchInNeighborsMaxTemporalNeighbors_ = 20;
+
+    localMappingKeyFrameCullingRedundantRatio_ =
+        readParameter<float>(fSettings, "LocalMapping.KeyFrameCulling.RedundantObservationRatio", found, false);
+    if (!found)
+        localMappingKeyFrameCullingRedundantRatio_ = 0.9f;
+    localMappingKeyFrameCullingMinObsInOthers_ =
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MinObservationsInOthers", found, false);
+    if (!found)
+        localMappingKeyFrameCullingMinObsInOthers_ = 3;
+    localMappingKeyFrameCullingMaxKeyframesToCheck_ =
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MaxKeyframesToCheck", found, false);
+    if (!found)
+        localMappingKeyFrameCullingMaxKeyframesToCheck_ = 100;
+    localMappingKeyFrameCullingEarlyExitAfterAbort_ =
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.EarlyExitAfterAbort", found, false);
+    if (!found)
+        localMappingKeyFrameCullingEarlyExitAfterAbort_ = 20;
+
     monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "MonocularInit.SearchWindowSize", found, false);
     if (!found)
     {

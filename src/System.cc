@@ -149,26 +149,8 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
                              settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial, settings_);
     mptLocalMapping = new std::thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
-    if (settings_)
-    {
-        mpLocalMapper->mThFarPoints = settings_->thFarPoints();
-    }
-    else
-    {
-        mpLocalMapper->mThFarPoints = fsSettings["thFarPoints"];
-    }
-    if (mpLocalMapper->mThFarPoints != 0)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "Discard points further than " << mpLocalMapper->mThFarPoints << " m from current camera" << std::endl;
-        mpLocalMapper->mbFarPoints = true;
-    }
-    else
-    {
-        mpLocalMapper->mbFarPoints = false;
-    }
 
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR,
