@@ -1,0 +1,25 @@
+%YAML:1.0
+# Camera calibration only. Loaded by the wrapper; pass to ORB-SLAM3 at construction.
+# Use with algorithm config (e.g. mono.yaml) for Tracking, ORB, LocalMapping, etc.
+
+Camera.type: "Metashape"
+
+# Camera calibration and distortion parameters (Metashape frame model)
+Camera1.f: 3119.0801214017383
+Camera1.cx: 29.774822693556079  # offset from the image center
+Camera1.cy: 26.879661673463406
+Camera1.b1: 0.0
+Camera1.b2: 0.0
+
+Camera1.k1: -0.11633508696961772
+Camera1.k2: 0.28087491730086545
+Camera1.k3: -0.30164257714524184
+Camera1.k4: 0.0
+Camera1.p1: -0.00024671787346879504
+Camera1.p2: 9.1345770830969774e-05
+
+Camera.width: 2816
+Camera.height: 2848
+
+Camera.newWidth: 2816
+Camera.newHeight: 2848

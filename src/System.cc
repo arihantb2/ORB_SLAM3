@@ -41,8 +41,9 @@ std::mutex Verbose::cout_mutex;
 std::unique_ptr<std::ofstream> Verbose::log_file_;
 std::atomic<bool> Verbose::console_enabled{false};
 
-System::System(const std::string& strVocFile, const std::string& strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const bool bTurnOffLC, const std::string& strLogFile, const bool bVerboseConsole)
+System::System(const std::string& strVocFile, const std::string& strConfigFile, const eSensor sensor,
+               const CameraCalibrationInput& calib, const bool bUseViewer, const bool bTurnOffLC,
+               const std::string& strLogFile, const bool bVerboseConsole)
     : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     Verbose::SetLogFile(strLogFile);
@@ -83,23 +84,22 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << std::endl;
     }
 
-    //Check settings file
-    cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
+    // Check algorithm config file
+    cv::FileStorage fsSettings(strConfigFile.c_str(), cv::FileStorage::READ);
     if (!fsSettings.isOpened())
     {
-        throw std::runtime_error("Failed to open settings file at: " + strSettingsFile);
+        throw std::runtime_error("Failed to open algorithm config at: " + strConfigFile);
     }
 
     cv::FileNode node = fsSettings["File.version"];
     if (!node.empty() && node.isString() && node.string() == "1.0")
     {
-        settings_ = new Settings(strSettingsFile, mSensor);
-
+        settings_ = new Settings(strConfigFile, mSensor, calib);
         Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << std::endl;
     }
     else
     {
-        throw std::runtime_error("Settings file version is not supported");
+        throw std::runtime_error("Algorithm config file version is not supported");
     }
 
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << std::endl;
@@ -145,8 +145,8 @@ System::System(const std::string& strVocFile, const std::string& strSettingsFile
     mpMapDrawer = new MapDrawer(mpAtlas, settings_);
 
     //Initialize the Tracking thread
-    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strSettingsFile, mSensor,
-                             settings_, newMaps);
+    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strConfigFile,
+                             mSensor, settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial, settings_);

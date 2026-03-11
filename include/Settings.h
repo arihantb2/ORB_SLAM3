@@ -30,6 +30,8 @@
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
 
+#include "CameraModels/CameraCalibrationInput.h"
+
 namespace ORB_SLAM3
 {
 
@@ -57,9 +59,10 @@ public:
     Settings() = delete;
 
     /*
-         * Constructor from file
+         * Constructor from algorithm config file and injected camera calibration.
+         * Opens only the algorithm config; all camera data comes from calib.
          */
-    Settings(const std::string& configFile, const int& sensor);
+    Settings(const std::string& algorithmConfigPath, const int& sensor, const CameraCalibrationInput& calib);
 
     /*
          * Ostream operator overloading to dump settings to the terminal
@@ -220,9 +223,6 @@ private:
         }
     }
 
-    void readCamera1(cv::FileStorage& fSettings);
-    void readCamera2(cv::FileStorage& fSettings);
-    void readImageInfo(cv::FileStorage& fSettings);
     void readIMU(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);

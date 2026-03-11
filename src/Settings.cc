@@ -146,36 +146,49 @@ cv::Mat Settings::readParameter<cv::Mat>(cv::FileStorage& fSettings, const std::
     }
 }
 
-Settings::Settings(const std::string& configFile, const int& sensor)
+Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, const CameraCalibrationInput& calib)
     : bNeedToUndistort_(false), bNeedToRectify_(false), bNeedToResize1_(false), bNeedToResize2_(false)
 {
     sensor_ = sensor;
 
-    //Open settings file
-    cv::FileStorage fSettings(configFile, cv::FileStorage::READ);
+    if (!calib.camera1)
+    {
+        throw std::runtime_error("CameraCalibrationInput: camera1 is required");
+    }
+    if ((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && !calib.camera2)
+    {
+        throw std::runtime_error("CameraCalibrationInput: camera2 is required for stereo");
+    }
+
+    calibration1_ = calib.camera1.get();
+    calibration2_ = calib.camera2.get();
+    originalCalib1_ = calib.camera1.get();
+    originalCalib2_ = calib.camera2.get();
+    originalImSize_ = calib.originalImSize;
+    newImSize_ = calib.newImSize;
+    cameraType_ = static_cast<CameraType>(calib.cameraType);
+    Tlr_ = calib.T_c1_c2;
+    thDepth_ = calib.thDepth;
+    bNeedToRectify_ = calib.bNeedToRectify;
+    bNeedToUndistort_ = calib.bNeedToUndistort;
+    bNeedToResize1_ = calib.bNeedToResize1;
+    vPinHoleDistorsion1_ = calib.vPinHoleDistorsion1;
+    vPinHoleDistorsion2_ = calib.vPinHoleDistorsion2;
+
+    b_ = Tlr_.translation().norm();
+    bf_ = b_ * calibration1_->getParameter(0);
+
+    cv::FileStorage fSettings(algorithmConfigPath, cv::FileStorage::READ);
     if (!fSettings.isOpened())
     {
-        throw std::runtime_error("Failed to open settings file at: " + configFile);
+        throw std::runtime_error("Failed to open algorithm config at: " + algorithmConfigPath);
     }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loading settings from " << configFile << std::endl;
-    }
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Loading algorithm settings from " << algorithmConfigPath << std::endl;
 
-    //Read first camera
-    readCamera1(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 1" << std::endl;
-
-    //Read second camera if stereo (not rectified)
-    if (sensor_ == System::STEREO || sensor_ == System::IMU_STEREO)
-    {
-        readCamera2(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded camera 2" << std::endl;
-    }
-
-    //Read image info
-    readImageInfo(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info" << std::endl;
+    bool found;
+    fps_ = readParameter<int>(fSettings, "Camera.fps", found);
+    bRGB_ = (bool)readParameter<int>(fSettings, "Camera.RGB", found);
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info (fps, RGB)" << std::endl;
 
     if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO)
     {
@@ -197,264 +210,6 @@ Settings::Settings(const std::string& configFile, const int& sensor)
     }
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << std::endl;
-}
-
-void Settings::readCamera1(cv::FileStorage& fSettings)
-{
-    bool found;
-
-    //Read camera model
-    std::string cameraModel = readParameter<std::string>(fSettings, "Camera.type", found);
-
-    std::vector<float> vCalibration;
-    if (cameraModel == "PinHole")
-    {
-        cameraType_ = PinHole;
-
-        //Read intrinsic parameters
-        float fx = readParameter<float>(fSettings, "Camera1.fx", found);
-        float fy = readParameter<float>(fSettings, "Camera1.fy", found);
-        float cx = readParameter<float>(fSettings, "Camera1.cx", found);
-        float cy = readParameter<float>(fSettings, "Camera1.cy", found);
-
-        vCalibration = {fx, fy, cx, cy};
-
-        calibration1_ = new Pinhole(vCalibration);
-        originalCalib1_ = new Pinhole(vCalibration);
-
-        //Check if it is a distorted PinHole
-        readParameter<float>(fSettings, "Camera1.k1", found, false);
-        if (found)
-        {
-            readParameter<float>(fSettings, "Camera1.k3", found, false);
-            if (found)
-            {
-                vPinHoleDistorsion1_.resize(5);
-                vPinHoleDistorsion1_[4] = readParameter<float>(fSettings, "Camera1.k3", found);
-            }
-            else
-            {
-                vPinHoleDistorsion1_.resize(4);
-            }
-            vPinHoleDistorsion1_[0] = readParameter<float>(fSettings, "Camera1.k1", found);
-            vPinHoleDistorsion1_[1] = readParameter<float>(fSettings, "Camera1.k2", found);
-            vPinHoleDistorsion1_[2] = readParameter<float>(fSettings, "Camera1.p1", found);
-            vPinHoleDistorsion1_[3] = readParameter<float>(fSettings, "Camera1.p2", found);
-        }
-
-        //Check if we need to correct distortion from the images
-        if ((sensor_ == System::MONOCULAR || sensor_ == System::IMU_MONOCULAR) && vPinHoleDistorsion1_.size() != 0)
-        {
-            bNeedToUndistort_ = true;
-        }
-    }
-    else if (cameraModel == "Rectified")
-    {
-        cameraType_ = Rectified;
-
-        //Read intrinsic parameters
-        float fx = readParameter<float>(fSettings, "Camera1.fx", found);
-        float fy = readParameter<float>(fSettings, "Camera1.fy", found);
-        float cx = readParameter<float>(fSettings, "Camera1.cx", found);
-        float cy = readParameter<float>(fSettings, "Camera1.cy", found);
-
-        vCalibration = {fx, fy, cx, cy};
-
-        calibration1_ = new Pinhole(vCalibration);
-        originalCalib1_ = new Pinhole(vCalibration);
-
-        //Rectified images are assumed to be ideal PinHole images (no distortion)
-    }
-    else if (cameraModel == "Metashape")
-    {
-        cameraType_ = Metashape;
-
-        const float f = readParameter<float>(fSettings, "Camera1.f", found);
-        const float cx = readParameter<float>(fSettings, "Camera1.cx", found);
-        const float cy = readParameter<float>(fSettings, "Camera1.cy", found);
-        const int width = readParameter<int>(fSettings, "Camera.width", found);
-        const int height = readParameter<int>(fSettings, "Camera.height", found);
-        const float b1 = readParameter<float>(fSettings, "Camera1.b1", found);
-        const float b2 = readParameter<float>(fSettings, "Camera1.b2", found);
-
-        const float k1 = readParameter<float>(fSettings, "Camera1.k1", found);
-        const float k2 = readParameter<float>(fSettings, "Camera1.k2", found);
-        const float k3 = readParameter<float>(fSettings, "Camera1.k3", found);
-        const float k4 = readParameter<float>(fSettings, "Camera1.k4", found);
-        const float p1 = readParameter<float>(fSettings, "Camera1.p1", found);
-        const float p2 = readParameter<float>(fSettings, "Camera1.p2", found);
-
-        const float fx = f + b1;
-        const float fy = f;
-        const float skew = b2;
-
-        const float cx_abs = cx + 0.5f * static_cast<float>(width);
-        const float cy_abs = cy + 0.5f * static_cast<float>(height);
-
-        vCalibration = {fx, fy, cx_abs, cy_abs, k1, k2, k3, k4, p1, p2, skew};
-
-        calibration1_ = new ORB_SLAM3::Metashape(vCalibration);
-        originalCalib1_ = new ORB_SLAM3::Metashape(vCalibration);
-    }
-    else
-    {
-        throw std::runtime_error("Invalid camera model: " + cameraModel);
-    }
-}
-
-void Settings::readCamera2(cv::FileStorage& fSettings)
-{
-    bool found;
-    std::vector<float> vCalibration;
-    if (cameraType_ == PinHole)
-    {
-        bNeedToRectify_ = true;
-
-        //Read intrinsic parameters
-        float fx = readParameter<float>(fSettings, "Camera2.fx", found);
-        float fy = readParameter<float>(fSettings, "Camera2.fy", found);
-        float cx = readParameter<float>(fSettings, "Camera2.cx", found);
-        float cy = readParameter<float>(fSettings, "Camera2.cy", found);
-
-        vCalibration = {fx, fy, cx, cy};
-
-        calibration2_ = new Pinhole(vCalibration);
-        originalCalib2_ = new Pinhole(vCalibration);
-
-        //Check if it is a distorted PinHole
-        readParameter<float>(fSettings, "Camera2.k1", found, false);
-        if (found)
-        {
-            readParameter<float>(fSettings, "Camera2.k3", found, false);
-            if (found)
-            {
-                vPinHoleDistorsion2_.resize(5);
-                vPinHoleDistorsion2_[4] = readParameter<float>(fSettings, "Camera2.k3", found);
-            }
-            else
-            {
-                vPinHoleDistorsion2_.resize(4);
-            }
-            vPinHoleDistorsion2_[0] = readParameter<float>(fSettings, "Camera2.k1", found);
-            vPinHoleDistorsion2_[1] = readParameter<float>(fSettings, "Camera2.k2", found);
-            vPinHoleDistorsion2_[2] = readParameter<float>(fSettings, "Camera2.p1", found);
-            vPinHoleDistorsion2_[3] = readParameter<float>(fSettings, "Camera2.p2", found);
-        }
-    }
-    else if (cameraType_ == Metashape)
-    {
-        bNeedToRectify_ = true;
-
-        const float f = readParameter<float>(fSettings, "Camera2.f", found);
-        const float cx = readParameter<float>(fSettings, "Camera2.cx", found);
-        const float cy = readParameter<float>(fSettings, "Camera2.cy", found);
-        const int width = readParameter<int>(fSettings, "Camera.width", found);
-        const int height = readParameter<int>(fSettings, "Camera.height", found);
-        const float b1 = readParameter<float>(fSettings, "Camera2.b1", found);
-        const float b2 = readParameter<float>(fSettings, "Camera2.b2", found);
-
-        const float k1 = readParameter<float>(fSettings, "Camera2.k1", found);
-        const float k2 = readParameter<float>(fSettings, "Camera2.k2", found);
-        const float k3 = readParameter<float>(fSettings, "Camera2.k3", found);
-        const float k4 = readParameter<float>(fSettings, "Camera2.k4", found);
-        const float p1 = readParameter<float>(fSettings, "Camera2.p1", found);
-        const float p2 = readParameter<float>(fSettings, "Camera2.p2", found);
-
-        const float fx = f + b1;
-        const float fy = f;
-        const float skew = b2;
-
-        const float cx_abs = cx + 0.5f * static_cast<float>(width);
-        const float cy_abs = cy + 0.5f * static_cast<float>(height);
-
-        vCalibration = {fx, fy, cx_abs, cy_abs, k1, k2, k3, k4, p1, p2, skew};
-
-        calibration2_ = new ORB_SLAM3::Metashape(vCalibration);
-        originalCalib2_ = new ORB_SLAM3::Metashape(vCalibration);
-    }
-
-    //Load stereo extrinsic calibration
-    if (cameraType_ == Rectified)
-    {
-        b_ = readParameter<float>(fSettings, "Stereo.b", found);
-        bf_ = b_ * calibration1_->getParameter(0);
-    }
-    else
-    {
-        cv::Mat cvTlr = readParameter<cv::Mat>(fSettings, "Stereo.T_c1_c2", found);
-        Tlr_ = Converter::toSophus(cvTlr);
-
-        //TODO: also search for Trl and invert if necessary
-
-        b_ = Tlr_.translation().norm();
-        bf_ = b_ * calibration1_->getParameter(0);
-    }
-
-    thDepth_ = readParameter<float>(fSettings, "Stereo.ThDepth", found);
-}
-
-void Settings::readImageInfo(cv::FileStorage& fSettings)
-{
-    bool found;
-    //Read original and desired image dimensions
-    int originalRows = readParameter<int>(fSettings, "Camera.height", found);
-    int originalCols = readParameter<int>(fSettings, "Camera.width", found);
-    originalImSize_.width = originalCols;
-    originalImSize_.height = originalRows;
-
-    newImSize_ = originalImSize_;
-    int newHeigh = readParameter<int>(fSettings, "Camera.newHeight", found, false);
-    if (found)
-    {
-        bNeedToResize1_ = true;
-        newImSize_.height = newHeigh;
-
-        if (!bNeedToRectify_)
-        {
-            //Update calibration
-            float scaleRowFactor = (float)newImSize_.height / (float)originalImSize_.height;
-            calibration1_->setParameter(calibration1_->getParameter(1) * scaleRowFactor, 1);
-            calibration1_->setParameter(calibration1_->getParameter(3) * scaleRowFactor, 3);
-
-            if ((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && cameraType_ != Rectified)
-            {
-                calibration2_->setParameter(calibration2_->getParameter(1) * scaleRowFactor, 1);
-                calibration2_->setParameter(calibration2_->getParameter(3) * scaleRowFactor, 3);
-            }
-        }
-    }
-
-    int newWidth = readParameter<int>(fSettings, "Camera.newWidth", found, false);
-    if (found)
-    {
-        bNeedToResize1_ = true;
-        newImSize_.width = newWidth;
-
-        if (!bNeedToRectify_)
-        {
-            //Update calibration
-            float scaleColFactor = (float)newImSize_.width / (float)originalImSize_.width;
-            calibration1_->setParameter(calibration1_->getParameter(0) * scaleColFactor, 0);
-            calibration1_->setParameter(calibration1_->getParameter(2) * scaleColFactor, 2);
-            if (cameraType_ == Metashape)
-            {
-                calibration1_->setParameter(calibration1_->getParameter(10) * scaleColFactor, 10);
-            }
-
-            if ((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && cameraType_ != Rectified)
-            {
-                calibration2_->setParameter(calibration2_->getParameter(0) * scaleColFactor, 0);
-                calibration2_->setParameter(calibration2_->getParameter(2) * scaleColFactor, 2);
-                if (cameraType_ == Metashape)
-                {
-                    calibration2_->setParameter(calibration2_->getParameter(10) * scaleColFactor, 10);
-                }
-            }
-        }
-    }
-
-    fps_ = readParameter<int>(fSettings, "Camera.fps", found);
-    bRGB_ = (bool)readParameter<int>(fSettings, "Camera.RGB", found);
 }
 
 void Settings::readIMU(cv::FileStorage& fSettings)

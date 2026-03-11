@@ -1,6 +1,7 @@
 # ORB_SLAM3 library
 
 add_library(${PROJECT_NAME} SHARED
+    CameraCalibrationInput.cc
     System.cc
     Tracking.cc
     LocalMapping.cc
