@@ -40,9 +40,9 @@ struct CameraCalibrationInput
     std::unique_ptr<GeometricCamera> camera2;  // null for monocular
     cv::Size originalImSize;
     cv::Size newImSize;
-    int cameraType = 0;  // Settings::CameraType: PinHole=0, Rectified=1, Metashape=3
+    int cameraType = 0;    // Settings::CameraType: PinHole=0, Rectified=1, Metashape=3
     Sophus::SE3f T_c1_c2;  // stereo only
-    float thDepth = 0.f;                     // stereo only
+    float thDepth = 0.f;   // stereo only
     bool bNeedToRectify = false;
     bool bNeedToUndistort = false;
     bool bNeedToResize1 = false;
@@ -54,8 +54,8 @@ struct CameraCalibrationInput
  * Build a Metashape camera from parameters. Caller owns the returned pointer.
  * cx, cy are offsets from image center; width, height are image dimensions.
  */
-GeometricCamera* CreateMetashapeCamera(float f, float cx, float cy, int width, int height, float b1, float b2,
-                                       float k1, float k2, float k3, float k4, float p1, float p2);
+GeometricCamera* CreateMetashapeCamera(float f, float cx, float cy, int width, int height, float b1, float b2, float k1,
+                                       float k2, float k3, float k4, float p1, float p2);
 
 /**
  * Build a Pinhole camera from parameters. Caller owns the returned pointer.

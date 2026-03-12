@@ -24,8 +24,8 @@
 namespace ORB_SLAM3
 {
 
-GeometricCamera* CreateMetashapeCamera(float f, float cx, float cy, int width, int height, float b1, float b2,
-                                       float k1, float k2, float k3, float k4, float p1, float p2)
+GeometricCamera* CreateMetashapeCamera(float f, float cx, float cy, int width, int height, float b1, float b2, float k1,
+                                       float k2, float k3, float k4, float p1, float p2)
 {
     const float fx = f + b1;
     const float fy = f;

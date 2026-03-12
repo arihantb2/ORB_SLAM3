@@ -349,46 +349,6 @@ void LocalMapping::ProcessNewKeyFrame()
 {
     SetNewKeyFrame();
 
-    if (mpCurrentKeyFrame->mPrevKF && mpCurrentKeyFrame->mPrevKF->hasPosePrior() && mpCurrentKeyFrame->hasPosePrior())
-    {
-        const auto cfId = mpCurrentKeyFrame->mnFrameId;
-        const auto pkfId = mpCurrentKeyFrame->mPrevKF->mnFrameId;
-
-        // Resize the current keyframe with the motion from the priors
-        const Sophus::SE3f& T_c1w = mpCurrentKeyFrame->mPrevKF->GetPose();
-        const Sophus::SE3f& T_c2w = mpCurrentKeyFrame->GetPose();
-        const Sophus::SE3f T_c1c2 = T_c1w * T_c2w.inverse();
-        const float estimated_motion = T_c1c2.translation().norm();
-
-        const Eigen::Vector3f& p_c1c2_w = T_c1c2.translation();
-        const Eigen::Vector3f p_c1c2_c1 = T_c1w.rotationMatrix() * p_c1c2_w;
-
-        const Sophus::SE3f& T_wc1prior = mpCurrentKeyFrame->mPrevKF->mPosePrior.value();
-        const Sophus::SE3f& T_wc2prior = mpCurrentKeyFrame->mPosePrior.value();
-        const Sophus::SE3f T_c1priorc2prior = T_wc1prior.inverse() * T_wc2prior;
-        const float prior_motion = T_c1priorc2prior.translation().norm();
-
-        const Eigen::Vector3f& p_c1priorc2prior_w = T_c1priorc2prior.translation();
-        const Eigen::Vector3f p_c1priorc2prior_c1 = T_wc1prior.inverse().rotationMatrix() * p_c1priorc2prior_w;
-
-        const float scaling_factor = prior_motion / estimated_motion;
-
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
-            << "] PROCESS_NEW_KEYFRAME: Scaling factor: " << scaling_factor << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
-            << pkfId << "c" << cfId << "_c" << pkfId << ":" << p_c1c2_c1.transpose() << ": " << p_c1c2_c1.norm() << " m"
-            << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mpCurrentKeyFrame->mnFrameId << ": " << mpCurrentKeyFrame->mnId << "] PROCESS_NEW_KEYFRAME: p_c"
-            << pkfId << "priorc" << cfId << "prior_c" << pkfId << ": " << p_c1priorc2prior_c1.transpose() << ": "
-            << p_c1priorc2prior_c1.norm() << " m" << std::endl;
-        // T_c1c2.translation() *= scaling_factor;
-        // auto T_c2w_scaled = T_c1c2.inverse() * T_c1w;
-        // mpCurrentKeyFrame->SetPose(T_c2w_scaled);
-    }
-
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
 

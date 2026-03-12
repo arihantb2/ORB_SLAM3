@@ -145,8 +145,8 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     mpMapDrawer = new MapDrawer(mpAtlas, settings_);
 
     //Initialize the Tracking thread
-    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strConfigFile,
-                             mSensor, settings_, newMaps);
+    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strConfigFile, mSensor,
+                             settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial, settings_);

@@ -28,8 +28,8 @@
 #include <thread>
 #include <vector>
 
-#include "ImuTypes.h"
 #include "CameraModels/CameraCalibrationInput.h"
+#include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
 namespace ORB_SLAM3

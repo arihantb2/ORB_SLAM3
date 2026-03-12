@@ -884,7 +884,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         if (pKFi->mnId == pMap->GetInitKFid())
         {
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw,
-                                                       gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
+                                                       gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
         }
         if (pKFi->mnId > maxKFid)
         {
@@ -894,12 +894,68 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     }
     num_OptKF = static_cast<int>(lLocalKeyFrames.size());
 
+    // Add prior factors for the local keyframes using the pose priors
+    auto initKF = pCurrentMap->GetOriginKF();
+    int num_pose_prior_factors = 0;
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: initKF=" << initKF->mnId << std::endl;
+
+    if (initKF && initKF->hasPosePrior())
+    {
+        const auto ext_T_w = sophusToGTSAMPose(initKF->mPosePrior.value());
+        const auto c0_T_w = sophusToGTSAMPose(initKF->GetPose());
+
+        for (KeyFrame* pKFi : lLocalKeyFrames)
+        {
+            if (!pKFi->hasPosePrior())
+            {
+                continue;
+            }
+
+            if (pKFi->mnId == initKF->mnId)
+            {
+                continue;
+            }
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: pKF" << pKFi->mnId
+                << "->mPosePrior=" << pKFi->mPosePrior.value().matrix().block<3, 1>(0, 3).transpose() << std::endl;
+
+            // Compute the pose prior, note that we have the keyframe priors in external frame, we need them in the visual map coordinate frame
+            const auto& ciPrior_T_ext = sophusToGTSAMPose(pKFi->mPosePrior.value().inverse());
+            const auto ciPrior_T_w = ciPrior_T_ext * ext_T_w;  // measurement
+            const auto noise = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
+            const auto factor = boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(
+                poseKey(static_cast<uint32_t>(pKFi->mnId)), ciPrior_T_w, noise);
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId
+                << "Prior: " << ciPrior_T_w.inverse().translation().transpose() << std::endl;
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId << ": "
+                << pKFi->GetPose().inverse().translation().transpose() << std::endl;
+
+            const auto error_vector = factor->evaluateError(sophusToGTSAMPose(pKFi->GetPose()));
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << pKF->mnId << "] " << pKFi->mnId << "Error: " << error_vector.transpose() << std::endl;
+
+            // graph.add(factor);
+            num_pose_prior_factors++;
+        }
+    }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_pose_prior_factors=" << num_pose_prior_factors
+        << std::endl;
+
     for (KeyFrame* pKFi : lFixedCameras)
     {
         gtsam::Pose3 Tcw = sophusToGTSAMPose(pKFi->GetPose());
         initial.insert(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw);
         graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw,
-                                                   gtsam::noiseModel::Isotropic::Sigma(6, 1e-6)));
+                                                   gtsam::noiseModel::Isotropic::Sigma(6, 1e-9)));
         if (pKFi->mnId > maxKFid)
         {
             maxKFid = pKFi->mnId;
