@@ -59,7 +59,7 @@ LocalMapping.MinKeyframesForLBA: 2
 # ScalePriors: constrain inter-keyframe scale using relative pose priors.
 # OdometryPriors: add between-pose factors between consecutive keyframes.
 Optimizer.LocalBundleAdjustment.PosePriors: 0
-Optimizer.LocalBundleAdjustment.ScalePriors: 1
+Optimizer.LocalBundleAdjustment.ScalePriors: 0
 Optimizer.LocalBundleAdjustment.OdometryPriors: 0
 
 # MapPoint culling: remove bad/redundant recent map points
