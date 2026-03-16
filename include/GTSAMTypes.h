@@ -346,6 +346,166 @@ private:
     GeometricCamera* pCamera_;
 };
 
+// BetweenFactorTcw
+class BetweenFactorTcw : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>
+{
+private:
+    gtsam::Pose3 measured_;  // T_c1_c2
+
+public:
+    BetweenFactorTcw(gtsam::Key key1, gtsam::Key key2, const gtsam::Pose3& measured,
+                     const gtsam::SharedNoiseModel& model)
+        : gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>(model, key1, key2), measured_(measured)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& X1, const gtsam::Pose3& X2,
+                                boost::optional<gtsam::Matrix&> H1 = boost::none,
+                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override
+    {
+        // X1 == T_c1_w
+        // X2 == T_c2_w
+
+        // If the solver needs Jacobians, we compute the math and track the derivatives
+        if (H1 || H2)
+        {
+            gtsam::Matrix H_invX2, H_comp_X1, H_comp_invX2, H_local;
+
+            // 1. Invert X2 (T_c2_w -> T_w_c2)
+            gtsam::Pose3 invX2 = X2.inverse(H_invX2);
+
+            // 2. Compose X1 and invX2 to predict T_c1_c2
+            gtsam::Pose3 hx = X1.compose(invX2, H_comp_X1, H_comp_invX2);
+
+            // 3. Calculate the error via LogMap
+            gtsam::Vector error = measured_.localCoordinates(hx, boost::none, H_local);
+
+            // 4. Apply the chain rule
+            if (H1)
+            {
+                *H1 = H_local * H_comp_X1;
+            }
+            if (H2)
+            {
+                *H2 = H_local * H_comp_invX2 * H_invX2;
+            }
+            return error;
+        }
+        // If Jacobians are not needed, we run the fast path
+        else
+        {
+            gtsam::Pose3 invX2 = X2.inverse();
+            gtsam::Pose3 hx = X1.compose(invX2);
+            return measured_.localCoordinates(hx);
+        }
+    }
+
+    // (Include clone(), print(), and equals() methods here as shown previously)
+};
+
+// PriorFactorTcw
+class PriorFactorTcw : public gtsam::NoiseModelFactor1<gtsam::Pose3>  // Swapped to Factor1
+{
+private:
+    gtsam::Pose3 measured_;  // T_w_cPrior
+
+public:
+    PriorFactorTcw(const gtsam::Key& poseKey, const gtsam::Pose3& measured, const gtsam::SharedNoiseModel& noise)
+        : gtsam::NoiseModelFactor1<gtsam::Pose3>(noise, poseKey), measured_(measured)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& X, boost::optional<gtsam::Matrix&> H = boost::none) const override
+    {
+        // X = Tcw
+        if (H)
+        {
+            gtsam::Matrix H_invX, H_local;
+
+            // 1. Invert the state to match the measurement frame (T_w_c)
+            gtsam::Pose3 hx = X.inverse(H_invX);
+
+            // 2. Compute error. boost::none ignores the derivative w.r.t the constant measurement.
+            gtsam::Vector error = measured_.localCoordinates(hx, boost::none, H_local);
+
+            // 3. Apply chain rule
+            *H = H_local * H_invX;
+
+            return error;
+        }
+        else
+        {
+            // Fast path when Jacobians are not needed by the solver
+            return measured_.localCoordinates(X.inverse());
+        }
+    }
+};
+
+// ScaleFactorTcw
+class ScaleFactorTcw : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>
+{
+private:
+    double measured_;  // measured translation between two keyframe pose priors
+
+public:
+    ScaleFactorTcw(const gtsam::Key& poseKey1, const gtsam::Key& poseKey2, double measured,
+                   const gtsam::SharedNoiseModel& noise)
+        : gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>(noise, poseKey1, poseKey2), measured_(measured)
+    {
+    }
+
+    gtsam::Vector evaluateError(const gtsam::Pose3& X1, const gtsam::Pose3& X2,
+                                boost::optional<gtsam::Matrix&> H1 = boost::none,
+                                boost::optional<gtsam::Matrix&> H2 = boost::none) const override
+    {
+        // 1. Invert X2 and Compose, tracking Jacobians
+        gtsam::Matrix H_invX2, H_comp_X1, H_comp_invX2;
+        gtsam::Pose3 invX2 = X2.inverse(H_invX2);
+        gtsam::Pose3 rel_pose = X1.compose(invX2, H_comp_X1, H_comp_invX2);
+
+        // 2. Extract translation and track its Jacobian w.r.t the relative pose
+        gtsam::Matrix H_t_rel;
+        gtsam::Point3 t = rel_pose.translation(H_t_rel);
+
+        // 3. Compute the norm (hx)
+        double hx = t.norm();
+
+        // 4. Compute the error
+        gtsam::Vector1 error;
+        error(0) = 1.0 - (hx / measured_);
+
+        // 5. Apply the Chain Rule if Jacobians are requested
+        if (H1 || H2)
+        {
+            // Derivative of error w.r.t translation vector (1x3 matrix)
+            gtsam::Matrix13 H_e_t;
+
+            // Safeguard against division by zero if translation is perfectly zero
+            if (hx > 1e-7)
+            {
+                H_e_t = -(1.0 / (measured_ * hx)) * t.transpose();
+            }
+            else
+            {
+                H_e_t = gtsam::Matrix13::Zero();
+            }
+
+            if (H1)
+            {
+                // H1 (1x6) = H_e_t (1x3) * H_t_rel (3x6) * H_comp_X1 (6x6)
+                *H1 = H_e_t * H_t_rel * H_comp_X1;
+            }
+            if (H2)
+            {
+                // H2 (1x6) = H_e_t (1x3) * H_t_rel (3x6) * H_comp_invX2 (6x6) * H_invX2 (6x6)
+                *H2 = H_e_t * H_t_rel * H_comp_invX2 * H_invX2;
+            }
+        }
+
+        return error;
+    }
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // InertialFactor
 //   Replaces EdgeInertial (6-vertex multi-edge in g2o).

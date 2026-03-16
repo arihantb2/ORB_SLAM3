@@ -22,6 +22,7 @@
 #include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
 #include "Converter.h"
+#include "Optimizer.h"
 #include "Verbose.h"
 
 #include "System.h"
@@ -401,6 +402,35 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     {
         stereoInitMinKeypoints_ = 500;
     }
+
+    // Local bundle adjustment prior toggles for Optimizer.
+    // Exposed as integer flags (0/1) in the YAML config.
+    bool use_pose_priors = false;
+    bool use_scale_priors = true;
+    bool use_odometry_priors = false;
+
+    int pose_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.PosePriors", found, false);
+    if (found)
+    {
+        use_pose_priors = (pose_priors_flag != 0);
+    }
+
+    int scale_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.ScalePriors", found, false);
+    if (found)
+    {
+        use_scale_priors = (scale_priors_flag != 0);
+    }
+
+    int odom_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.OdometryPriors", found, false);
+    if (found)
+    {
+        use_odometry_priors = (odom_priors_flag != 0);
+    }
+
+    Optimizer::ConfigureLocalBundleAdjustmentPriors(use_pose_priors, use_scale_priors, use_odometry_priors);
 
     referenceKeyframeNNRatio_ = readParameter<float>(fSettings, "Tracking.ReferenceKeyframe.NNRatio", found, false);
     if (!found)

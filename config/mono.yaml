@@ -62,6 +62,14 @@ LocalMapping.OptimizeEveryTSeconds: 5.0
 # Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 
+# Local bundle adjustment priors (0 = disabled, 1 = enabled)
+# PosePriors: use external pose priors on keyframes as absolute constraints.
+# ScalePriors: constrain inter-keyframe scale using relative pose priors.
+# OdometryPriors: add between-pose factors between consecutive keyframes.
+Optimizer.LocalBundleAdjustment.PosePriors: 0
+Optimizer.LocalBundleAdjustment.ScalePriors: 1
+Optimizer.LocalBundleAdjustment.OdometryPriors: 0
+
 # MapPoint culling: remove bad/redundant recent map points
 LocalMapping.MapPointCulling.MinObservationsMono: 2
 LocalMapping.MapPointCulling.MinObservationsStereo: 3

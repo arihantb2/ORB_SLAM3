@@ -39,6 +39,13 @@ class LoopClosing;
 class Optimizer
 {
 public:
+    // Configuration for LocalBundleAdjustment priors (set from Settings / config file).
+    // Pose priors use external pose priors on keyframes.
+    // Scale priors constrain inter-keyframe scale using odometry priors.
+    // Odometry priors add between-pose factors between consecutive keyframes.
+    static void ConfigureLocalBundleAdjustmentPriors(bool use_pose_priors, bool use_scale_priors,
+                                                     bool use_odometry_priors);
+
     void static BundleAdjustment(const std::vector<KeyFrame*>& vpKF, const std::vector<MapPoint*>& vpMP,
                                  int nIterations = 5, bool* pbStopFlag = NULL, const unsigned long nLoopKF = 0,
                                  const bool bRobust = true);

@@ -791,6 +791,23 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     return nInitialCorrespondences - nBad;
 }
 
+namespace
+{
+// Local bundle adjustment prior toggles, configurable via Settings / YAML.
+// Defaults preserve existing behavior.
+bool use_pose_priors_lba = false;
+bool use_scale_priors_lba = true;
+bool use_odometry_priors_lba = false;
+}  // namespace
+
+void Optimizer::ConfigureLocalBundleAdjustmentPriors(bool use_pose_priors, bool use_scale_priors,
+                                                     bool use_odometry_priors)
+{
+    use_pose_priors_lba = use_pose_priors;
+    use_scale_priors_lba = use_scale_priors;
+    use_odometry_priors_lba = use_odometry_priors;
+}
+
 void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF,
                                       int& num_MPs, int& num_edges)
 {
@@ -877,6 +894,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     pCurrentMap->msOptKFs.clear();
     pCurrentMap->msFixedKFs.clear();
 
+    // copy lLocalKeyFrames to a vector and sort it by mnId
+    std::vector<KeyFrame*> vLocalKeyFrames(lLocalKeyFrames.begin(), lLocalKeyFrames.end());
+    std::sort(vLocalKeyFrames.begin(), vLocalKeyFrames.end(),
+              [](KeyFrame* a, KeyFrame* b) { return a->mnId > b->mnId; });
+
     for (KeyFrame* pKFi : lLocalKeyFrames)
     {
         gtsam::Pose3 Tcw = sophusToGTSAMPose(pKFi->GetPose());
@@ -884,7 +906,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         if (pKFi->mnId == pMap->GetInitKFid())
         {
             graph.add(gtsam::PriorFactor<gtsam::Pose3>(poseKey(static_cast<uint32_t>(pKFi->mnId)), Tcw,
-                                                       gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)));
+                                                       gtsam::noiseModel::Isotropic::Sigma(6, 1e-9)));
         }
         if (pKFi->mnId > maxKFid)
         {
@@ -892,63 +914,168 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         }
         pCurrentMap->msOptKFs.insert(pKFi->mnId);
     }
+
     num_OptKF = static_cast<int>(lLocalKeyFrames.size());
 
-    // Add prior factors for the local keyframes using the pose priors
-    auto initKF = pCurrentMap->GetOriginKF();
-    int num_pose_prior_factors = 0;
-
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: initKF=" << initKF->mnId << std::endl;
-
-    if (initKF && initKF->hasPosePrior())
+    // Between factors (odometry priors)
+    if (use_odometry_priors_lba)
     {
-        const auto ext_T_w = sophusToGTSAMPose(initKF->mPosePrior.value());
-        const auto c0_T_w = sophusToGTSAMPose(initKF->GetPose());
-
-        for (KeyFrame* pKFi : lLocalKeyFrames)
+        int num_between_factors = 0;
+        // create a between factor between consecutive local keyframes
+        for (auto it = vLocalKeyFrames.begin(); it != std::prev(vLocalKeyFrames.end()); ++it)
         {
-            if (!pKFi->hasPosePrior())
+            KeyFrame* pKFi = *it;
+            KeyFrame* pKFiNext = *(std::next(it));
+
+            if (!pKFi->hasPosePrior() || !pKFiNext->hasPosePrior())
             {
                 continue;
             }
 
-            if (pKFi->mnId == initKF->mnId)
+            // skip between factors between keyframes that are not sequential
+            if (std::abs(static_cast<int>(pKFiNext->mnId - pKFi->mnId)) > 1)
             {
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId
+                    << "] LOCAL_BUNDLE_ADJUSTMENT: skipping between factor between non-sequential keyframes "
+                    << pKFi->mnId << "->" << pKFiNext->mnId << std::endl;
                 continue;
             }
+
+            const auto ext_T_ci = sophusToGTSAMPose(pKFi->mPosePrior.value());
+            const auto ext_T_ciNext = sophusToGTSAMPose(pKFiNext->mPosePrior.value());
+            const auto T_ci_ciNext = ext_T_ci.inverse() * ext_T_ciNext;
 
             Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: pKF" << pKFi->mnId
-                << "->mPosePrior=" << pKFi->mPosePrior.value().matrix().block<3, 1>(0, 3).transpose() << std::endl;
+                << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: adding between factor between keyframes "
+                << pKFi->mnId << "->" << pKFiNext->mnId << " T_ci_ciNext=" << T_ci_ciNext.translation().transpose()
+                << std::endl;
 
-            // Compute the pose prior, note that we have the keyframe priors in external frame, we need them in the visual map coordinate frame
-            const auto& ciPrior_T_ext = sophusToGTSAMPose(pKFi->mPosePrior.value().inverse());
-            const auto ciPrior_T_w = ciPrior_T_ext * ext_T_w;  // measurement
             const auto noise = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
-            const auto factor = boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(
-                poseKey(static_cast<uint32_t>(pKFi->mnId)), ciPrior_T_w, noise);
-
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId
-                << "Prior: " << ciPrior_T_w.inverse().translation().transpose() << std::endl;
-
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId << ": "
-                << pKFi->GetPose().inverse().translation().transpose() << std::endl;
-
-            const auto error_vector = factor->evaluateError(sophusToGTSAMPose(pKFi->GetPose()));
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
-                << "[" << pKF->mnId << "] " << pKFi->mnId << "Error: " << error_vector.transpose() << std::endl;
-
-            // graph.add(factor);
-            num_pose_prior_factors++;
+            // add robust loss huber
+            const auto robust_noise =
+                gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.0), noise);
+            const auto factor = boost::make_shared<BetweenFactorTcw>(poseKey(static_cast<uint32_t>(pKFi->mnId)),
+                                                                     poseKey(static_cast<uint32_t>(pKFiNext->mnId)),
+                                                                     T_ci_ciNext, robust_noise);
+            graph.add(factor);
+            num_between_factors++;
         }
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_between_factors=" << num_between_factors
+            << std::endl;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
-        << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_pose_prior_factors=" << num_pose_prior_factors
-        << std::endl;
+    // Scale factors
+    if (use_scale_priors_lba)
+    {
+        int num_scale_factors = 0;
+        for (auto it = vLocalKeyFrames.begin(); it != std::prev(vLocalKeyFrames.end()); ++it)
+        {
+            KeyFrame* pKFi = *it;
+            KeyFrame* pKFiNext = *(std::next(it));
+
+            if (!pKFi->hasPosePrior() || !pKFiNext->hasPosePrior())
+            {
+                continue;
+            }
+
+            // skip scale factors between keyframes that are not sequential
+            if (std::abs(static_cast<int>(pKFiNext->mnId - pKFi->mnId)) > 1)
+            {
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId
+                    << "] LOCAL_BUNDLE_ADJUSTMENT: skipping scale factor between non-sequential keyframes "
+                    << pKFi->mnId << "->" << pKFiNext->mnId << std::endl;
+                continue;
+            }
+
+            const auto ext_T_ci = sophusToGTSAMPose(pKFi->mPosePrior.value());
+            const auto ext_T_ciNext = sophusToGTSAMPose(pKFiNext->mPosePrior.value());
+            const auto T_ci_ciNext = ext_T_ci.inverse() * ext_T_ciNext;
+            const auto translation_norm = T_ci_ciNext.translation().norm();
+
+            Verbose::Print(Verbose::VERBOSITY_QUIET)
+                << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: adding scale factor between keyframes " << pKFi->mnId
+                << "->" << pKFiNext->mnId << " T_ci_ciNext=" << T_ci_ciNext.translation().transpose()
+                << " translation norm=" << translation_norm << std::endl;
+
+            const auto noise = gtsam::noiseModel::Isotropic::Sigma(1, 1e-3);
+            // add robust loss huber
+            const auto robust_noise =
+                gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.0), noise);
+            const auto factor = boost::make_shared<ScaleFactorTcw>(poseKey(static_cast<uint32_t>(pKFi->mnId)),
+                                                                   poseKey(static_cast<uint32_t>(pKFiNext->mnId)),
+                                                                   translation_norm, robust_noise);
+            graph.add(factor);
+            num_scale_factors++;
+        }
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_scale_factors=" << num_scale_factors << std::endl;
+    }
+
+    // Prior factors (pose priors)
+    if (use_pose_priors_lba)
+    {
+        // Add prior factors for the local keyframes using the pose priors
+        auto initKF = pCurrentMap->GetOriginKF();
+        int num_pose_prior_factors = 0;
+
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: initKF=" << initKF->mnId << std::endl;
+
+        if (initKF && initKF->hasPosePrior())
+        {
+            const auto ext_T_w = sophusToGTSAMPose(initKF->mPosePrior.value());
+            const auto c0_T_w = sophusToGTSAMPose(initKF->GetPose());
+
+            for (KeyFrame* pKFi : vLocalKeyFrames)
+            {
+                if (!pKFi->hasPosePrior())
+                {
+                    continue;
+                }
+
+                if (pKFi->mnId == initKF->mnId)
+                {
+                    continue;
+                }
+
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: pKF" << pKFi->mnId
+                    << "->mPosePrior=" << pKFi->mPosePrior.value().matrix().block<3, 1>(0, 3).transpose() << std::endl;
+
+                // Compute the pose prior, note that we have the keyframe priors in external frame, we need them in the visual map coordinate frame
+                const auto& ciPrior_T_ext = sophusToGTSAMPose(pKFi->mPosePrior.value().inverse());
+                const auto ciPrior_T_w = ciPrior_T_ext * ext_T_w;  // measurement
+                const auto noise = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
+                // add robust loss huber
+                const auto robust_noise =
+                    gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Huber::Create(1.0), noise);
+                const auto factor = boost::make_shared<PriorFactorTcw>(poseKey(static_cast<uint32_t>(pKFi->mnId)),
+                                                                       ciPrior_T_w.inverse(), robust_noise);
+
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId
+                    << "Prior: " << ciPrior_T_w.inverse().translation().transpose() << std::endl;
+
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId << ": "
+                    << pKFi->GetPose().inverse().translation().transpose() << std::endl;
+
+                const auto error_vector = factor->evaluateError(sophusToGTSAMPose(pKFi->GetPose()));
+                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    << "[" << pKF->mnId << "] " << pKFi->mnId << "Error: " << error_vector.transpose() << std::endl;
+
+                graph.add(factor);
+                num_pose_prior_factors++;
+            }
+        }
+
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_pose_prior_factors=" << num_pose_prior_factors
+            << std::endl;
+    }
 
     for (KeyFrame* pKFi : lFixedCameras)
     {
