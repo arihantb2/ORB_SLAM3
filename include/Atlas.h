@@ -91,11 +91,6 @@ public:
     void SetMapBad(Map* pMap);
     void RemoveBadMaps();
 
-    bool isInertial();
-    void SetInertialSensor();
-    void SetImuInitialized();
-    bool isImuInitialized();
-
     long unsigned int GetNumLivedKF();
 
     long unsigned int GetNumLivedMP();

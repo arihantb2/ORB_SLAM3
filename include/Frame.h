@@ -22,12 +22,10 @@
 #include "DBoW2/BowVector.h"
 #include "DBoW2/FeatureVector.h"
 
-#include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
 #include "Settings.h"
 
-#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -42,7 +40,6 @@ namespace ORB_SLAM3
 
 class MapPoint;
 class KeyFrame;
-class ConstraintPoseImu;
 class GeometricCamera;
 class ORBextractor;
 
@@ -51,8 +48,6 @@ class Frame
 public:
     // --- Public member variables ---
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    ConstraintPoseImu* mpcpi;
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractorLeft;
@@ -98,14 +93,8 @@ public:
     static float mfGridElementHeightInv;
     std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    IMU::Bias mPredBias;
-    IMU::Bias mImuBias;
-    IMU::Calib mImuCalib;
-
-    IMU::Preintegrated* mpImuPreintegrated;
     KeyFrame* mpLastKeyFrame;
     Frame* mpPrevFrame;
-    IMU::Preintegrated* mpImuPreintegratedFrame;
 
     static long unsigned int nNextId;
     long unsigned int mnId;
@@ -164,11 +153,10 @@ public:
     Frame(const Frame& frame);
     Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
           ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
-          const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL),
-          const IMU::Calib& ImuCalib = IMU::Calib());
+          const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL));
     Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
           GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth,
-          Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib& ImuCalib = IMU::Calib());
+          Frame* pPrevF = static_cast<Frame*>(NULL));
 
     void ExtractORB(bool left, const cv::Mat& im, const int x0, const int x1);
     void ComputeBoW();
@@ -176,11 +164,6 @@ public:
     void SetPose(const Sophus::SE3<float>& Tcw);
     void SetVelocity(const Eigen::Vector3f& Vw);
     Eigen::Vector3f GetVelocity() const;
-    void SetImuPoseVelocity(const Eigen::Matrix3f& Rwb, const Eigen::Vector3f& twb, const Eigen::Vector3f& Vwb);
-    Eigen::Matrix<float, 3, 1> GetImuPosition() const;
-    Eigen::Matrix<float, 3, 3> GetImuRotation();
-    Sophus::SE3<float> GetImuPose();
-    void SetNewBias(const IMU::Bias& b);
 
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
@@ -193,8 +176,6 @@ public:
     void ComputeStereoMatches();
     bool UnprojectStereo(const int& i, Eigen::Vector3f& x3D);
 
-    bool imuIsPreintegrated();
-    void setIntegrated();
     bool isSet() const;
 
     void setPosePrior(const Sophus::SE3f& posePrior) { mPosePrior = posePrior; }
@@ -212,8 +193,6 @@ public:
 private:
     // --- Private member variables ---
     bool mbIsSet;
-    bool mbImuPreintegrated;
-    std::mutex* mpMutexImu;
 
     // --- Private member functions ---
     void UndistortKeyPoints();

@@ -46,11 +46,18 @@ target_link_libraries(my_target ORB_SLAM3::ORB_SLAM3)
 
 ## Usage
 
+ORB-SLAM3 does not load camera parameters from file. Calibration is **injected** at construction: the caller (e.g. the `orb_slam3_wrapper`) loads a camera calibration file, builds one or two `GeometricCamera` objects via `CreatePinholeCamera` / `CreateMetashapeCamera`, fills a `CameraCalibrationInput`, and passes it into `System`.
+
 ```cpp
+#include <CameraModels/CameraCalibrationInput.h>
 #include <ORB_SLAM3/System.h>
 
+// Caller loads camera calib (e.g. from YAML), builds cameras with
+// CreateMetashapeCamera / CreatePinholeCamera, fills calib.
+ORB_SLAM3::CameraCalibrationInput calib = /* ... */;
+
 ORB_SLAM3::System slam("Vocabulary/ORBvoc.txt", "config/stereo.yaml",
-                        ORB_SLAM3::System::STEREO, /*bUseViewer=*/true);
+                       ORB_SLAM3::System::STEREO, calib, /*bUseViewer=*/true);
 
 Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
 // or: slam.TrackMonocular(img, timestamp);
@@ -58,7 +65,7 @@ Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
 slam.Shutdown();
 ```
 
-Sample configs are in `config/` (`mono.yaml`, `stereo.yaml`). Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
+**Config files:** `config/mono.yaml` and `config/stereo.yaml` are **algorithm-only** (tracking, ORB, local mapping, viewer). Camera calibration lives in `config/camera_calib_mono.yaml` and `config/camera_calib_stereo.yaml` and is loaded by the wrapper. Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
 
 ---
 

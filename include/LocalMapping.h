@@ -24,12 +24,12 @@
 #include <fstream>
 #include <list>
 #include <mutex>
-#include <string>
 
 namespace ORB_SLAM3
 {
 
 class System;
+class Settings;
 class Tracking;
 class LoopClosing;
 class Atlas;
@@ -41,8 +41,7 @@ class LocalMapping
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial,
-                 const std::string& _strSeqName = std::string());
+    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, Settings* settings);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -84,36 +83,48 @@ public:
     double GetCurrKFTime();
     KeyFrame* GetCurrKF();
 
-    std::mutex mMutexImuInit;
-
-    Eigen::MatrixXd mcovInertial;
-    Eigen::Matrix3d mRwg;
-    Eigen::Vector3d mbg;
-    Eigen::Vector3d mba;
-    double mScale;
-    double mInitTime;
-    double mCostTime;
-
-    unsigned int mInitSect;
-    unsigned int mIdxInit;
-    unsigned int mnKFs;
     double mFirstTs;
     int mnMatchesInliers;
-
-    // For debugging (erase in normal mode)
-    int mInitFr;
-    int mIdxIteration;
-    std::string strSequence;
-
-    bool mbNotBA1;
-    bool mbNotBA2;
-    bool mbBadImu;
 
     // not consider far points (clouds)
     bool mbFarPoints;
     float mThFarPoints;
 
+    // LBA throttling (non-inertial): min interval between optimizations
+    double mOptimizeEveryTSeconds = 5.0;
+
+    // RunLoop
+    int mMinKeyframesForLBA = 2;
+
+    // MapPointCulling
+    int mMPCullingMinObsMono = 2;
+    int mMPCullingMinObsStereo = 3;
+    int mMPCullingMinKFAgeForObsCheck = 2;
+    int mMPCullingMaxKFAgeInRecent = 3;
+    float mMPCullingMinFoundRatio = 0.25f;
+
+    // CreateNewMapPoints
+    int mCreateNewMapPointsCovisibilityMono = 30;
+    int mCreateNewMapPointsCovisibilityStereo = 10;
+    float mCreateNewMapPointsMatchRatio = 0.6f;
+    float mCreateNewMapPointsMinBaselineDepthRatio = 0.01f;
+    float mCreateNewMapPointsMaxCosParallax = 0.9998f;
+    float mCreateNewMapPointsScaleConsistencyFactor = 1.5f;
+
+    // SearchInNeighbors
+    int mSearchInNeighborsNumNeighborKFs = 30;
+    int mSearchInNeighborsNumSecondNeighbors = 20;
+    int mSearchInNeighborsMaxTemporalNeighbors = 20;
+
+    // KeyFrameCulling
+    float mKeyFrameCullingRedundantRatio = 0.9f;
+    int mKeyFrameCullingMinObsInOthers = 3;
+    int mKeyFrameCullingMaxKeyframesToCheck = 100;
+    int mKeyFrameCullingEarlyExitAfterAbort = 20;
+
 protected:
+    void loadFromSettings(Settings* settings);
+
     void SetNewKeyFrame();
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
@@ -126,7 +137,6 @@ protected:
     System* mpSystem;
 
     bool mbMonocular;
-    bool mbInertial;
 
     void ResetIfRequested();
     bool mbResetRequested;
@@ -165,18 +175,7 @@ protected:
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
 
-    void InitializeIMU(float priorG = 1e2, float priorA = 1e6, bool bFirst = false);
-    void ScaleRefinement();
-
     bool bInitializing;
-
-    Eigen::MatrixXd infoInertial;
-    int mNumLM;
-    int mNumKFCulling;
-
-    float mTinit;
-
-    int countRefinement;
 
     //DEBUG
     std::ofstream f_lm;

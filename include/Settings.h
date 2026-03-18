@@ -30,6 +30,8 @@
 #include <opencv2/core/core.hpp>
 #include <sophus/se3.hpp>
 
+#include "CameraModels/CameraCalibrationInput.h"
+
 namespace ORB_SLAM3
 {
 
@@ -57,9 +59,10 @@ public:
     Settings() = delete;
 
     /*
-         * Constructor from file
+         * Constructor from algorithm config file and injected camera calibration.
+         * Opens only the algorithm config; all camera data comes from calib.
          */
-    Settings(const std::string& configFile, const int& sensor);
+    Settings(const std::string& algorithmConfigPath, const int& sensor, const CameraCalibrationInput& calib);
 
     /*
          * Ostream operator overloading to dump settings to the terminal
@@ -94,14 +97,6 @@ public:
     bool needToResize() { return bNeedToResize1_; }
     bool needToRectify() { return bNeedToRectify_; }
 
-    float noiseGyro() { return noiseGyro_; }
-    float noiseAcc() { return noiseAcc_; }
-    float gyroWalk() { return gyroWalk_; }
-    float accWalk() { return accWalk_; }
-    float imuFrequency() { return imuFrequency_; }
-    Sophus::SE3f Tbc() { return Tbc_; }
-    bool insertKFsWhenLost() { return insertKFsWhenLost_; }
-
     float depthMapFactor() { return depthMapFactor_; }
 
     int nFeatures() { return nFeatures_; }
@@ -124,6 +119,35 @@ public:
     float imageViewerScale() { return imageViewerScale_; }
 
     float thFarPoints() { return thFarPoints_; }
+    float localMappingOptimizeEveryTSeconds() { return localMappingOptimizeEveryTSeconds_; }
+    int localMappingMinKeyframesForLBA() { return localMappingMinKeyframesForLBA_; }
+    int localMappingMPCullingMinObsMono() { return localMappingMPCullingMinObsMono_; }
+    int localMappingMPCullingMinObsStereo() { return localMappingMPCullingMinObsStereo_; }
+    int localMappingMPCullingMinKFAgeForObsCheck() { return localMappingMPCullingMinKFAgeForObsCheck_; }
+    int localMappingMPCullingMaxKFAgeInRecent() { return localMappingMPCullingMaxKFAgeInRecent_; }
+    float localMappingMPCullingMinFoundRatio() { return localMappingMPCullingMinFoundRatio_; }
+    int localMappingCreateNewMapPointsCovisibilityMono() { return localMappingCreateNewMapPointsCovisibilityMono_; }
+    int localMappingCreateNewMapPointsCovisibilityStereo() { return localMappingCreateNewMapPointsCovisibilityStereo_; }
+    float localMappingCreateNewMapPointsMatchRatio() { return localMappingCreateNewMapPointsMatchRatio_; }
+    float localMappingCreateNewMapPointsMinBaselineDepthRatio()
+    {
+        return localMappingCreateNewMapPointsMinBaselineDepthRatio_;
+    }
+    float localMappingCreateNewMapPointsMaxCosParallax() { return localMappingCreateNewMapPointsMaxCosParallax_; }
+    float localMappingCreateNewMapPointsScaleConsistencyFactor()
+    {
+        return localMappingCreateNewMapPointsScaleConsistencyFactor_;
+    }
+    int localMappingSearchInNeighborsNumNeighborKFs() { return localMappingSearchInNeighborsNumNeighborKFs_; }
+    int localMappingSearchInNeighborsNumSecondNeighbors() { return localMappingSearchInNeighborsNumSecondNeighbors_; }
+    int localMappingSearchInNeighborsMaxTemporalNeighbors()
+    {
+        return localMappingSearchInNeighborsMaxTemporalNeighbors_;
+    }
+    float localMappingKeyFrameCullingRedundantRatio() { return localMappingKeyFrameCullingRedundantRatio_; }
+    int localMappingKeyFrameCullingMinObsInOthers() { return localMappingKeyFrameCullingMinObsInOthers_; }
+    int localMappingKeyFrameCullingMaxKeyframesToCheck() { return localMappingKeyFrameCullingMaxKeyframesToCheck_; }
+    int localMappingKeyFrameCullingEarlyExitAfterAbort() { return localMappingKeyFrameCullingEarlyExitAfterAbort_; }
     int monocularInitSearchWindowSize() { return monocularInitSearchWindowSize_; }
     int monocularInitMinKeypoints() { return monocularInitMinKeypoints_; }
     float monocularInitNNRatio() { return monocularInitNNRatio_; }
@@ -191,10 +215,6 @@ private:
         }
     }
 
-    void readCamera1(cv::FileStorage& fSettings);
-    void readCamera2(cv::FileStorage& fSettings);
-    void readImageInfo(cv::FileStorage& fSettings);
-    void readIMU(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);
     void readOtherParameters(cv::FileStorage& fSettings);
@@ -229,15 +249,6 @@ private:
     cv::Mat M1l_, M2l_;
     cv::Mat M1r_, M2r_;
 
-    /*
-         * Inertial stuff
-         */
-    float noiseGyro_, noiseAcc_;
-    float gyroWalk_, accWalk_;
-    float imuFrequency_;
-    Sophus::SE3f Tbc_;
-    bool insertKFsWhenLost_;
-
     float depthMapFactor_;
 
     /*
@@ -265,6 +276,26 @@ private:
          * Other stuff
          */
     float thFarPoints_;
+    float localMappingOptimizeEveryTSeconds_;
+    int localMappingMinKeyframesForLBA_;
+    int localMappingMPCullingMinObsMono_;
+    int localMappingMPCullingMinObsStereo_;
+    int localMappingMPCullingMinKFAgeForObsCheck_;
+    int localMappingMPCullingMaxKFAgeInRecent_;
+    float localMappingMPCullingMinFoundRatio_;
+    int localMappingCreateNewMapPointsCovisibilityMono_;
+    int localMappingCreateNewMapPointsCovisibilityStereo_;
+    float localMappingCreateNewMapPointsMatchRatio_;
+    float localMappingCreateNewMapPointsMinBaselineDepthRatio_;
+    float localMappingCreateNewMapPointsMaxCosParallax_;
+    float localMappingCreateNewMapPointsScaleConsistencyFactor_;
+    int localMappingSearchInNeighborsNumNeighborKFs_;
+    int localMappingSearchInNeighborsNumSecondNeighbors_;
+    int localMappingSearchInNeighborsMaxTemporalNeighbors_;
+    float localMappingKeyFrameCullingRedundantRatio_;
+    int localMappingKeyFrameCullingMinObsInOthers_;
+    int localMappingKeyFrameCullingMaxKeyframesToCheck_;
+    int localMappingKeyFrameCullingEarlyExitAfterAbort_;
     int monocularInitSearchWindowSize_;
     int monocularInitMinKeypoints_;
     float monocularInitNNRatio_;

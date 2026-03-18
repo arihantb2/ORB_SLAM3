@@ -130,8 +130,9 @@ bool Pinhole::epipolarConstrain(GeometricCamera* pCamera2, const cv::KeyPoint& k
     const float den = a * a + b * b;
 
     if (den == 0)
+    {
         return false;
-
+    }
     const float dsqr = num * num / den;
 
     return dsqr < 3.84 * unc;
@@ -158,13 +159,15 @@ std::istream& operator>>(std::istream& is, Pinhole& ph)
 bool Pinhole::IsEqual(GeometricCamera* pCam)
 {
     if (pCam->GetType() != GeometricCamera::CAM_PINHOLE)
+    {
         return false;
-
+    }
     Pinhole* pPinholeCam = (Pinhole*)pCam;
 
     if (size() != pPinholeCam->size())
+    {
         return false;
-
+    }
     bool is_same_camera = true;
     for (size_t i = 0; i < size(); ++i)
     {

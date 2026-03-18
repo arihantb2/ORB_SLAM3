@@ -93,7 +93,6 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowPoints("menu.Show Points", true, true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames", true, true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph", false, true);
-    pangolin::Var<bool> menuShowInertialGraph("menu.Show Inertial Graph", true, true);
     pangolin::Var<bool> menuShowOptLba("menu.Show LBA opt", false, true);
 
     // Define Camera Render Object (for view / scene browsing)
@@ -179,7 +178,7 @@ void Viewer::Run()
             s_cam.Follow(Twc);
         }
 
-        if (menuTopView && mpMapDrawer->mpAtlas->isImuInitialized())
+        if (menuTopView)
         {
             menuTopView = false;
             bCameraView = false;
@@ -191,9 +190,9 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         mpMapDrawer->DrawCurrentCamera(Twc);
-        if (menuShowKeyFrames || menuShowGraph || menuShowInertialGraph || menuShowOptLba)
+        if (menuShowKeyFrames || menuShowGraph || menuShowOptLba)
         {
-            mpMapDrawer->DrawKeyFrames(menuShowKeyFrames, menuShowGraph, menuShowInertialGraph, menuShowOptLba);
+            mpMapDrawer->DrawKeyFrames(menuShowKeyFrames, menuShowGraph, menuShowOptLba);
         }
         if (menuShowPoints)
         {

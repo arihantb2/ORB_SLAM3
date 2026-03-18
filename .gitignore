@@ -11,3 +11,8 @@ python/examples/__pycache__/**
 Thirdparty/DBoW2/lib/
 
 venv/**
+.gitnexus
+
+.claude
+AGENTS.md
+CLAUDE.md

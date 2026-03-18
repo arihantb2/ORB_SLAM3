@@ -30,7 +30,6 @@
 #include <thread>
 
 #include <map>
-#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -45,13 +44,9 @@ float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
 float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
 Frame::Frame()
-    : mpcpi(NULL),
-      mpImuPreintegrated(NULL),
-      mpPrevFrame(NULL),
-      mpImuPreintegratedFrame(NULL),
+    : mpPrevFrame(NULL),
       mpReferenceKF(static_cast<KeyFrame*>(NULL)),
       mbIsSet(false),
-      mbImuPreintegrated(false),
       mbHasPose(false),
       mbHasVelocity(false)
 {
@@ -59,8 +54,7 @@ Frame::Frame()
 
 //Copy Constructor
 Frame::Frame(const Frame& frame)
-    : mpcpi(frame.mpcpi),
-      mpORBvocabulary(frame.mpORBvocabulary),
+    : mpORBvocabulary(frame.mpORBvocabulary),
       mpORBextractorLeft(frame.mpORBextractorLeft),
       mpORBextractorRight(frame.mpORBextractorRight),
       mTimeStamp(frame.mTimeStamp),
@@ -83,11 +77,7 @@ Frame::Frame(const Frame& frame)
       vDescIndex(frame.vDescIndex),
       mvpMapPoints(frame.mvpMapPoints),
       mvbOutlier(frame.mvbOutlier),
-      mImuCalib(frame.mImuCalib),
       mnCloseMPs(frame.mnCloseMPs),
-      mpImuPreintegrated(frame.mpImuPreintegrated),
-      mpImuPreintegratedFrame(frame.mpImuPreintegratedFrame),
-      mImuBias(frame.mImuBias),
       mnId(frame.mnId),
       mpReferenceKF(frame.mpReferenceKF),
       mnScaleLevels(frame.mnScaleLevels),
@@ -102,8 +92,6 @@ Frame::Frame(const Frame& frame)
       mpPrevFrame(frame.mpPrevFrame),
       mpLastKeyFrame(frame.mpLastKeyFrame),
       mbIsSet(frame.mbIsSet),
-      mbImuPreintegrated(frame.mbImuPreintegrated),
-      mpMutexImu(frame.mpMutexImu),
       mpCamera(frame.mpCamera),
       Nleft(frame.Nleft),
       mvLeftToRightMatch(frame.mvLeftToRightMatch),
@@ -140,9 +128,8 @@ Frame::Frame(const Frame& frame)
 
 Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
              ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
-             const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF, const IMU::Calib& ImuCalib)
-    : mpcpi(NULL),
-      mpORBvocabulary(voc),
+             const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF)
+    : mpORBvocabulary(voc),
       mpORBextractorLeft(extractorLeft),
       mpORBextractorRight(extractorRight),
       mTimeStamp(timeStamp),
@@ -151,13 +138,9 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
       mDistCoef(distCoef.clone()),
       mbf(bf),
       mThDepth(thDepth),
-      mImuCalib(ImuCalib),
-      mpImuPreintegrated(NULL),
       mpPrevFrame(pPrevF),
-      mpImuPreintegratedFrame(NULL),
       mpReferenceKF(static_cast<KeyFrame*>(NULL)),
       mbIsSet(false),
-      mbImuPreintegrated(false),
       mpCamera(pCamera),
       mbHasPose(false),
       mbHasVelocity(false)
@@ -239,8 +222,6 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
         mVw.setZero();
     }
 
-    mpMutexImu = new std::mutex();
-
     //Set no extra stereo split information
     Nleft = -1;
     mvLeftToRightMatch = std::vector<int>(0);
@@ -250,10 +231,8 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
 }
 
 Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
-             GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF,
-             const IMU::Calib& ImuCalib)
-    : mpcpi(NULL),
-      mpORBvocabulary(voc),
+             GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF)
+    : mpORBvocabulary(voc),
       mpORBextractorLeft(extractor),
       mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
       mTimeStamp(timeStamp),
@@ -262,13 +241,9 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extra
       mDistCoef(distCoef.clone()),
       mbf(bf),
       mThDepth(thDepth),
-      mImuCalib(ImuCalib),
-      mpImuPreintegrated(NULL),
       mpPrevFrame(pPrevF),
-      mpImuPreintegratedFrame(NULL),
       mpReferenceKF(static_cast<KeyFrame*>(NULL)),
       mbIsSet(false),
-      mbImuPreintegrated(false),
       mpCamera(pCamera),
       mbHasPose(false),
       mbHasVelocity(false)
@@ -347,8 +322,6 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extra
     {
         mVw.setZero();
     }
-
-    mpMutexImu = new std::mutex();
 }
 
 void Frame::AssignFeaturesToGrid()
@@ -405,15 +378,6 @@ void Frame::SetPose(const Sophus::SE3<float>& Tcw)
     mbHasPose = true;
 }
 
-void Frame::SetNewBias(const IMU::Bias& b)
-{
-    mImuBias = b;
-    if (mpImuPreintegrated)
-    {
-        mpImuPreintegrated->SetNewBias(b);
-    }
-}
-
 void Frame::SetVelocity(const Eigen::Vector3f& Vwb)
 {
     mVw = Vwb;
@@ -425,21 +389,6 @@ Eigen::Vector3f Frame::GetVelocity() const
     return mVw;
 }
 
-void Frame::SetImuPoseVelocity(const Eigen::Matrix3f& Rwb, const Eigen::Vector3f& twb, const Eigen::Vector3f& Vwb)
-{
-    mVw = Vwb;
-    mbHasVelocity = true;
-
-    Sophus::SE3f Twb(Rwb, twb);
-    Sophus::SE3f Tbw = Twb.inverse();
-
-    mTcw = mImuCalib.mTcb * Tbw;
-
-    UpdatePoseMatrices();
-    mbIsSet = true;
-    mbHasPose = true;
-}
-
 void Frame::UpdatePoseMatrices()
 {
     Sophus::SE3<float> Twc = mTcw.inverse();
@@ -447,21 +396,6 @@ void Frame::UpdatePoseMatrices()
     mOw = Twc.translation();
     mRcw = mTcw.rotationMatrix();
     mtcw = mTcw.translation();
-}
-
-Eigen::Matrix<float, 3, 1> Frame::GetImuPosition() const
-{
-    return mRwc * mImuCalib.mTcb.translation() + mOw;
-}
-
-Eigen::Matrix<float, 3, 3> Frame::GetImuRotation()
-{
-    return mRwc * mImuCalib.mTcb.rotationMatrix();
-}
-
-Sophus::SE3<float> Frame::GetImuPose()
-{
-    return mTcw.inverse() * mImuCalib.mTcb;
 }
 
 bool Frame::isInFrustum(MapPoint* pMP, float viewingCosLimit)
@@ -989,18 +923,6 @@ bool Frame::UnprojectStereo(const int& i, Eigen::Vector3f& x3D)
     {
         return false;
     }
-}
-
-bool Frame::imuIsPreintegrated()
-{
-    std::unique_lock<std::mutex> lock(*mpMutexImu);
-    return mbImuPreintegrated;
-}
-
-void Frame::setIntegrated()
-{
-    std::unique_lock<std::mutex> lock(*mpMutexImu);
-    mbImuPreintegrated = true;
 }
 
 }  // namespace ORB_SLAM3

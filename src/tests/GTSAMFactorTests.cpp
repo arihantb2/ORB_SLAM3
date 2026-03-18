@@ -61,6 +61,10 @@ TEST(GTSAMFactors, FourDOFBetweenFactor)
     gtsam::Vector err = factor.evaluateError(poseI, poseJ, boost::none, boost::none);
     EXPECT_NEAR(0.0, err.norm(), kTolError) << "FourDOFBetweenFactor error at consistent state";
 
+    gtsam::Pose3 poseJ_pert = poseJ.retract((gtsam::Vector(6) << 1e-4, 0.0, 0.0, 0.0, 0.0, 0.0).finished());
+    gtsam::Vector err_pert = factor.evaluateError(poseI, poseJ_pert, boost::none, boost::none);
+    EXPECT_GT(err_pert.norm(), kTolError) << "FourDOFBetweenFactor non-zero error check";
+
     Eigen::MatrixXd H1_analytical(6, 6), H2_analytical(6, 6);
     (void)factor.evaluateError(poseI, poseJ, H1_analytical, H2_analytical);
 
@@ -99,6 +103,10 @@ TEST(GTSAMFactors, MonoOnlyPoseFactor)
     gtsam::Vector err = factor.evaluateError(Twb, boost::none);
     EXPECT_NEAR(0.0, err.norm(), kTolError) << "MonoOnlyPoseFactor error at consistent state";
 
+    gtsam::Pose3 Twb_pert = Twb.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
+    gtsam::Vector err_pert = factor.evaluateError(Twb_pert, boost::none);
+    EXPECT_GT(err_pert.norm(), kTolError) << "MonoOnlyPoseFactor non-zero error check";
+
     Eigen::MatrixXd H_analytical(2, 6);
     factor.evaluateError(Twb, H_analytical);
 
@@ -133,6 +141,10 @@ TEST(GTSAMFactors, StereoOnlyPoseFactor)
     gtsam::Vector err = factor.evaluateError(Twb, boost::none);
     EXPECT_NEAR(0.0, err.norm(), kTolError) << "StereoOnlyPoseFactor error at consistent state";
 
+    gtsam::Pose3 Twb_pert = Twb.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
+    gtsam::Vector err_pert = factor.evaluateError(Twb_pert, boost::none);
+    EXPECT_GT(err_pert.norm(), kTolError) << "StereoOnlyPoseFactor non-zero error check";
+
     Eigen::MatrixXd H_analytical(3, 6);
     factor.evaluateError(Twb, H_analytical);
 
@@ -144,6 +156,157 @@ TEST(GTSAMFactors, StereoOnlyPoseFactor)
     ExpectMatrixNear(H_analytical, H_num, kTolJacobian, "StereoOnlyPoseFactor Jacobian");
 }
 
+// -----------------------------------------------------------------------------
+// PinholeMonoPoseTcwFactor
+// -----------------------------------------------------------------------------
+TEST(GTSAMFactors, PinholeMonoPoseTcwFactor)
+{
+    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
+    Pinhole camera(params);
+
+    const Eigen::Vector3d Xw(2.0, -0.3, 4.5);
+    const gtsam::Pose3 Tcw(gtsam::Rot3::RzRyRx(0.05, -0.02, 0.01), gtsam::Point3(0.1, -0.05, 0.2));
+
+    const gtsam::Point3 Xw_p(Xw.x(), Xw.y(), Xw.z());
+    const gtsam::Point3 Xc_p = Tcw.transformFrom(Xw_p);
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    const Eigen::Vector2d obs = camera.project(Xc);
+
+    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(2);
+    PinholeMonoPoseTcwFactor factor(poseKey(0), Xw, obs, noise, &camera);
+
+    gtsam::Vector err = factor.evaluateError(Tcw, boost::none);
+    EXPECT_NEAR(0.0, err.norm(), kTolError) << "PinholeMonoPoseTcwFactor error at consistent state";
+
+    gtsam::Pose3 Tcw_pert = Tcw.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
+    gtsam::Vector err_pert = factor.evaluateError(Tcw_pert, boost::none);
+    EXPECT_GT(err_pert.norm(), kTolError) << "PinholeMonoPoseTcwFactor non-zero error check";
+
+    gtsam::Matrix H_analytical(2, 6);
+    factor.evaluateError(Tcw, H_analytical);
+
+    auto err_fn = [&factor](const gtsam::Pose3& Tcw_) -> gtsam::Vector
+    {
+        return factor.evaluateError(Tcw_, boost::none);
+    };
+    Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(err_fn, Tcw);
+    ExpectMatrixNear(H_analytical, H_num, kTolJacobian, "PinholeMonoPoseTcwFactor Jacobian");
+}
+
+// -----------------------------------------------------------------------------
+// PinholeStereoPoseTcwFactor
+// -----------------------------------------------------------------------------
+TEST(GTSAMFactors, PinholeStereoPoseTcwFactor)
+{
+    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
+    Pinhole camera(params);
+    const double bf = 100.0;
+
+    const Eigen::Vector3d Xw(1.5, 0.4, 3.5);
+    const gtsam::Pose3 Tcw(gtsam::Rot3::RzRyRx(-0.03, 0.01, 0.02), gtsam::Point3(-0.05, 0.02, 0.15));
+
+    const gtsam::Point3 Xw_p(Xw.x(), Xw.y(), Xw.z());
+    const gtsam::Point3 Xc_p = Tcw.transformFrom(Xw_p);
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+
+    const Eigen::Vector2d proj2 = camera.project(Xc);
+    Eigen::Vector3d obs3;
+    obs3 << proj2(0), proj2(1), proj2(0) - bf / Xc.z();
+
+    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(3);
+    PinholeStereoPoseTcwFactor factor(poseKey(0), Xw, obs3, bf, noise, &camera);
+
+    gtsam::Vector err = factor.evaluateError(Tcw, boost::none);
+    EXPECT_NEAR(0.0, err.norm(), kTolError) << "PinholeStereoPoseTcwFactor error at consistent state";
+
+    gtsam::Pose3 Tcw_pert = Tcw.retract((gtsam::Vector(6) << 0.0, 0.0, 0.0, 1e-4, 0.0, 0.0).finished());
+    gtsam::Vector err_pert = factor.evaluateError(Tcw_pert, boost::none);
+    EXPECT_GT(err_pert.norm(), kTolError) << "PinholeStereoPoseTcwFactor non-zero error check";
+
+    gtsam::Matrix H_analytical(3, 6);
+    factor.evaluateError(Tcw, H_analytical);
+
+    auto err_fn = [&factor](const gtsam::Pose3& Tcw_) -> gtsam::Vector
+    {
+        return factor.evaluateError(Tcw_, boost::none);
+    };
+    Eigen::MatrixXd H_num = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(err_fn, Tcw);
+    ExpectMatrixNear(H_analytical, H_num, kTolJacobian, "PinholeStereoPoseTcwFactor Jacobian");
+}
+
+// -----------------------------------------------------------------------------
+// PinholeMonoTcwFactor
+// -----------------------------------------------------------------------------
+TEST(GTSAMFactors, PinholeMonoTcwFactor)
+{
+    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
+    Pinhole camera(params);
+
+    const gtsam::Pose3 Tcw(gtsam::Rot3::RzRyRx(0.02, -0.01, 0.03), gtsam::Point3(0.05, -0.03, 0.1));
+    const gtsam::Point3 Xw(1.8, -0.2, 4.0);
+
+    const gtsam::Point3 Xc_p = Tcw.transformFrom(Xw);
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+    const Eigen::Vector2d obs = camera.project(Xc);
+
+    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(2);
+    PinholeMonoTcwFactor factor(poseKey(0), pointKey(0), obs, noise, &camera);
+
+    gtsam::Vector err = factor.evaluateError(Tcw, Xw, boost::none, boost::none);
+    EXPECT_NEAR(0.0, err.norm(), kTolError) << "PinholeMonoTcwFactor error at consistent state";
+
+    gtsam::Matrix H1_analytical(2, 6), H2_analytical(2, 3);
+    factor.evaluateError(Tcw, Xw, H1_analytical, H2_analytical);
+
+    auto err_fn = [&factor](const gtsam::Pose3& Tcw_, const gtsam::Point3& Xw_) -> gtsam::Vector
+    {
+        return factor.evaluateError(Tcw_, Xw_, boost::none, boost::none);
+    };
+    Eigen::MatrixXd H1_num = gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H2_num = gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+
+    ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "PinholeMonoTcwFactor H_pose");
+    ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "PinholeMonoTcwFactor H_point");
+}
+
+// -----------------------------------------------------------------------------
+// PinholeStereoTcwFactor
+// -----------------------------------------------------------------------------
+TEST(GTSAMFactors, PinholeStereoTcwFactor)
+{
+    const std::vector<float> params = {500.f, 500.f, 320.f, 240.f};
+    Pinhole camera(params);
+    const double bf = 100.0;
+
+    const gtsam::Pose3 Tcw(gtsam::Rot3::RzRyRx(-0.01, 0.02, -0.02), gtsam::Point3(-0.08, 0.04, 0.12));
+    const gtsam::Point3 Xw(1.2, 0.25, 3.2);
+
+    const gtsam::Point3 Xc_p = Tcw.transformFrom(Xw);
+    const Eigen::Vector3d Xc(Xc_p.x(), Xc_p.y(), Xc_p.z());
+
+    const Eigen::Vector2d proj2 = camera.project(Xc);
+    Eigen::Vector3d obs3;
+    obs3 << proj2(0), proj2(1), proj2(0) - bf / Xc.z();
+
+    gtsam::SharedNoiseModel noise = gtsam::noiseModel::Unit::Create(3);
+    PinholeStereoTcwFactor factor(poseKey(0), pointKey(0), obs3, bf, noise, &camera);
+
+    gtsam::Vector err = factor.evaluateError(Tcw, Xw, boost::none, boost::none);
+    EXPECT_NEAR(0.0, err.norm(), kTolError) << "PinholeStereoTcwFactor error at consistent state";
+
+    gtsam::Matrix H1_analytical(3, 6), H2_analytical(3, 3);
+    factor.evaluateError(Tcw, Xw, H1_analytical, H2_analytical);
+
+    auto err_fn = [&factor](const gtsam::Pose3& Tcw_, const gtsam::Point3& Xw_) -> gtsam::Vector
+    {
+        return factor.evaluateError(Tcw_, Xw_, boost::none, boost::none);
+    };
+    Eigen::MatrixXd H1_num = gtsam::numericalDerivative21<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+    Eigen::MatrixXd H2_num = gtsam::numericalDerivative22<gtsam::Vector, gtsam::Pose3, gtsam::Point3>(err_fn, Tcw, Xw);
+
+    ExpectMatrixNear(H1_analytical, H1_num, kTolJacobian, "PinholeStereoTcwFactor H_pose");
+    ExpectMatrixNear(H2_analytical, H2_num, kTolJacobian, "PinholeStereoTcwFactor H_point");
+}
 // -----------------------------------------------------------------------------
 // Sim3ProjectionFactor
 // -----------------------------------------------------------------------------

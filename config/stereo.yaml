@@ -1,71 +1,8 @@
 %YAML:1.0
 
-#--------------------------------------------------------------------------------------------
-# System config
-#--------------------------------------------------------------------------------------------
+# Algorithm config only. Camera calibration is loaded separately (camera_calib_stereo.yaml) and injected by the wrapper.
 
-# When the variables are commented, the system doesn't load a previous session or not store the current one
-
-# If the LoadFile doesn't exist, the system give a message and create a new Atlas from scratch
-#System.LoadAtlasFromFile: "Session_MH01_MH02_MH03_Mono"
-
-# The store file is created from the current session, if a file with the same name exists it is deleted
-#System.SaveAtlasToFile: "Session_MH01_MH02_MH03_Mono"
-
-#--------------------------------------------------------------------------------------------
-# Camera Parameters. Adjust them!
-#--------------------------------------------------------------------------------------------
 File.version: "1.0"
-
-#--------------------------------------------------------------------------------------------
-# Camera Configuration
-#--------------------------------------------------------------------------------------------
-Camera.type: "Metashape"
-
-# Camera resolution
-Camera.width: 2816
-Camera.height: 2848
-
-# Camera 1 (Left - AC)
-Camera1.f:   3119.0801214017383
-Camera1.cx:  29.774822693556079 # offset from the image center, not from the top left corner
-Camera1.cy:  26.879661673463406 # offset from the image center, not from the top left corner
-Camera1.b1:  0.0
-Camera1.b2:  0.0
-
-Camera1.k1: -0.11633508696961772
-Camera1.k2:  0.28087491730086545
-Camera1.k3: -0.30164257714524184
-Camera1.k4:  0.0
-Camera1.p1: -0.00024671787346879504
-Camera1.p2:  9.1345770830969774e-05
-
-# Camera 2 (Right - FC)
-Camera2.f:   3107.8326869919647
-Camera2.cx: -0.77772496642620048 # offset from the image center, not from the top left corner
-Camera2.cy:  8.7511994496820069 # offset from the image center, not from the top left corner
-Camera2.b1:  0.0
-Camera2.b2:  0.0
-
-Camera2.k1: -0.15545988724408255
-Camera2.k2:  0.44192943864243733
-Camera2.k3: -0.53769277274163618
-Camera2.k4:  0.0
-Camera2.p1: -0.00024753909664465643
-Camera2.p2: -6.720504095135524e-05
-
-# T_AC_FC
-Stereo.T_c1_c2: !!opencv-matrix
-  rows: 4
-  cols: 4
-  dt: f
-  data: [0.99998270, -0.00400589, 0.00430818,  0.07497500,
-         0.00400566,  0.99999198, 0.00006307, -0.00012151,
-        -0.00430840, -0.00004582, 0.99999072, -0.00205872,
-         0.0,         0.0,        0.0,         1.0]
-
-# Thuber: Close/Far threshold (baseline * 40 is a common rule of thumb)
-Stereo.ThDepth: 30.0
 
 # Camera frames per second 
 Camera.fps: 2
@@ -108,6 +45,48 @@ Tracking.NewKF.MaxKFsInQueue: 3
 
 # Min KFs in map before LOST triggers a map reset (high value = never reset, reuse map)
 Tracking.LostResetMinKFs: 999999
+
+#--------------------------------------------------------------------------------------------
+# Local Mapping Parameters
+#--------------------------------------------------------------------------------------------
+# Minimum interval (seconds) between local bundle adjustments (non-inertial)
+LocalMapping.OptimizeEveryTSeconds: 5.0
+# Minimum keyframes in map before running local BA
+LocalMapping.MinKeyframesForLBA: 2
+
+# Local bundle adjustment priors (0 = disabled, 1 = enabled)
+# PosePriors: use external pose priors on keyframes as absolute constraints.
+# ScalePriors: constrain inter-keyframe scale using relative pose priors.
+# OdometryPriors: add between-pose factors between consecutive keyframes.
+Optimizer.LocalBundleAdjustment.PosePriors: 0
+Optimizer.LocalBundleAdjustment.ScalePriors: 0
+Optimizer.LocalBundleAdjustment.OdometryPriors: 0
+
+# MapPoint culling: remove bad/redundant recent map points
+LocalMapping.MapPointCulling.MinObservationsMono: 2
+LocalMapping.MapPointCulling.MinObservationsStereo: 3
+LocalMapping.MapPointCulling.MinKFAgeForObsCheck: 2
+LocalMapping.MapPointCulling.MaxKFAgeInRecent: 3
+LocalMapping.MapPointCulling.MinFoundRatio: 0.25
+
+# CreateNewMapPoints: triangulation from covisible keyframes
+LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono: 30
+LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo: 10
+LocalMapping.CreateNewMapPoints.MatchRatio: 0.6
+LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio: 0.01
+LocalMapping.CreateNewMapPoints.MaxCosParallax: 0.9998
+LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor: 1.5
+
+# SearchInNeighbors: fuse duplicates and propagate map points
+LocalMapping.SearchInNeighbors.NumNeighborKFs: 30
+LocalMapping.SearchInNeighbors.NumSecondNeighbors: 20
+LocalMapping.SearchInNeighbors.MaxTemporalNeighbors: 20
+
+# KeyFrame culling: remove redundant keyframes
+LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
+LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3
+LocalMapping.KeyFrameCulling.MaxKeyframesToCheck: 100
+LocalMapping.KeyFrameCulling.EarlyExitAfterAbort: 20
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters

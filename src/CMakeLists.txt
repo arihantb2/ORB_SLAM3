@@ -5,6 +5,7 @@ add_subdirectory(feature_extractor)
 # ORB_SLAM3 library
 
 add_library(${PROJECT_NAME} SHARED
+    CameraCalibrationInput.cc
     System.cc
     Tracking.cc
     LocalMapping.cc
@@ -22,7 +23,6 @@ add_library(${PROJECT_NAME} SHARED
     KeyFrameDatabase.cc
     Sim3Solver.cc
     Viewer.cc
-    ImuTypes.cc
     GTSAMTypes.cc
     CameraModels/Pinhole.cpp
     CameraModels/Metashape.cpp
