@@ -8,6 +8,7 @@ add_library(feature_extractor SHARED
     FeatureGrid.cc
     FeatureExtractor.cc
     ORBFeatureExtractor.cc
+    SIFTFeatureExtractor.cc
 )
 
 # Headers live under include/feature_extractor/ — expose the include root so
