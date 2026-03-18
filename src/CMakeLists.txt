@@ -19,7 +19,6 @@ add_library(${PROJECT_NAME} SHARED
     KeyFrameDatabase.cc
     Sim3Solver.cc
     Viewer.cc
-    ImuTypes.cc
     GTSAMTypes.cc
     CameraModels/Pinhole.cpp
     CameraModels/Metashape.cpp

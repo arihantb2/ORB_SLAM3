@@ -22,7 +22,6 @@
 #include <set>
 #include <string>
 #include "Converter.h"
-#include "ImuTypes.h"
 #include "MapPoint.h"
 
 namespace ORB_SLAM3
@@ -75,8 +74,6 @@ KeyFrame::KeyFrame()
       mnMinY(0),
       mnMaxX(0),
       mnMaxY(0),
-      mPrevKF(static_cast<KeyFrame*>(NULL)),
-      mNextKF(static_cast<KeyFrame*>(NULL)),
       mbFirstConnection(true),
       mpParent(NULL),
       mbNotErase(false),
@@ -92,8 +89,7 @@ KeyFrame::KeyFrame()
 }
 
 KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
-    : bImu(pMap->isImuInitialized()),
-      mnFrameId(F.mnId),
+    : mnFrameId(F.mnId),
       mTimeStamp(F.mTimeStamp),
       mnGridCols(FRAME_GRID_COLS),
       mnGridRows(FRAME_GRID_ROWS),
@@ -140,10 +136,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
       mnMaxX(F.mnMaxX),
       mnMaxY(F.mnMaxY),
       mK_(F.mK_),
-      mPrevKF(NULL),
-      mNextKF(NULL),
-      mpImuPreintegrated(F.mpImuPreintegrated),
-      mImuCalib(F.mImuCalib),
       mvpMapPoints(F.mvpMapPoints),
       mpKeyFrameDB(pKFDB),
       mpORBvocabulary(F.mpORBvocabulary),
@@ -191,7 +183,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
         mbHasVelocity = true;
     }
 
-    mImuBias = F.mImuBias;
     SetPose(F.GetPose());
 
     mnOriginMapId = pMap->GetId();
@@ -217,10 +208,6 @@ void KeyFrame::SetPose(const Sophus::SE3f& Tcw)
     mTwc = mTcw.inverse();
     mRwc = mTwc.rotationMatrix();
 
-    if (mImuCalib.mbIsSet)  // TODO Use a flag instead of the OpenCV matrix
-    {
-        mOwb = mRwc * mImuCalib.mTcb.translation() + mTwc.translation();
-    }
 }
 
 void KeyFrame::SetVelocity(const Eigen::Vector3f& Vw)
@@ -246,24 +233,6 @@ Eigen::Vector3f KeyFrame::GetCameraCenter()
 {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTwc.translation();
-}
-
-Eigen::Vector3f KeyFrame::GetImuPosition()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return mOwb;
-}
-
-Eigen::Matrix3f KeyFrame::GetImuRotation()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return (mTwc * mImuCalib.mTcb).rotationMatrix();
-}
-
-Sophus::SE3f KeyFrame::GetImuPose()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return mTwc * mImuCalib.mTcb;
 }
 
 Eigen::Matrix3f KeyFrame::GetRotation()
@@ -953,34 +922,6 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
     sort(vDepths.begin(), vDepths.end());
 
     return vDepths[(vDepths.size() - 1) / q];
-}
-
-void KeyFrame::SetNewBias(const IMU::Bias& b)
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    mImuBias = b;
-    if (mpImuPreintegrated)
-    {
-        mpImuPreintegrated->SetNewBias(b);
-    }
-}
-
-Eigen::Vector3f KeyFrame::GetGyroBias()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return Eigen::Vector3f(mImuBias.bwx, mImuBias.bwy, mImuBias.bwz);
-}
-
-Eigen::Vector3f KeyFrame::GetAccBias()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return Eigen::Vector3f(mImuBias.bax, mImuBias.bay, mImuBias.baz);
-}
-
-IMU::Bias KeyFrame::GetImuBias()
-{
-    std::unique_lock<std::mutex> lock(mMutexPose);
-    return mImuBias;
 }
 
 Map* KeyFrame::GetMap()

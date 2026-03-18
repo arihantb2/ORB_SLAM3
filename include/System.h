@@ -29,7 +29,6 @@
 #include <vector>
 
 #include "CameraModels/CameraCalibrationInput.h"
-#include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
 namespace ORB_SLAM3
@@ -57,8 +56,6 @@ public:
     {
         MONOCULAR = 0,
         STEREO = 1,
-        IMU_MONOCULAR = 3,
-        IMU_STEREO = 4,
     };
 
     // File type
@@ -80,15 +77,13 @@ public:
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     TrackingResult TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
-                               const std::optional<Sophus::SE3f>& posePrior = std::nullopt,
-                               const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
+                               const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     TrackingResult TrackMonocular(const cv::Mat& im, const double& timestamp,
-                                  const std::optional<Sophus::SE3f>& posePrior = std::nullopt,
-                                  const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>());
+                                  const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
     // Returns true if there have been a big map change (loop closure, global BA)
     // since last call to this function
@@ -116,7 +111,6 @@ public:
     std::vector<KeyFrame*> GetKeyFrames();
 
     // For debugging
-    double GetTimeFromIMUInit();
     bool isLost();
     bool isFinished();
 

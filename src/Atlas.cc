@@ -279,30 +279,6 @@ void Atlas::RemoveBadMaps()
     mspBadMaps.clear();
 }
 
-bool Atlas::isInertial()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    return mpCurrentMap->IsInertial();
-}
-
-void Atlas::SetInertialSensor()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    mpCurrentMap->SetInertialSensor();
-}
-
-void Atlas::SetImuInitialized()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    mpCurrentMap->SetImuInitialized();
-}
-
-bool Atlas::isImuInitialized()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    return mpCurrentMap->isImuInitialized();
-}
-
 long unsigned int Atlas::GetNumLivedKF()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);

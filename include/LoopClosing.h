@@ -113,7 +113,6 @@ protected:
     void CorrectLoop();
 
     void MergeLocal();
-    void MergeLocal2();
 
     void CheckObservations(std::set<KeyFrame*>& spKFsMap1, std::set<KeyFrame*>& spKFsMap2);
 

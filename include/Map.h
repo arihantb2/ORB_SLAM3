@@ -86,17 +86,7 @@ public:
     int GetLastMapChange();
     void SetLastMapChange(int currentChangeId);
 
-    void SetImuInitialized();
-    bool isImuInitialized();
-
     void ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool bScaledVel = false);
-
-    void SetInertialSensor();
-    bool IsInertial();
-    void SetIniertialBA1();
-    void SetIniertialBA2();
-    bool GetIniertialBA1();
-    bool GetIniertialBA2();
 
     void PrintEssentialGraph();
     bool CheckEssentialGraph();
@@ -137,8 +127,6 @@ protected:
 
     std::vector<MapPoint*> mvpReferenceMapPoints;
 
-    bool mbImuInitialized;
-
     int mnMapChange;
     int mnMapChangeNotified;
 
@@ -155,10 +143,6 @@ protected:
     bool mIsInUse;
     bool mHasTumbnail;
     bool mbBad = false;
-
-    bool mbIsInertial;
-    bool mbIMU_BA1;
-    bool mbIMU_BA2;
 
     // Mutex
     std::mutex mMutexMap;

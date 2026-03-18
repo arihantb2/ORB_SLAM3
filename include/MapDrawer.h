@@ -44,8 +44,7 @@ public:
     Atlas* mpAtlas;
 
     void DrawMapPoints();
-    void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawInertialGraph,
-                       const bool bDrawOptLba);
+    void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawOptLba);
     void DrawCurrentCamera(pangolin::OpenGlMatrix& Twc);
     void SetCurrentCameraPose(const Sophus::SE3f& Tcw);
     void SetReferenceKeyFrame(KeyFrame* pKF);

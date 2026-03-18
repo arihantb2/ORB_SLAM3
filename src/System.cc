@@ -75,15 +75,6 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << std::endl;
     }
-    else if (mSensor == IMU_MONOCULAR)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular-Inertial" << std::endl;
-    }
-    else if (mSensor == IMU_STEREO)
-    {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo-Inertial" << std::endl;
-    }
-
     // Check algorithm config file
     cv::FileStorage fsSettings(strConfigFile.c_str(), cv::FileStorage::READ);
     if (!fsSettings.isOpened())
@@ -133,13 +124,7 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << std::endl;
     mpAtlas = new Atlas(0);
 
-    const bool monocular = mSensor == MONOCULAR || mSensor == IMU_MONOCULAR;
-    const bool inertial = mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO;
-
-    if (inertial)
-    {
-        mpAtlas->SetInertialSensor();
-    }
+    const bool monocular = mSensor == MONOCULAR;
 
     //Create Drawers. These are used by the Viewer
     mpMapDrawer = new MapDrawer(mpAtlas, settings_);
@@ -149,7 +134,7 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
                              settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
-    mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, inertial, settings_);
+    mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, settings_);
     mptLocalMapping = new std::thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
 
     //Initialize the Loop Closing thread and launch
@@ -178,12 +163,11 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
 }
 
 TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
-                                   const std::optional<Sophus::SE3f>& posePrior,
-                                   const std::vector<IMU::Point>& vImuMeas)
+                                   const std::optional<Sophus::SE3f>& posePrior)
 {
-    if (mSensor != STEREO && mSensor != IMU_STEREO)
+    if (mSensor != STEREO)
     {
-        throw std::runtime_error("You called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial.");
+        throw std::runtime_error("You called TrackStereo but input sensor was not set to Stereo.");
     }
 
     cv::Mat imLeftToFeed, imRightToFeed;
@@ -224,14 +208,6 @@ TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight
         }
     }
 
-    if (mSensor == System::IMU_STEREO)
-    {
-        for (size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
-        {
-            mpTracker->GrabImuData(vImuMeas[i_imu]);
-        }
-    }
-
     TrackingResult tracking_result = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed, timestamp, posePrior);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
@@ -241,13 +217,11 @@ TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight
 }
 
 TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp,
-                                      const std::optional<Sophus::SE3f>& posePrior,
-                                      const std::vector<IMU::Point>& vImuMeas)
+                                      const std::optional<Sophus::SE3f>& posePrior)
 {
-    if (mSensor != MONOCULAR && mSensor != IMU_MONOCULAR)
+    if (mSensor != MONOCULAR)
     {
-        throw std::runtime_error(
-            "You called TrackMonocular but input sensor was not set to Monocular nor Monocular-Inertial.");
+        throw std::runtime_error("You called TrackMonocular but input sensor was not set to Monocular.");
     }
 
     cv::Mat imToFeed = im.clone();
@@ -272,14 +246,6 @@ TrackingResult System::TrackMonocular(const cv::Mat& im, const double& timestamp
             Verbose::Print(Verbose::VERBOSITY_NORMAL) << "SYSTEM-> Reseting active map in monocular case" << std::endl;
             mpTracker->ResetActiveMap();
             mbResetActiveMap = false;
-        }
-    }
-
-    if (mSensor == System::IMU_MONOCULAR)
-    {
-        for (size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
-        {
-            mpTracker->GrabImuData(vImuMeas[i_imu]);
         }
     }
 
@@ -415,41 +381,14 @@ std::vector<KeyFrame*> System::GetKeyFrames()
     return mpAtlas->GetAllKeyFrames();
 }
 
-double System::GetTimeFromIMUInit()
-{
-    double aux = mpLocalMapper->GetCurrKFTime() - mpLocalMapper->mFirstTs;
-    if ((aux > 0.) && mpAtlas->isImuInitialized())
-    {
-        return mpLocalMapper->GetCurrKFTime() - mpLocalMapper->mFirstTs;
-    }
-    else
-    {
-        return 0.f;
-    }
-}
-
 bool System::isLost()
 {
-    if (!mpAtlas->isImuInitialized())
-    {
-        return false;
-    }
-    else
-    {
-        if (mpTracker->mState == Tracking::LOST)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+    return mpTracker->mState == Tracking::LOST;
 }
 
 bool System::isFinished()
 {
-    return (GetTimeFromIMUInit() > 0.1);
+    return true;
 }
 
 void System::ChangeDataset()

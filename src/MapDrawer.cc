@@ -96,8 +96,7 @@ void MapDrawer::DrawMapPoints()
     glEnd();
 }
 
-void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawInertialGraph,
-                              const bool bDrawOptLba)
+void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const bool bDrawOptLba)
 {
     const float& w = mKeyFrameSize;
     const float h = w * 0.75;
@@ -231,29 +230,6 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
                 Eigen::Vector3f Owl = (*sit)->GetCameraCenter();
                 glVertex3f(Ow(0), Ow(1), Ow(2));
                 glVertex3f(Owl(0), Owl(1), Owl(2));
-            }
-        }
-
-        glEnd();
-    }
-
-    if (bDrawInertialGraph && pActiveMap->isImuInitialized())
-    {
-        glLineWidth(mGraphLineWidth);
-        glColor4f(1.0f, 0.0f, 0.0f, 0.6f);
-        glBegin(GL_LINES);
-
-        //Draw inertial links
-        for (size_t i = 0; i < vpKFs.size(); i++)
-        {
-            KeyFrame* pKFi = vpKFs[i];
-            Eigen::Vector3f Ow = pKFi->GetCameraCenter();
-            KeyFrame* pNext = pKFi->mNextKF;
-            if (pNext)
-            {
-                Eigen::Vector3f Owp = pNext->GetCameraCenter();
-                glVertex3f(Ow(0), Ow(1), Ow(2));
-                glVertex3f(Owp(0), Owp(1), Owp(2));
             }
         }
 

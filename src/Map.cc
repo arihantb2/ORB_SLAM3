@@ -33,17 +33,13 @@ long unsigned int Map::nNextId = 0;
 Map::Map()
     : mnMaxKFid(0),
       mnBigChangeIdx(0),
-      mbImuInitialized(false),
       mnMapChange(0),
       mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
       mbFail(false),
       mIsInUse(false),
       mHasTumbnail(false),
       mbBad(false),
-      mnMapChangeNotified(0),
-      mbIsInertial(false),
-      mbIMU_BA1(false),
-      mbIMU_BA2(false)
+      mnMapChangeNotified(0)
 {
     mnId = nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
@@ -56,14 +52,10 @@ Map::Map(int initKFid)
       mIsInUse(false),
       mHasTumbnail(false),
       mbBad(false),
-      mbImuInitialized(false),
       mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
       mnMapChange(0),
       mbFail(false),
-      mnMapChangeNotified(0),
-      mbIsInertial(false),
-      mbIMU_BA1(false),
-      mbIMU_BA2(false)
+      mnMapChangeNotified(0)
 {
     mnId = nNextId++;
     mThumbnail = static_cast<GLubyte*>(NULL);
@@ -113,18 +105,6 @@ void Map::AddMapPoint(MapPoint* pMP)
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
     mspMapPoints.insert(pMP);
-}
-
-void Map::SetImuInitialized()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mbImuInitialized = true;
-}
-
-bool Map::isImuInitialized()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mbImuInitialized;
 }
 
 void Map::EraseMapPoint(MapPoint* pMP)
@@ -258,11 +238,8 @@ void Map::clear()
     mspMapPoints.clear();
     mspKeyFrames.clear();
     mnMaxKFid = mnInitKFid;
-    mbImuInitialized = false;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
-    mbIMU_BA1 = false;
-    mbIMU_BA2 = false;
 }
 
 bool Map::IsInUse()
@@ -284,7 +261,6 @@ void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool b
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
 
-    // Body position (IMU) of first keyframe is fixed to (0,0,0)
     Sophus::SE3f Tyw = T;
     Eigen::Matrix3f Ryw = Tyw.rotationMatrix();
     Eigen::Vector3f tyw = Tyw.translation();
@@ -314,42 +290,6 @@ void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool b
         pMP->UpdateNormalAndDepth();
     }
     mnMapChange++;
-}
-
-void Map::SetInertialSensor()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mbIsInertial = true;
-}
-
-bool Map::IsInertial()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mbIsInertial;
-}
-
-void Map::SetIniertialBA1()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mbIMU_BA1 = true;
-}
-
-void Map::SetIniertialBA2()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mbIMU_BA2 = true;
-}
-
-bool Map::GetIniertialBA1()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mbIMU_BA1;
-}
-
-bool Map::GetIniertialBA2()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mbIMU_BA2;
 }
 
 void Map::ChangeId(long unsigned int nId)

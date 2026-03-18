@@ -97,14 +97,6 @@ public:
     bool needToResize() { return bNeedToResize1_; }
     bool needToRectify() { return bNeedToRectify_; }
 
-    float noiseGyro() { return noiseGyro_; }
-    float noiseAcc() { return noiseAcc_; }
-    float gyroWalk() { return gyroWalk_; }
-    float accWalk() { return accWalk_; }
-    float imuFrequency() { return imuFrequency_; }
-    Sophus::SE3f Tbc() { return Tbc_; }
-    bool insertKFsWhenLost() { return insertKFsWhenLost_; }
-
     float depthMapFactor() { return depthMapFactor_; }
 
     int nFeatures() { return nFeatures_; }
@@ -223,7 +215,6 @@ private:
         }
     }
 
-    void readIMU(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);
     void readOtherParameters(cv::FileStorage& fSettings);
@@ -257,15 +248,6 @@ private:
          */
     cv::Mat M1l_, M2l_;
     cv::Mat M1r_, M2r_;
-
-    /*
-         * Inertial stuff
-         */
-    float noiseGyro_, noiseAcc_;
-    float gyroWalk_, accWalk_;
-    float imuFrequency_;
-    Sophus::SE3f Tbc_;
-    bool insertKFsWhenLost_;
 
     float depthMapFactor_;
 

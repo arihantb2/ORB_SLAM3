@@ -22,7 +22,6 @@
 #include <DBoW2/BowVector.h>
 #include <DBoW2/FeatureVector.h>
 #include "Frame.h"
-#include "ImuTypes.h"
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 
@@ -75,17 +74,13 @@ public:
 
     Sophus::SE3f mTcwGBA;
     Sophus::SE3f mTcwBefGBA;
-    Eigen::Vector3f mVwbGBA;
     Eigen::Vector3f mVwbBefGBA;
-    IMU::Bias mBiasGBA;
     long unsigned int mnBAGlobalForKF;
 
     Sophus::SE3f mTcwMerge;
     Sophus::SE3f mTcwBefMerge;
     Sophus::SE3f mTwcBefMerge;
-    Eigen::Vector3f mVwbMerge;
     Eigen::Vector3f mVwbBefMerge;
-    IMU::Bias mBiasMerge;
     long unsigned int mnMergeCorrectedForKF;
     long unsigned int mnMergeForKF;
     float mfScaleMerge;
@@ -121,19 +116,12 @@ public:
     const int mnMaxX;
     const int mnMaxY;
 
-    KeyFrame* mPrevKF;
-    KeyFrame* mNextKF;
-    IMU::Preintegrated* mpImuPreintegrated;
-    IMU::Calib mImuCalib;
-
     unsigned int mnOriginMapId;
     std::string mNameFile;
     int mnDataset;
 
     std::vector<KeyFrame*> mvpLoopCandKFs;
     std::vector<KeyFrame*> mvpMergeCandKFs;
-
-    bool bImu;
 
     GeometricCamera* mpCamera;
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
@@ -152,9 +140,6 @@ public:
     Sophus::SE3f GetPose();
     Sophus::SE3f GetPoseInverse();
     Eigen::Vector3f GetCameraCenter();
-    Eigen::Vector3f GetImuPosition();
-    Eigen::Matrix3f GetImuRotation();
-    Sophus::SE3f GetImuPose();
     Eigen::Matrix3f GetRotation();
     Eigen::Vector3f GetTranslation();
     Eigen::Vector3f GetVelocity();
@@ -214,11 +199,6 @@ public:
     Map* GetMap();
     void UpdateMap(Map* pMap);
 
-    void SetNewBias(const IMU::Bias& b);
-    Eigen::Vector3f GetGyroBias();
-    Eigen::Vector3f GetAccBias();
-    IMU::Bias GetImuBias();
-
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
@@ -233,11 +213,8 @@ protected:
     Sophus::SE3<float> mTwc;
     Eigen::Matrix3f mRwc;
 
-    Eigen::Vector3f mOwb;
     Eigen::Vector3f mVw;
     bool mbHasVelocity;
-
-    IMU::Bias mImuBias;
 
     std::vector<MapPoint*> mvpMapPoints;
 

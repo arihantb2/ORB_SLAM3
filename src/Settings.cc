@@ -156,7 +156,7 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     {
         throw std::runtime_error("CameraCalibrationInput: camera1 is required");
     }
-    if ((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && !calib.camera2)
+    if (sensor_ == System::STEREO && !calib.camera2)
     {
         throw std::runtime_error("CameraCalibrationInput: camera2 is required for stereo");
     }
@@ -191,12 +191,6 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     bRGB_ = (bool)readParameter<int>(fSettings, "Camera.RGB", found);
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info (fps, RGB)" << std::endl;
 
-    if (sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO)
-    {
-        readIMU(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded IMU calibration" << std::endl;
-    }
-
     readORB(fSettings);
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << std::endl;
     readViewer(fSettings);
@@ -211,29 +205,6 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     }
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << std::endl;
-}
-
-void Settings::readIMU(cv::FileStorage& fSettings)
-{
-    bool found;
-    noiseGyro_ = readParameter<float>(fSettings, "IMU.NoiseGyro", found);
-    noiseAcc_ = readParameter<float>(fSettings, "IMU.NoiseAcc", found);
-    gyroWalk_ = readParameter<float>(fSettings, "IMU.GyroWalk", found);
-    accWalk_ = readParameter<float>(fSettings, "IMU.AccWalk", found);
-    imuFrequency_ = readParameter<float>(fSettings, "IMU.Frequency", found);
-
-    cv::Mat cvTbc = readParameter<cv::Mat>(fSettings, "IMU.T_b_c1", found);
-    Tbc_ = Converter::toSophus(cvTbc);
-
-    readParameter<int>(fSettings, "IMU.InsertKFsWhenLost", found, false);
-    if (found)
-    {
-        insertKFsWhenLost_ = (bool)readParameter<int>(fSettings, "IMU.InsertKFsWhenLost", found, false);
-    }
-    else
-    {
-        insertKFsWhenLost_ = true;
-    }
 }
 
 void Settings::readORB(cv::FileStorage& fSettings)
@@ -667,15 +638,6 @@ void Settings::precomputeRectificationMaps()
 
     //Update bf
     bf_ = b_ * P1.at<double>(0, 0);
-
-    //Update relative pose between camera 1 and IMU if necessary
-    if (sensor_ == System::IMU_STEREO)
-    {
-        Eigen::Matrix3f eigenR_r1_u1;
-        cv::cv2eigen(R_r1_u1, eigenR_r1_u1);
-        Sophus::SE3f T_r1_u1(eigenR_r1_u1, Eigen::Vector3f::Zero());
-        Tbc_ = Tbc_ * T_r1_u1.inverse();
-    }
 }
 
 std::ostream& operator<<(std::ostream& output, const Settings& settings)
@@ -712,7 +674,7 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
         output << " ]" << std::endl;
     }
 
-    if (settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO)
+    if (settings.sensor_ == System::STEREO)
     {
         output << "\t-Camera 2 parameters (";
         if (settings.cameraType_ == Settings::PinHole || settings.cameraType_ == Settings::Rectified)
@@ -772,19 +734,10 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
     output << "\t-Sequence FPS: " << settings.fps_ << std::endl;
 
     //Stereo stuff
-    if (settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO)
+    if (settings.sensor_ == System::STEREO)
     {
         output << "\t-Stereo baseline: " << settings.b_ << std::endl;
         output << "\t-Stereo depth threshold : " << settings.thDepth_ << std::endl;
-    }
-
-    if (settings.sensor_ == System::IMU_MONOCULAR || settings.sensor_ == System::IMU_STEREO)
-    {
-        output << "\t-Gyro noise: " << settings.noiseGyro_ << std::endl;
-        output << "\t-Accelerometer noise: " << settings.noiseAcc_ << std::endl;
-        output << "\t-Gyro walk: " << settings.gyroWalk_ << std::endl;
-        output << "\t-Accelerometer walk: " << settings.accWalk_ << std::endl;
-        output << "\t-IMU frequency: " << settings.imuFrequency_ << std::endl;
     }
 
     output << "\t-Features per image: " << settings.nFeatures_ << std::endl;

@@ -20,17 +20,14 @@
 #define TRACKING_H
 
 #include <list>
-#include <mutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "Frame.h"
-#include "ImuTypes.h"
 #include "ORBVocabulary.h"
 
 namespace ORB_SLAM3
@@ -270,15 +267,12 @@ public:
     TrackingResult GrabImageMonocular(const cv::Mat& im, const double& timestamp,
                                       const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
-    void GrabImuData(const IMU::Point& imuMeasurement);
-
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
 
     bool isLastFrameKeyframe();
 
-    void UpdateFrameIMU(const float s, const IMU::Bias& b, KeyFrame* pCurrentKeyFrame);
     KeyFrame* GetLastKeyFrame() { return mpLastKeyFrame; }
 
     void CreateMapInAtlas();
@@ -360,8 +354,6 @@ protected:
 
     void CheckReplacedInLastFrame();
     void UpdateLastFrame();
-    bool PredictStateIMU();
-
     RefKeyFrameTrackingResult TrackReferenceKeyFrameWithBoW();
     MotionModelTrackingResult TrackWithMotionModel();
 
@@ -374,12 +366,6 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
-
-    // Perform preintegration from last frame
-    void PreintegrateIMU();
-
-    // Reset IMU biases and compute frame velocity
-    void ResetFrameIMU();
 
     // Internal helpers to keep Track logic simpler
     void PrepareFrameForTracking();
@@ -398,22 +384,6 @@ protected:
     bool mbMapUpdated;
 
     bool mbAtlasNewMaps;
-
-    // Imu preintegration from last frame
-    IMU::Preintegrated* mpImuPreintegratedFromLastKF;
-
-    // Queue of IMU measurements between frames
-    std::list<IMU::Point> mlQueueImuData;
-
-    // Vector of IMU measurements from previous to current frame (to be filled by PreintegrateIMU)
-    std::vector<IMU::Point> mvImuFromLastFrame;
-    std::mutex mMutexImuQueue;
-
-    // Imu calibration parameters
-    IMU::Calib* mpImuCalib;
-
-    // Last Bias Estimation (at keyframe creation)
-    IMU::Bias mLastBias;
 
     // Other Thread Pointers
     LocalMapping* mpLocalMapper;
@@ -461,10 +431,6 @@ protected:
     float mbf;
     float mImageScale;
 
-    float mImuFreq;
-    double mImuPer;
-    bool mInsertKFsLost;
-
     // New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
@@ -481,9 +447,6 @@ protected:
 
     // Minimum KFs in map before LOST triggers reset (instead of reusing map)
     int mLostResetMinKFs;
-
-    int mnFirstImuFrameId;
-    int mnFramesToResetIMU;
 
     // Threshold close/far points
     // Points seen as close by the stereo sensor are considered reliable
