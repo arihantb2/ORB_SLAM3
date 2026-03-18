@@ -296,7 +296,6 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
     return result;
 }
 
-
 void Tracking::PrepareFrameForTracking()
 {
     if (mState == NO_IMAGES_YET)
@@ -405,7 +404,6 @@ void Tracking::UpdateAfterTracking(bool bOK)
     {
         mbVelocity = false;
     }
-
 
     // Clean VO matches
     for (int i = 0; i < mCurrentFrame.N; i++)
@@ -1344,8 +1342,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
         th = mMotionModelProjectionSearchThMono;
     }
 
-    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th,
-                                              mSensor == System::MONOCULAR);
+    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
 
     result.num_matches = nmatches;
 
@@ -1362,8 +1359,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
             << "] < MinInitialMatches=" << mMotionModelMinInitialMatches << "." << std::endl;
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
-        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, thRetry,
-                                              mSensor == System::MONOCULAR);
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, thRetry, mSensor == System::MONOCULAR);
 
         result.retry = true;
         result.num_matches_retry = nmatches;
@@ -1449,9 +1445,8 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
     if (nmatchesMap < mMotionModelMinOptimizedMapMatches)
     {
         Verbose::Print(Verbose::VERBOSITY_QUIET)
-            << "[" << mCurrentFrame.mnId
-            << "] TRACK_WITH_MOTION_MODEL: Not enough matches after pose optimization [" << nmatchesMap
-            << "] < MinOptimizedMapMatches=" << mMotionModelMinOptimizedMapMatches << "." << std::endl;
+            << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches after pose optimization ["
+            << nmatchesMap << "] < MinOptimizedMapMatches=" << mMotionModelMinOptimizedMapMatches << "." << std::endl;
         return result;
     }
 
@@ -2171,7 +2166,6 @@ bool Tracking::isLastFrameKeyframe()
 {
     return mnLastKeyFrameId == mLastFrame.mnId;
 }
-
 
 int Tracking::GetMatchesInliers()
 {

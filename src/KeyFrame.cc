@@ -207,7 +207,6 @@ void KeyFrame::SetPose(const Sophus::SE3f& Tcw)
     mRcw = mTcw.rotationMatrix();
     mTwc = mTcw.inverse();
     mRwc = mTwc.rotationMatrix();
-
 }
 
 void KeyFrame::SetVelocity(const Eigen::Vector3f& Vw)

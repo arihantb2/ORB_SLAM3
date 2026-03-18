@@ -191,7 +191,6 @@ bool LocalMapping::RunLoop()
 
             // Check redundant local Keyframes
             KeyFrameCulling();
-
         }
 
         mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
@@ -471,8 +470,7 @@ void LocalMapping::CreateNewMapPoints()
             bool goodProj = false;
             bool bPointStereo = false;
             if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0 &&
-                (bStereo1 || bStereo2 ||
-                 cosParallaxRays < mCreateNewMapPointsMaxCosParallax))
+                (bStereo1 || bStereo2 || cosParallaxRays < mCreateNewMapPointsMaxCosParallax))
             {
                 goodProj = GeometricTools::Triangulate(xn1, xn2, eigTcw1, eigTcw2, x3D);
                 if (!goodProj)
@@ -1015,8 +1013,6 @@ bool LocalMapping::isFinished()
     std::unique_lock<std::mutex> lock(mMutexFinish);
     return mbFinished;
 }
-
-
 
 bool LocalMapping::IsInitializing()
 {

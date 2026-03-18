@@ -380,15 +380,13 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     bool use_scale_priors = true;
     bool use_odometry_priors = false;
 
-    int pose_priors_flag =
-        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.PosePriors", found, false);
+    int pose_priors_flag = readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.PosePriors", found, false);
     if (found)
     {
         use_pose_priors = (pose_priors_flag != 0);
     }
 
-    int scale_priors_flag =
-        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.ScalePriors", found, false);
+    int scale_priors_flag = readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.ScalePriors", found, false);
     if (found)
     {
         use_scale_priors = (scale_priors_flag != 0);

@@ -919,7 +919,6 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Similarity3>>(sim3Key(nIDi), sim3Key(pKFn->mnId),
                                                                                    Snw.compose(Swi), sim3Noise));
         }
-
     }
 
     gtsam::LevenbergMarquardtParams params;
