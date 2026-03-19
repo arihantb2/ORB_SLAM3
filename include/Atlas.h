@@ -35,7 +35,6 @@ class Viewer;
 class Map;
 class MapPoint;
 class KeyFrame;
-class KeyFrameDatabase;
 class Frame;
 class Metashape;
 class Pinhole;
@@ -50,7 +49,6 @@ public:
     ~Atlas();
 
     void CreateNewMap();
-    void ChangeMap(Map* pMap);
 
     unsigned long int GetLastInitKFid();
 
@@ -78,27 +76,17 @@ public:
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
 
-    std::vector<Map*> GetAllMaps();
-
-    int CountMaps();
-
     void clearMap();
 
     void clearAtlas();
 
     Map* GetCurrentMap();
 
-    void SetMapBad(Map* pMap);
-    void RemoveBadMaps();
-
     long unsigned int GetNumLivedKF();
 
     long unsigned int GetNumLivedMP();
 
 protected:
-    std::set<Map*> mspMaps;
-    std::set<Map*> mspBadMaps;
-
     Map* mpCurrentMap;
 
     std::vector<GeometricCamera*> mvpCameras;

@@ -24,9 +24,7 @@
 #include <chrono>
 #include <thread>
 #include "Atlas.h"
-#include "KeyFrameDatabase.h"
 #include "LocalMapping.h"
-#include "LoopClosing.h"
 #include "MapDrawer.h"
 #include "ORBVocabulary.h"
 #include "Settings.h"
@@ -42,8 +40,8 @@ std::unique_ptr<std::ofstream> Verbose::log_file_;
 std::atomic<bool> Verbose::console_enabled{false};
 
 System::System(const std::string& strVocFile, const std::string& strConfigFile, const eSensor sensor,
-               const CameraCalibrationInput& calib, const bool bUseViewer, const bool bTurnOffLC,
-               const std::string& strLogFile, const bool bVerboseConsole)
+               const CameraCalibrationInput& calib, const bool bUseViewer, const std::string& strLogFile,
+               const bool bVerboseConsole)
     : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     Verbose::SetLogFile(strLogFile);
@@ -93,8 +91,6 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
         throw std::runtime_error("Algorithm config file version is not supported");
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Loop Closing status: " << (!bTurnOffLC ? "ON" : "OFF") << std::endl;
-
     node = fsSettings["newMaps"];
     bool newMaps = true;
     if (!node.empty())
@@ -117,9 +113,6 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     }
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << std::endl << std::endl;
 
-    //Create KeyFrame Database
-    mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
-
     //Create the Atlas
     Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << std::endl;
     mpAtlas = new Atlas(0);
@@ -130,27 +123,16 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     mpMapDrawer = new MapDrawer(mpAtlas, settings_);
 
     //Initialize the Tracking thread
-    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, mpKeyFrameDatabase, strConfigFile, mSensor,
-                             settings_, newMaps);
+    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, strConfigFile, mSensor, settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, settings_);
     mptLocalMapping = new std::thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
 
-    //Initialize the Loop Closing thread and launch
-    mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR,
-                                   !bTurnOffLC);  // mSensor!=MONOCULAR);
-    mptLoopClosing = new std::thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
-
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
-    mpTracker->SetLoopClosing(mpLoopCloser);
 
     mpLocalMapper->SetTracker(mpTracker);
-    mpLocalMapper->SetLoopCloser(mpLoopCloser);
-
-    mpLoopCloser->SetTracker(mpTracker);
-    mpLoopCloser->SetLocalMapper(mpLocalMapper);
 
     //Initialize the Viewer thread and launch
     if (bUseViewer)
@@ -158,7 +140,6 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
         mpViewer = new Viewer(this, mpMapDrawer, mpTracker, settings_);
         mptViewer = new std::thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
-        mpLoopCloser->mpViewer = mpViewer;
     }
 }
 
@@ -294,7 +275,6 @@ void System::Shutdown()
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Shutdown" << std::endl;
 
     mpLocalMapper->RequestFinish();
-    mpLoopCloser->RequestFinish();
     if (mpViewer)
     {
         mpViewer->RequestFinish();
@@ -302,15 +282,9 @@ void System::Shutdown()
 
     const auto current_id = std::this_thread::get_id();
     const bool local_thread = mptLocalMapping && mptLocalMapping->get_id() == current_id;
-    const bool loop_thread = mptLoopClosing && mptLoopClosing->get_id() == current_id;
     const bool viewer_thread = mptViewer && mptViewer->get_id() == current_id;
 
     while (mpLocalMapper && !local_thread && !mpLocalMapper->isFinished())
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    while (mpLoopCloser && !loop_thread && !mpLoopCloser->isFinished())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
@@ -323,11 +297,6 @@ void System::Shutdown()
     if (mptLocalMapping && mptLocalMapping->joinable() && mptLocalMapping->get_id() != current_id)
     {
         mptLocalMapping->join();
-    }
-
-    if (mptLoopClosing && mptLoopClosing->joinable() && mptLoopClosing->get_id() != current_id)
-    {
-        mptLoopClosing->join();
     }
 
     if (mptViewer && mptViewer->joinable() && mptViewer->get_id() != current_id)

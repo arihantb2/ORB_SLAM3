@@ -22,9 +22,7 @@
 #include "Atlas.h"
 #include "CameraModels/GeometricCamera.h"
 #include "GeometricTools.h"
-#include "KeyFrameDatabase.h"
 #include "LocalMapping.h"
-#include "LoopClosing.h"
 #include "MapDrawer.h"
 #include "ORBVocabulary.h"
 #include "feature_extractor/GridBasedORBFeatureExtractor.h"
@@ -44,13 +42,12 @@
 namespace ORB_SLAM3
 {
 
-Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
-                   const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
+Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, const std::string& strSettingPath,
+                   const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
       mbMapUpdated(false),
       mpORBVocabulary(pVoc),
-      mpKeyFrameDB(pKFDB),
       mbReadyToInitializate(false),
       mpSystem(pSys),
       mpViewer(NULL),
@@ -234,11 +231,6 @@ void Tracking::SetLocalMapper(LocalMapping* pLocalMapper)
     mpLocalMapper = pLocalMapper;
 }
 
-void Tracking::SetLoopClosing(LoopClosing* pLoopClosing)
-{
-    mpLoopClosing = pLoopClosing;
-}
-
 void Tracking::SetViewer(Viewer* pViewer)
 {
     mpViewer = pViewer;
@@ -386,10 +378,7 @@ bool Tracking::Initialize()
         return false;
     }
 
-    if (mpAtlas->GetAllMaps().size() == 1)
-    {
-        mnFirstFrameId = mCurrentFrame.mnId;
-    }
+    mnFirstFrameId = mCurrentFrame.mnId;
 
     return true;
 }
@@ -847,7 +836,7 @@ void Tracking::StereoInitialization()
     // Set Frame pose to the origin
     mCurrentFrame.SetPose(Sophus::SE3f());
     // Create KeyFrame
-    KeyFrame* pKFini = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap(), mpKeyFrameDB);
+    KeyFrame* pKFini = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap());
 
     // Insert KeyFrame in the map
     mpAtlas->AddKeyFrame(pKFini);
@@ -997,8 +986,8 @@ void Tracking::MonocularInitialization()
 void Tracking::CreateInitialMapMonocular()
 {
     // Create KeyFrames
-    KeyFrame* pKFini = new KeyFrame(mInitialFrame, mpAtlas->GetCurrentMap(), mpKeyFrameDB);
-    KeyFrame* pKFcur = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap(), mpKeyFrameDB);
+    KeyFrame* pKFini = new KeyFrame(mInitialFrame, mpAtlas->GetCurrentMap());
+    KeyFrame* pKFcur = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap());
 
     pKFini->ComputeBoW();
     pKFcur->ComputeBoW();
@@ -1765,7 +1754,7 @@ void Tracking::CreateNewKeyFrame()
     {
         return;
     }
-    KeyFrame* pKF = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap(), mpKeyFrameDB);
+    KeyFrame* pKF = new KeyFrame(mCurrentFrame, mpAtlas->GetCurrentMap());
 
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
@@ -2091,12 +2080,6 @@ void Tracking::Reset(bool bLocMap)
         mpLocalMapper->RequestReset();
     }
 
-    // Reset Loop Closing
-    mpLoopClosing->RequestReset();
-
-    // Clear BoW Database
-    mpKeyFrameDB->clear();
-
     // Clear Map (this erase MapPoints and KeyFrames)
     mpAtlas->clearAtlas();
     mpAtlas->CreateNewMap();
@@ -2136,21 +2119,13 @@ void Tracking::ResetActiveMap(bool bLocMap)
         }
     }
 
-    Map* pMap = mpAtlas->GetCurrentMap();
-
     if (!bLocMap)
     {
-        mpLocalMapper->RequestResetActiveMap(pMap);
+        mpLocalMapper->RequestReset();
     }
 
-    // Reset Loop Closing
-    mpLoopClosing->RequestResetActiveMap(pMap);
-
-    // Clear BoW Database
-    mpKeyFrameDB->clearMap(pMap);  // Only clear the active map references
-
-    // Clear Map (this erase MapPoints and KeyFrames)
-    mpAtlas->clearMap();
+    // Replace the map (single-map Atlas semantics)
+    mpAtlas->CreateNewMap();
 
     mnLastInitFrameId = Frame::nNextId;
     mState = NO_IMAGES_YET;
@@ -2159,15 +2134,10 @@ void Tracking::ResetActiveMap(bool bLocMap)
 
     std::list<bool> lbLost;
     unsigned int index = mnFirstFrameId;
-    for (Map* pMap : mpAtlas->GetAllMaps())
+    Map* pMapForIndex = mpAtlas->GetCurrentMap();
+    if (pMapForIndex && pMapForIndex->GetAllKeyFrames().size() > 0)
     {
-        if (pMap->GetAllKeyFrames().size() > 0)
-        {
-            if (index > pMap->GetLowerKFID())
-            {
-                index = pMap->GetLowerKFID();
-            }
-        }
+        index = pMapForIndex->GetLowerKFID();
     }
 
     int num_lost = 0;

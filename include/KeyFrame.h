@@ -22,7 +22,6 @@
 #include <DBoW2/BowVector.h>
 #include <DBoW2/FeatureVector.h>
 #include "Frame.h"
-#include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 
 #include "CameraModels/GeometricCamera.h"
@@ -35,7 +34,6 @@ namespace ORB_SLAM3
 class Map;
 class MapPoint;
 class Frame;
-class KeyFrameDatabase;
 
 class GeometricCamera;
 
@@ -120,9 +118,6 @@ public:
     std::string mNameFile;
     int mnDataset;
 
-    std::vector<KeyFrame*> mvpLoopCandKFs;
-    std::vector<KeyFrame*> mvpMergeCandKFs;
-
     GeometricCamera* mpCamera;
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
     const std::vector<cv::KeyPoint> mvKeysRight;
@@ -133,7 +128,7 @@ public:
 
     // --- Public member functions ---
     KeyFrame();
-    KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB);
+    KeyFrame(Frame& F, Map* pMap);
 
     void SetPose(const Sophus::SE3f& Tcw);
     void SetVelocity(const Eigen::Vector3f& Vw_);
@@ -164,12 +159,6 @@ public:
     KeyFrame* GetParent();
     bool hasChild(KeyFrame* pKF);
     void SetFirstConnection(bool bFirst);
-
-    void AddLoopEdge(KeyFrame* pKF);
-    std::set<KeyFrame*> GetLoopEdges();
-
-    void AddMergeEdge(KeyFrame* pKF);
-    std::set<KeyFrame*> GetMergeEdges();
 
     int GetNumberMPs();
     void AddMapPoint(MapPoint* pMP, const size_t& idx);
@@ -202,8 +191,6 @@ public:
     bool ProjectPointDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
     bool ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, float& v);
 
-    void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
-
     bool hasPosePrior() const { return mPosePrior.has_value(); }
 
 protected:
@@ -218,7 +205,6 @@ protected:
 
     std::vector<MapPoint*> mvpMapPoints;
 
-    KeyFrameDatabase* mpKeyFrameDB;
     ORBVocabulary* mpORBvocabulary;
 
     std::vector<std::vector<std::vector<size_t>>> mGrid;
@@ -230,8 +216,6 @@ protected:
     bool mbFirstConnection;
     KeyFrame* mpParent;
     std::set<KeyFrame*> mspChildrens;
-    std::set<KeyFrame*> mspLoopEdges;
-    std::set<KeyFrame*> mspMergeEdges;
 
     bool mbNotErase;
     bool mbToBeErased;

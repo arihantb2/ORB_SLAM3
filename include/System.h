@@ -39,12 +39,10 @@ class MapDrawer;
 class Atlas;
 class Tracking;
 class LocalMapping;
-class LoopClosing;
 class Settings;
 class KeyFrame;
 class Map;
 class MapPoint;
-class KeyFrameDatabase;
 
 struct TrackingResult;
 
@@ -67,11 +65,11 @@ public:
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
+    // Initialize the SLAM system. It launches the Local Mapping and Viewer threads.
     // Calibration is injected; camera parameters are not read from any file.
     System(const std::string& strVocFile, const std::string& strAlgorithmConfigFile, const eSensor sensor,
-           const CameraCalibrationInput& calib, const bool bUseViewer = true, const bool bTurnOffLC = false,
-           const std::string& strLogFile = "", const bool bVerboseConsole = false);
+           const CameraCalibrationInput& calib, const bool bUseViewer = true, const std::string& strLogFile = "",
+           const bool bVerboseConsole = false);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -125,9 +123,6 @@ private:
     // ORB vocabulary used for place recognition and feature matching.
     ORBVocabulary* mpVocabulary;
 
-    // KeyFrame database for place recognition (loop detection).
-    KeyFrameDatabase* mpKeyFrameDatabase;
-
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Atlas* mpAtlas;
 
@@ -138,10 +133,6 @@ private:
     // Local Mapper. It manages the local map and performs local bundle adjustment.
     LocalMapping* mpLocalMapper;
 
-    // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
-    // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-    LoopClosing* mpLoopCloser;
-
     // The viewer draws the map and the current camera pose. It uses Pangolin.
     Viewer* mpViewer;
 
@@ -150,7 +141,6 @@ private:
     // System threads: Local Mapping, Loop Closing, Viewer.
     // The Tracking thread "lives" in the main execution thread that creates the System object.
     std::thread* mptLocalMapping;
-    std::thread* mptLoopClosing;
     std::thread* mptViewer;
 
     // Reset flag

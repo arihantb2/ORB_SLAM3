@@ -36,11 +36,9 @@ namespace ORB_SLAM3
 class Viewer;
 class Atlas;
 class LocalMapping;
-class LoopClosing;
 class System;
 class Settings;
 class KeyFrame;
-class KeyFrameDatabase;
 class Map;
 class MapDrawer;
 class MapPoint;
@@ -256,8 +254,8 @@ class Tracking
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, KeyFrameDatabase* pKFDB,
-             const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
+    Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, const std::string& strSettingPath,
+             const int sensor, Settings* settings, const bool newMaps);
 
     ~Tracking();
 
@@ -268,7 +266,6 @@ public:
                                       const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
-    void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
 
     bool isLastFrameKeyframe();
@@ -387,7 +384,6 @@ protected:
 
     // Other Thread Pointers
     LocalMapping* mpLocalMapper;
-    LoopClosing* mpLoopClosing;
 
     // ORB
     FeatureExtractor *mpFeatureExtractorLeft, *mpFeatureextractorRight;
@@ -395,7 +391,6 @@ protected:
 
     // BoW
     ORBVocabulary* mpORBVocabulary;
-    KeyFrameDatabase* mpKeyFrameDB;
 
     // Initalization (only for monocular)
     bool mbReadyToInitializate;

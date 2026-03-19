@@ -39,21 +39,10 @@ Atlas::Atlas(int initKFid) : mnLastInitKFidMap(initKFid), mHasViewer(false)
 
 Atlas::~Atlas()
 {
-    for (std::set<Map*>::iterator it = mspMaps.begin(), end = mspMaps.end(); it != end;)
+    if (mpCurrentMap)
     {
-        Map* pMi = *it;
-
-        if (pMi)
-        {
-            delete pMi;
-            pMi = static_cast<Map*>(NULL);
-
-            it = mspMaps.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
+        delete mpCurrentMap;
+        mpCurrentMap = static_cast<Map*>(NULL);
     }
 }
 
@@ -63,32 +52,18 @@ void Atlas::CreateNewMap()
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Creation of new map with id: " << Map::nNextId << std::endl;
     if (mpCurrentMap)
     {
-        if (!mspMaps.empty() && mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
+        if (mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
         {
-            mnLastInitKFidMap = mpCurrentMap->GetMaxKFid() + 1;  //The init KF is the next of current maximum
+            mnLastInitKFidMap = mpCurrentMap->GetMaxKFid() + 1;  // The init KF is the next of current maximum
         }
-        mpCurrentMap->SetStoredMap();
-        Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Stored map with ID: " << mpCurrentMap->GetId() << std::endl;
+        delete mpCurrentMap;
+        mpCurrentMap = static_cast<Map*>(NULL);
     }
 
     Verbose::Print(Verbose::VERBOSITY_NORMAL)
         << "Creation of new map with last KF id: " << mnLastInitKFidMap << std::endl;
 
     mpCurrentMap = new Map(mnLastInitKFidMap);
-    mpCurrentMap->SetCurrentMap();
-    mspMaps.insert(mpCurrentMap);
-}
-
-void Atlas::ChangeMap(Map* pMap)
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Change to map with id: " << pMap->GetId() << std::endl;
-    if (mpCurrentMap)
-    {
-        mpCurrentMap->SetStoredMap();
-    }
-
-    mpCurrentMap = pMap;
     mpCurrentMap->SetCurrentMap();
 }
 
@@ -210,24 +185,6 @@ std::vector<MapPoint*> Atlas::GetReferenceMapPoints()
     return mpCurrentMap->GetReferenceMapPoints();
 }
 
-std::vector<Map*> Atlas::GetAllMaps()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    struct compFunctor
-    {
-        inline bool operator()(Map* elem1, Map* elem2) { return elem1->GetId() < elem2->GetId(); }
-    };
-    std::vector<Map*> vMaps(mspMaps.begin(), mspMaps.end());
-    sort(vMaps.begin(), vMaps.end(), compFunctor());
-    return vMaps;
-}
-
-int Atlas::CountMaps()
-{
-    std::unique_lock<std::mutex> lock(mMutexAtlas);
-    return mspMaps.size();
-}
-
 void Atlas::clearMap()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
@@ -237,13 +194,11 @@ void Atlas::clearMap()
 void Atlas::clearAtlas()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
-    /*for(std::set<Map*>::iterator it=mspMaps.begin(), send=mspMaps.end(); it!=send; it++)
+    if (mpCurrentMap)
     {
-        (*it)->clear();
-        delete *it;
-    }*/
-    mspMaps.clear();
-    mpCurrentMap = static_cast<Map*>(NULL);
+        delete mpCurrentMap;
+        mpCurrentMap = static_cast<Map*>(NULL);
+    }
     mnLastInitKFidMap = 0;
 }
 
@@ -254,53 +209,19 @@ Map* Atlas::GetCurrentMap()
     {
         CreateNewMap();
     }
-    while (mpCurrentMap->IsBad())
-    {
-        usleep(3000);
-    }
     return mpCurrentMap;
-}
-
-void Atlas::SetMapBad(Map* pMap)
-{
-    mspMaps.erase(pMap);
-    pMap->SetBad();
-
-    mspBadMaps.insert(pMap);
-}
-
-void Atlas::RemoveBadMaps()
-{
-    /*for(Map* pMap : mspBadMaps)
-    {
-        delete pMap;
-        pMap = static_cast<Map*>(NULL);
-    }*/
-    mspBadMaps.clear();
 }
 
 long unsigned int Atlas::GetNumLivedKF()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
-    long unsigned int num = 0;
-    for (Map* pMap_i : mspMaps)
-    {
-        num += pMap_i->GetAllKeyFrames().size();
-    }
-
-    return num;
+    return mpCurrentMap ? mpCurrentMap->GetAllKeyFrames().size() : 0;
 }
 
 long unsigned int Atlas::GetNumLivedMP()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
-    long unsigned int num = 0;
-    for (Map* pMap_i : mspMaps)
-    {
-        num += pMap_i->GetAllMapPoints().size();
-    }
-
-    return num;
+    return mpCurrentMap ? mpCurrentMap->GetAllMapPoints().size() : 0;
 }
 
 }  //namespace ORB_SLAM3

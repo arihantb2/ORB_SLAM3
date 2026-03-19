@@ -219,84 +219,9 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
                 glVertex3f(Owp(0), Owp(1), Owp(2));
             }
 
-            // Loops
-            std::set<KeyFrame*> sLoopKFs = vpKFs[i]->GetLoopEdges();
-            for (std::set<KeyFrame*>::iterator sit = sLoopKFs.begin(), send = sLoopKFs.end(); sit != send; sit++)
-            {
-                if ((*sit)->mnId < vpKFs[i]->mnId)
-                {
-                    continue;
-                }
-                Eigen::Vector3f Owl = (*sit)->GetCameraCenter();
-                glVertex3f(Ow(0), Ow(1), Ow(2));
-                glVertex3f(Owl(0), Owl(1), Owl(2));
-            }
         }
 
         glEnd();
-    }
-
-    std::vector<Map*> vpMaps = mpAtlas->GetAllMaps();
-
-    if (bDrawKF)
-    {
-        for (Map* pMap : vpMaps)
-        {
-            if (pMap == pActiveMap)
-            {
-                continue;
-            }
-            std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
-
-            for (size_t i = 0; i < vpKFs.size(); i++)
-            {
-                KeyFrame* pKF = vpKFs[i];
-                Eigen::Matrix4f Twc = pKF->GetPoseInverse().matrix();
-                unsigned int index_color = pKF->mnOriginMapId;
-
-                glPushMatrix();
-
-                glMultMatrixf((GLfloat*)Twc.data());
-
-                if (!vpKFs[i]->GetParent())  // It is the first KF in the map
-                {
-                    glLineWidth(mKeyFrameLineWidth * 5);
-                    glColor3f(1.0f, 0.0f, 0.0f);
-                    glBegin(GL_LINES);
-                }
-                else
-                {
-                    glLineWidth(mKeyFrameLineWidth);
-                    glColor3f(mfFrameColors[index_color][0], mfFrameColors[index_color][1],
-                              mfFrameColors[index_color][2]);
-                    glBegin(GL_LINES);
-                }
-
-                glVertex3f(0, 0, 0);
-                glVertex3f(w, h, z);
-                glVertex3f(0, 0, 0);
-                glVertex3f(w, -h, z);
-                glVertex3f(0, 0, 0);
-                glVertex3f(-w, -h, z);
-                glVertex3f(0, 0, 0);
-                glVertex3f(-w, h, z);
-
-                glVertex3f(w, h, z);
-                glVertex3f(w, -h, z);
-
-                glVertex3f(-w, h, z);
-                glVertex3f(-w, -h, z);
-
-                glVertex3f(-w, h, z);
-                glVertex3f(w, h, z);
-
-                glVertex3f(-w, -h, z);
-                glVertex3f(w, -h, z);
-                glEnd();
-
-                glPopMatrix();
-            }
-        }
     }
 }
 

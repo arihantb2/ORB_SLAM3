@@ -21,8 +21,6 @@
 #include "Atlas.h"
 #include "GeometricTools.h"
 #include "KeyFrame.h"
-#include "KeyFrameDatabase.h"
-#include "LoopClosing.h"
 #include "Map.h"
 #include "MapPoint.h"
 #include "ORBmatcher.h"
@@ -94,11 +92,6 @@ void LocalMapping::loadFromSettings(Settings* settings)
     mKeyFrameCullingMinObsInOthers = settings->localMappingKeyFrameCullingMinObsInOthers();
     mKeyFrameCullingMaxKeyframesToCheck = settings->localMappingKeyFrameCullingMaxKeyframesToCheck();
     mKeyFrameCullingEarlyExitAfterAbort = settings->localMappingKeyFrameCullingEarlyExitAfterAbort();
-}
-
-void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
-{
-    mpLoopCloser = pLoopCloser;
 }
 
 void LocalMapping::SetTracker(Tracking* pTracker)
@@ -192,8 +185,6 @@ bool LocalMapping::RunLoop()
             // Check redundant local Keyframes
             KeyFrameCulling();
         }
-
-        mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
         const auto end_time = std::chrono::steady_clock::now();
         const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
