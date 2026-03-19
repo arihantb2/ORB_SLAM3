@@ -99,12 +99,20 @@ public:
 
     float depthMapFactor() { return depthMapFactor_; }
 
+    std::string featureExtractorType() { return featureExtractorType_; }
     int nFeatures() { return nFeatures_; }
     int nInitFeatures() { return nInitFeatures_; }
     int nLevels() { return nLevels_; }
+    float scaleFactor() { return scaleFactor_; }
+    // ORB-specific
     float initThFAST() { return initThFAST_; }
     float minThFAST() { return minThFAST_; }
-    float scaleFactor() { return scaleFactor_; }
+    int orbScoreType() { return orbScoreType_; }  // cv::ORB::HARRIS_SCORE or cv::ORB::FAST_SCORE
+    // SIFT-specific
+    int siftNOctaveLayers() { return siftNOctaveLayers_; }
+    double siftContrastThreshold() { return siftContrastThreshold_; }
+    double siftEdgeThreshold() { return siftEdgeThreshold_; }
+    double siftSigma() { return siftSigma_; }
 
     float keyFrameSize() { return keyFrameSize_; }
     float keyFrameLineWidth() { return keyFrameLineWidth_; }
@@ -215,7 +223,9 @@ private:
         }
     }
 
+    void readGridORB(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
+    void readSIFT(cv::FileStorage& fSettings);
     void readViewer(cv::FileStorage& fSettings);
     void readOtherParameters(cv::FileStorage& fSettings);
 
@@ -252,13 +262,21 @@ private:
     float depthMapFactor_;
 
     /*
-         * ORB stuff
+         * Feature extractor stuff (shared)
          */
+    std::string featureExtractorType_;
     int nFeatures_;
     int nInitFeatures_;
     float scaleFactor_;
     int nLevels_;
+    // ORB-specific
     int initThFAST_, minThFAST_;
+    int orbScoreType_;  // cv::ORB::HARRIS_SCORE or cv::ORB::FAST_SCORE (VanillaORB only)
+    // SIFT-specific
+    int siftNOctaveLayers_;
+    double siftContrastThreshold_;
+    double siftEdgeThreshold_;
+    double siftSigma_;
 
     /*
          * Viewer stuff

@@ -1,18 +1,20 @@
 %YAML:1.0
 
-# Algorithm config for monocular SIFT-based ORB-SLAM3.
+# Algorithm config for monocular VanillaORB-based ORB-SLAM3.
 # Camera calibration is loaded separately (camera_calib_mono.yaml).
 #
-# Key differences from mono.yaml (ORB):
-#   - SIFTextractor replaces ORBextractor
-#   - scaleFactor is fixed at 2.0 (SIFT's native octave step)
-#   - Descriptors are 128-dimensional float vectors; use L2 distance matching
-#   - Initialization and tracking thresholds relaxed to account for richer
-#     descriptors (lower NNRatio is appropriate for L2 / float descriptors)
+# Selects VanillaORBFeatureExtractor: cv::ORB per pyramid level with
+# quadtree spatial distribution. Simpler than GridORB (no dual FAST
+# threshold); suitable as a baseline or when custom ORB tuning is not needed.
+#
+# Available FeatureExtractor.type values:
+#   "GridORB"  — custom FAST dual-threshold + quadtree (default, best accuracy)
+#   "ORB"      — this file: cv::ORB + quadtree
+#   "SIFT"     — see mono_sift.yaml
 
 File.version: "1.0"
 
-FeatureExtractor.type: "SIFT"
+FeatureExtractor.type: "ORB"
 
 # Camera frames per second
 Camera.fps: 2
@@ -21,78 +23,60 @@ Camera.fps: 2
 Camera.RGB: 1
 
 #--------------------------------------------------------------------------------------------
-# SIFT Feature Extractor Parameters
+# ORB Feature Extractor Parameters
+# minThFAST is accepted but unused — VanillaORB uses a single FAST threshold (iniThFAST).
 #--------------------------------------------------------------------------------------------
 
 # Total desired keypoints across all pyramid levels
-FeatureExtractor.SIFT.nFeatures: 2000
+FeatureExtractor.ORB.nFeatures: 2000
 
-# Number of pyramid levels.
-# Each level downscales by scaleFactor=2.0 (SIFT's native octave step).
-# 4 levels covers the same spatial range as ORB's 8 levels at scaleFactor=1.2.
-FeatureExtractor.SIFT.nLevels: 4
+# Initial keypoints for monocular initializer (defaults to 2.5x nFeatures if omitted)
+FeatureExtractor.ORB.nInitFeatures: 5000
 
-# Number of SIFT sub-octave layers per octave (DoG scale-space layers).
-# Higher values give finer scale resolution; 3 is the SIFT default.
-FeatureExtractor.SIFT.nOctaveLayers: 3
+# Scale factor between pyramid levels
+FeatureExtractor.ORB.scaleFactor: 1.2
 
-# Contrast threshold for DoG keypoint rejection.
-# Lower than SIFT default (0.04) to produce more candidates for distributeOctTree.
-# Increase toward 0.04-0.06 to reduce total detections in high-texture scenes.
-FeatureExtractor.SIFT.contrastThreshold: 0.03
+# Number of pyramid levels
+FeatureExtractor.ORB.nLevels: 8
 
-# Edge response threshold (principal-curvature ratio).
-# Keypoints with curvature ratio above this are rejected as edge responses.
-# Range: 5 (aggressive) to 20 (permissive). SIFT default is 10.
-FeatureExtractor.SIFT.edgeThreshold: 10.0
+# FAST corner detection threshold
+FeatureExtractor.ORB.iniThFAST: 15
 
-# Gaussian sigma applied to the base (level-0) image before building the
-# scale space. SIFT default is 1.6.  Lower values preserve high-frequency
-# detail; higher values pre-smooth noisy images.
-FeatureExtractor.SIFT.sigma: 1.6
+# Keypoint ranking metric after FAST detection.
+# "HARRIS" (default) — re-ranks by Harris corner response; more stable keypoints
+# "FAST"             — ranks by raw FAST response; slightly faster, less stable
+FeatureExtractor.ORB.scoreType: "FAST"
 
 #--------------------------------------------------------------------------------------------
 # Monocular Initialization Parameters
 #--------------------------------------------------------------------------------------------
 
-# Larger search window appropriate for SIFT's richer scale-space coverage
 MonocularInit.SearchWindowSize: 300
-
-# SIFT keypoints are more spatially distinct; fewer needed for init
-MonocularInit.MinKeypoints: 80
-
-# Strict NNRatio for L2 float descriptors (0.7–0.8 is standard for SIFT)
-MonocularInit.NNRatio: 0.75
-
-# Minimum matches to proceed with initialization
-MonocularInit.MinMatches: 80
+MonocularInit.MinKeypoints: 100
+MonocularInit.NNRatio: 0.9
+MonocularInit.MinMatches: 100
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters
 #--------------------------------------------------------------------------------------------
 
-# Reference keyframe tracking
 Tracking.ReferenceKeyframe.NNRatio: 0.7
 Tracking.ReferenceKeyframe.MinBoWMatches: 15
 Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
 
-# Motion model tracking
-Tracking.MotionModel.NNRatio: 0.85
+Tracking.MotionModel.NNRatio: 0.9
 Tracking.MotionModel.ProjectionSearchThMono: 30
 Tracking.MotionModel.MinInitialMatches: 20
 Tracking.MotionModel.RetryProjectionSearchThMono: 60
 Tracking.MotionModel.MinRetryMatches: 20
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
-# Local map tracking
 Tracking.LocalMap.GenericMinInliers: 10
 Tracking.LocalMap.VisualMinInliers: 30
 
-# New keyframe decision
 Tracking.NewKF.RefRatioMono: 0.9
 Tracking.NewKF.MinInliers: 15
 
-# Min KFs in map before LOST triggers a map reset
 Tracking.LostResetMinKFs: 999999
 
 #--------------------------------------------------------------------------------------------

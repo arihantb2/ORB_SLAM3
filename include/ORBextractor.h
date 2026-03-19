@@ -4,4 +4,4 @@
  */
 #pragma once
 
-#include <feature_extractor/ORBFeatureExtractor.h>
+#include <feature_extractor/GridBasedORBFeatureExtractor.h>

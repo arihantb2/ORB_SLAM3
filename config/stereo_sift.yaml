@@ -1,14 +1,12 @@
 %YAML:1.0
 
-# Algorithm config for monocular SIFT-based ORB-SLAM3.
-# Camera calibration is loaded separately (camera_calib_mono.yaml).
+# Algorithm config for stereo SIFT-based ORB-SLAM3.
+# Camera calibration is loaded separately (camera_calib_stereo.yaml).
 #
-# Key differences from mono.yaml (ORB):
-#   - SIFTextractor replaces ORBextractor
+# Key differences from stereo.yaml (GridORB):
 #   - scaleFactor is fixed at 2.0 (SIFT's native octave step)
 #   - Descriptors are 128-dimensional float vectors; use L2 distance matching
-#   - Initialization and tracking thresholds relaxed to account for richer
-#     descriptors (lower NNRatio is appropriate for L2 / float descriptors)
+#   - NNRatio values relaxed relative to ORB configs (appropriate for L2/float)
 
 File.version: "1.0"
 
@@ -27,72 +25,49 @@ Camera.RGB: 1
 # Total desired keypoints across all pyramid levels
 FeatureExtractor.SIFT.nFeatures: 2000
 
-# Number of pyramid levels.
-# Each level downscales by scaleFactor=2.0 (SIFT's native octave step).
-# 4 levels covers the same spatial range as ORB's 8 levels at scaleFactor=1.2.
+# Number of pyramid levels (each level = 1 SIFT octave, 2x downscale)
 FeatureExtractor.SIFT.nLevels: 4
 
-# Number of SIFT sub-octave layers per octave (DoG scale-space layers).
-# Higher values give finer scale resolution; 3 is the SIFT default.
+# SIFT sub-octave (DoG) layers per octave
 FeatureExtractor.SIFT.nOctaveLayers: 3
 
-# Contrast threshold for DoG keypoint rejection.
-# Lower than SIFT default (0.04) to produce more candidates for distributeOctTree.
-# Increase toward 0.04-0.06 to reduce total detections in high-texture scenes.
+# DoG contrast threshold — lower produces more candidates for distributeOctTree
 FeatureExtractor.SIFT.contrastThreshold: 0.03
 
-# Edge response threshold (principal-curvature ratio).
-# Keypoints with curvature ratio above this are rejected as edge responses.
-# Range: 5 (aggressive) to 20 (permissive). SIFT default is 10.
+# Edge response rejection threshold (principal-curvature ratio)
 FeatureExtractor.SIFT.edgeThreshold: 10.0
 
-# Gaussian sigma applied to the base (level-0) image before building the
-# scale space. SIFT default is 1.6.  Lower values preserve high-frequency
-# detail; higher values pre-smooth noisy images.
+# Gaussian sigma applied to level-0 image before building scale space
 FeatureExtractor.SIFT.sigma: 1.6
 
 #--------------------------------------------------------------------------------------------
-# Monocular Initialization Parameters
+# Tracking Parameters (stereo)
 #--------------------------------------------------------------------------------------------
 
-# Larger search window appropriate for SIFT's richer scale-space coverage
-MonocularInit.SearchWindowSize: 300
+Tracking.StereoInit.MinKeypoints: 400
 
-# SIFT keypoints are more spatially distinct; fewer needed for init
-MonocularInit.MinKeypoints: 80
-
-# Strict NNRatio for L2 float descriptors (0.7–0.8 is standard for SIFT)
-MonocularInit.NNRatio: 0.75
-
-# Minimum matches to proceed with initialization
-MonocularInit.MinMatches: 80
-
-#--------------------------------------------------------------------------------------------
-# Tracking Parameters
-#--------------------------------------------------------------------------------------------
-
-# Reference keyframe tracking
 Tracking.ReferenceKeyframe.NNRatio: 0.7
 Tracking.ReferenceKeyframe.MinBoWMatches: 15
 Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
 
-# Motion model tracking
 Tracking.MotionModel.NNRatio: 0.85
-Tracking.MotionModel.ProjectionSearchThMono: 30
+Tracking.MotionModel.ProjectionSearchThStereo: 7
 Tracking.MotionModel.MinInitialMatches: 20
-Tracking.MotionModel.RetryProjectionSearchThMono: 60
+Tracking.MotionModel.RetryProjectionSearchThStereo: 14
 Tracking.MotionModel.MinRetryMatches: 20
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
-# Local map tracking
 Tracking.LocalMap.GenericMinInliers: 10
 Tracking.LocalMap.VisualMinInliers: 30
 
-# New keyframe decision
-Tracking.NewKF.RefRatioMono: 0.9
+Tracking.NewKF.MinTrackedClosePoints: 100
+Tracking.NewKF.MinNonTrackedClosePoints: 70
+Tracking.NewKF.RefRatioStereoFewKFs: 0.4
+Tracking.NewKF.RefRatioStereo: 0.75
+Tracking.NewKF.WeakTrackingRatio: 0.25
 Tracking.NewKF.MinInliers: 15
+Tracking.NewKF.MaxKFsInQueue: 3
 
-# Min KFs in map before LOST triggers a map reset
 Tracking.LostResetMinKFs: 999999
 
 #--------------------------------------------------------------------------------------------
@@ -103,7 +78,7 @@ LocalMapping.OptimizeEveryTSeconds: 5.0
 LocalMapping.MinKeyframesForLBA: 2
 
 Optimizer.LocalBundleAdjustment.PosePriors: 0
-Optimizer.LocalBundleAdjustment.ScalePriors: 1
+Optimizer.LocalBundleAdjustment.ScalePriors: 0
 Optimizer.LocalBundleAdjustment.OdometryPriors: 0
 
 LocalMapping.MapPointCulling.MinObservationsMono: 2
@@ -121,7 +96,7 @@ LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor: 1.5
 
 LocalMapping.SearchInNeighbors.NumNeighborKFs: 30
 LocalMapping.SearchInNeighbors.NumSecondNeighbors: 20
-LocalMapping.SearchInNeighbors.NumTemporalNeighbors: 20
+LocalMapping.SearchInNeighbors.MaxTemporalNeighbors: 20
 
 LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
 LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3

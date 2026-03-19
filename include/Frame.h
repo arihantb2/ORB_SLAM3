@@ -41,7 +41,7 @@ namespace ORB_SLAM3
 class MapPoint;
 class KeyFrame;
 class GeometricCamera;
-class ORBextractor;
+class FeatureExtractor;
 
 class Frame
 {
@@ -50,8 +50,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     ORBVocabulary* mpORBvocabulary;
-    ORBextractor* mpORBextractorLeft;
-    ORBextractor* mpORBextractorRight;
+    FeatureExtractor* mpFeatureExtractorLeft;
+    FeatureExtractor* mpFeatureExtractorRight;
 
     double mTimeStamp;
 
@@ -151,14 +151,14 @@ public:
     // --- Public member functions ---
     Frame();
     Frame(const Frame& frame);
-    Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
-          ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
-          const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = static_cast<Frame*>(NULL));
-    Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
+    Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, FeatureExtractor* extractorLeft,
+          FeatureExtractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
+          const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = nullptr);
+    Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, ORBVocabulary* voc,
           GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth,
-          Frame* pPrevF = static_cast<Frame*>(NULL));
+          Frame* pPrevF = nullptr);
 
-    void ExtractORB(bool left, const cv::Mat& im, const int x0, const int x1);
+    void ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1);
     void ComputeBoW();
 
     void SetPose(const Sophus::SE3<float>& Tcw);

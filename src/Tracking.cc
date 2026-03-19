@@ -27,7 +27,9 @@
 #include "LoopClosing.h"
 #include "MapDrawer.h"
 #include "ORBVocabulary.h"
-#include "ORBextractor.h"
+#include "feature_extractor/GridBasedORBFeatureExtractor.h"
+#include "feature_extractor/VanillaORBFeatureExtractor.h"
+#include "feature_extractor/SIFTFeatureExtractor.h"
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 #include "Settings.h"
@@ -122,23 +124,69 @@ void Tracking::loadFromSettings(Settings* settings)
     mMaxFrames = settings->fps();
     mbRGB = settings->rgb();
 
-    //ORB parameters
-    int nFeatures = settings->nFeatures();
-    int nInitFeatures = settings->nInitFeatures();
-    int nLevels = settings->nLevels();
-    int fIniThFAST = settings->initThFAST();
-    int fMinThFAST = settings->minThFAST();
-    float fScaleFactor = settings->scaleFactor();
+    // Feature extractor instantiation — type selected by FeatureExtractor.type in config
+    const int nFeatures = settings->nFeatures();
+    const int nInitFeatures = settings->nInitFeatures();
+    const int nLevels = settings->nLevels();
 
-    mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+    const std::string extractorType = settings->featureExtractorType();
 
-    if (mSensor == System::STEREO)
+    if (extractorType == "SIFT")
     {
-        mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        const int nOctaveLayers = settings->siftNOctaveLayers();
+        const double contrastTh = settings->siftContrastThreshold();
+        const double edgeTh = settings->siftEdgeThreshold();
+        const double sigma = settings->siftSigma();
+
+        mpFeatureExtractorLeft = new SIFTFeatureExtractor(nFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
+        if (mSensor == System::STEREO)
+        {
+            mpFeatureextractorRight =
+                new SIFTFeatureExtractor(nFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
+        }
+        if (mSensor == System::MONOCULAR)
+        {
+            mpIniFeatureExtractor =
+                new SIFTFeatureExtractor(nInitFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
+        }
     }
-    if (mSensor == System::MONOCULAR)
+    else if (extractorType == "ORB")
     {
-        mpIniORBextractor = new ORBextractor(nInitFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        const float fScaleFactor = settings->scaleFactor();
+        const int fastThreshold = settings->initThFAST();
+        const auto scoreType = static_cast<cv::ORB::ScoreType>(settings->orbScoreType());
+
+        mpFeatureExtractorLeft =
+            new VanillaORBFeatureExtractor(nFeatures, fScaleFactor, nLevels, fastThreshold, scoreType);
+        if (mSensor == System::STEREO)
+        {
+            mpFeatureextractorRight =
+                new VanillaORBFeatureExtractor(nFeatures, fScaleFactor, nLevels, fastThreshold, scoreType);
+        }
+        if (mSensor == System::MONOCULAR)
+        {
+            mpIniFeatureExtractor =
+                new VanillaORBFeatureExtractor(nInitFeatures, fScaleFactor, nLevels, fastThreshold, scoreType);
+        }
+    }
+    else  // "GridORB" (default)
+    {
+        const float fScaleFactor = settings->scaleFactor();
+        const int fIniThFAST = settings->initThFAST();
+        const int fMinThFAST = settings->minThFAST();
+
+        mpFeatureExtractorLeft =
+            new GridBasedORBFeatureExtractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        if (mSensor == System::STEREO)
+        {
+            mpFeatureextractorRight =
+                new GridBasedORBFeatureExtractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        }
+        if (mSensor == System::MONOCULAR)
+        {
+            mpIniFeatureExtractor =
+                new GridBasedORBFeatureExtractor(nInitFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        }
     }
 
     // Monocular initialization thresholds
@@ -217,7 +265,7 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
         << std::endl;
     if (mSensor == System::STEREO)
     {
-        mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpORBextractorLeft, mpORBextractorRight,
+        mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpFeatureExtractorLeft, mpFeatureextractorRight,
                               mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera);
     }
 
@@ -265,12 +313,12 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
         if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
         {
             mCurrentFrame =
-                Frame(image, timestamp, mpIniORBextractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+                Frame(image, timestamp, mpIniFeatureExtractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
         }
         else
         {
             mCurrentFrame =
-                Frame(image, timestamp, mpORBextractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+                Frame(image, timestamp, mpFeatureExtractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
         }
     }
 

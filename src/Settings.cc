@@ -191,8 +191,27 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     bRGB_ = (bool)readParameter<int>(fSettings, "Camera.RGB", found);
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded image info (fps, RGB)" << std::endl;
 
-    readORB(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << std::endl;
+    bool typeFound;
+    featureExtractorType_ = readParameter<std::string>(fSettings, "FeatureExtractor.type", typeFound, false);
+    if (!typeFound)
+    {
+        featureExtractorType_ = "GridORB";
+    }
+    if (featureExtractorType_ == "SIFT")
+    {
+        readSIFT(fSettings);
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded SIFT settings" << std::endl;
+    }
+    else if (featureExtractorType_ == "ORB")
+    {
+        readORB(fSettings);
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << std::endl;
+    }
+    else  // "GridORB" (default)
+    {
+        readGridORB(fSettings);
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded GridORB settings" << std::endl;
+    }
     readViewer(fSettings);
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded viewer settings" << std::endl;
     readOtherParameters(fSettings);
@@ -207,20 +226,92 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "----------------------------------" << std::endl;
 }
 
-void Settings::readORB(cv::FileStorage& fSettings)
+void Settings::readGridORB(cv::FileStorage& fSettings)
 {
     bool found;
 
-    nFeatures_ = readParameter<int>(fSettings, "ORBextractor.nFeatures", found);
-    nInitFeatures_ = readParameter<int>(fSettings, "ORBExtractor.nInitFeatures", found, false);
+    nFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.nFeatures", found);
+    nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.nInitFeatures", found, false);
     if (!found)
     {
         nInitFeatures_ = static_cast<int>(2.5f * nFeatures_);
     }
-    scaleFactor_ = readParameter<float>(fSettings, "ORBextractor.scaleFactor", found);
-    nLevels_ = readParameter<int>(fSettings, "ORBextractor.nLevels", found);
-    initThFAST_ = readParameter<int>(fSettings, "ORBextractor.iniThFAST", found);
-    minThFAST_ = readParameter<int>(fSettings, "ORBextractor.minThFAST", found);
+    scaleFactor_ = readParameter<float>(fSettings, "FeatureExtractor.GridORB.scaleFactor", found);
+    nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.nLevels", found);
+    initThFAST_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.iniThFAST", found);
+    minThFAST_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.minThFAST", found);
+}
+
+void Settings::readORB(cv::FileStorage& fSettings)
+{
+    bool found;
+
+    nFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.ORB.nFeatures", found);
+    nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.ORB.nInitFeatures", found, false);
+    if (!found)
+    {
+        nInitFeatures_ = static_cast<int>(2.5f * nFeatures_);
+    }
+    scaleFactor_ = readParameter<float>(fSettings, "FeatureExtractor.ORB.scaleFactor", found);
+    nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.ORB.nLevels", found);
+    initThFAST_ = readParameter<int>(fSettings, "FeatureExtractor.ORB.iniThFAST", found);
+    minThFAST_ = 0;  // unused by VanillaORB — GridORB uses FeatureExtractor.GridORB.minThFAST
+
+    const std::string scoreTypeStr =
+        readParameter<std::string>(fSettings, "FeatureExtractor.ORB.scoreType", found, false);
+    if (!found || scoreTypeStr == "HARRIS")
+    {
+        orbScoreType_ = 0;  // cv::ORB::HARRIS_SCORE
+    }
+    else if (scoreTypeStr == "FAST")
+    {
+        orbScoreType_ = 1;  // cv::ORB::FAST_SCORE
+    }
+    else
+    {
+        throw std::runtime_error("FeatureExtractor.ORB.scoreType must be \"HARRIS\" or \"FAST\"");
+    }
+}
+
+void Settings::readSIFT(cv::FileStorage& fSettings)
+{
+    bool found;
+
+    nFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nFeatures", found);
+    nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nInitFeatures", found, false);
+    if (!found)
+    {
+        nInitFeatures_ = nFeatures_;
+    }
+    nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nLevels", found, false);
+    if (!found)
+    {
+        nLevels_ = 4;
+    }
+    scaleFactor_ = 2.0f;  // SIFT hardcodes 2x octave downscaling
+
+    siftNOctaveLayers_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nOctaveLayers", found, false);
+    if (!found)
+    {
+        siftNOctaveLayers_ = 3;
+    }
+    siftContrastThreshold_ =
+        static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.contrastThreshold", found, false));
+    if (!found)
+    {
+        siftContrastThreshold_ = 0.03;
+    }
+    siftEdgeThreshold_ =
+        static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.edgeThreshold", found, false));
+    if (!found)
+    {
+        siftEdgeThreshold_ = 10.0;
+    }
+    siftSigma_ = static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.sigma", found, false));
+    if (!found)
+    {
+        siftSigma_ = 1.6;
+    }
 }
 
 void Settings::readViewer(cv::FileStorage& fSettings)

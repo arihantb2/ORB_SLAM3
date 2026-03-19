@@ -44,7 +44,7 @@ class KeyFrameDatabase;
 class Map;
 class MapDrawer;
 class MapPoint;
-class ORBextractor;
+class FeatureExtractor;
 class GeometricCamera;
 
 // ---------------------------------------------------------------------------
@@ -390,8 +390,8 @@ protected:
     LoopClosing* mpLoopClosing;
 
     // ORB
-    ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
-    ORBextractor* mpIniORBextractor;
+    FeatureExtractor *mpFeatureExtractorLeft, *mpFeatureextractorRight;
+    FeatureExtractor* mpIniFeatureExtractor;
 
     // BoW
     ORBVocabulary* mpORBVocabulary;

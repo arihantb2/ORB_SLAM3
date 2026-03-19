@@ -23,7 +23,7 @@
 #include "GTSAMTypes.h"
 #include "KeyFrame.h"
 #include "MapPoint.h"
-#include "ORBextractor.h"
+#include "feature_extractor/FeatureExtractor.h"
 #include "ORBmatcher.h"
 
 #include <CameraModels/Pinhole.h>
@@ -55,8 +55,8 @@ Frame::Frame()
 //Copy Constructor
 Frame::Frame(const Frame& frame)
     : mpORBvocabulary(frame.mpORBvocabulary),
-      mpORBextractorLeft(frame.mpORBextractorLeft),
-      mpORBextractorRight(frame.mpORBextractorRight),
+      mpFeatureExtractorLeft(frame.mpFeatureExtractorLeft),
+      mpFeatureExtractorRight(frame.mpFeatureExtractorRight),
       mTimeStamp(frame.mTimeStamp),
       mK(frame.mK.clone()),
       mK_(Converter::toMatrix3f(frame.mK)),
@@ -126,12 +126,12 @@ Frame::Frame(const Frame& frame)
     mDebugFrame2LocalMapMatches = frame.mDebugFrame2LocalMapMatches;
 }
 
-Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, ORBextractor* extractorLeft,
-             ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
+Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, FeatureExtractor* extractorLeft,
+             FeatureExtractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
              const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF)
     : mpORBvocabulary(voc),
-      mpORBextractorLeft(extractorLeft),
-      mpORBextractorRight(extractorRight),
+      mpFeatureExtractorLeft(extractorLeft),
+      mpFeatureExtractorRight(extractorRight),
       mTimeStamp(timeStamp),
       mK(K.clone()),
       mK_(Converter::toMatrix3f(K)),
@@ -149,17 +149,17 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     mnId = nNextId++;
 
     // Scale Level Info
-    mnScaleLevels = mpORBextractorLeft->GetLevels();
-    mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    mnScaleLevels = mpFeatureExtractorLeft->GetLevels();
+    mfScaleFactor = mpFeatureExtractorLeft->GetScaleFactor();
     mfLogScaleFactor = log(mfScaleFactor);
-    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
-    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
-    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
-    mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+    mvScaleFactors = mpFeatureExtractorLeft->GetScaleFactors();
+    mvInvScaleFactors = mpFeatureExtractorLeft->GetInverseScaleFactors();
+    mvLevelSigma2 = mpFeatureExtractorLeft->GetScaleSigmaSquares();
+    mvInvLevelSigma2 = mpFeatureExtractorLeft->GetInverseScaleSigmaSquares();
 
-    // ORB extraction
-    std::thread threadLeft(&Frame::ExtractORB, this, true, imLeft, 0, 0);
-    std::thread threadRight(&Frame::ExtractORB, this, false, imRight, 0, 0);
+    // Feature extraction
+    std::thread threadLeft(&Frame::ExtractFeatures, this, true, imLeft, 0, 0);
+    std::thread threadRight(&Frame::ExtractFeatures, this, false, imRight, 0, 0);
     threadLeft.join();
     threadRight.join();
 
@@ -230,11 +230,11 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extractor, ORBVocabulary* voc,
+Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, ORBVocabulary* voc,
              GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF)
     : mpORBvocabulary(voc),
-      mpORBextractorLeft(extractor),
-      mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
+      mpFeatureExtractorLeft(extractor),
+      mpFeatureExtractorRight(nullptr),
       mTimeStamp(timeStamp),
       mK(static_cast<Pinhole*>(pCamera)->toK()),
       mK_(static_cast<Pinhole*>(pCamera)->toK_()),
@@ -252,16 +252,19 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, ORBextractor* extra
     mnId = nNextId++;
 
     // Scale Level Info
-    mnScaleLevels = mpORBextractorLeft->GetLevels();
-    mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+    mnScaleLevels = mpFeatureExtractorLeft->GetLevels();
+    mfScaleFactor = mpFeatureExtractorLeft->GetScaleFactor();
     mfLogScaleFactor = log(mfScaleFactor);
-    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
-    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
-    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
-    mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+    mvScaleFactors = mpFeatureExtractorLeft->GetScaleFactors();
+    mvInvScaleFactors = mpFeatureExtractorLeft->GetInverseScaleFactors();
+    mvLevelSigma2 = mpFeatureExtractorLeft->GetScaleSigmaSquares();
+    mvInvLevelSigma2 = mpFeatureExtractorLeft->GetInverseScaleSigmaSquares();
 
-    // ORB extraction
-    ExtractORB(true, imGray, 0, 1000);
+    // Feature Extraction
+    ExtractFeatures(true, imGray, 0, 1000);
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mnId << "] MONOCULAR_FRAME: num_features=" << mvKeys.size() << std::endl;
 
     N = mvKeys.size();
 
@@ -351,16 +354,16 @@ void Frame::AssignFeaturesToGrid()
     }
 }
 
-void Frame::ExtractORB(bool left, const cv::Mat& im, const int x0, const int x1)
+void Frame::ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1)
 {
     std::vector<int> vLapping = {x0, x1};
     if (left)
     {
-        (*mpORBextractorLeft)(im, cv::Mat(), mvKeys, mDescriptors, vLapping);
+        (*mpFeatureExtractorLeft)(im, cv::Mat(), mvKeys, mDescriptors, vLapping);
     }
     else
     {
-        (*mpORBextractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight, vLapping);
+        (*mpFeatureExtractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight, vLapping);
     }
 }
 
@@ -717,7 +720,7 @@ void Frame::ComputeStereoMatches()
 
     const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
-    const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
+    const int nRows = mpFeatureExtractorLeft->mvImagePyramid[0].rows;
 
     //Assign keypoints to row table
     std::vector<std::vector<size_t>> vRowIndices(nRows, std::vector<size_t>());
@@ -817,7 +820,7 @@ void Frame::ComputeStereoMatches()
 
             // sliding window search
             const int w = 5;
-            cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave]
+            cv::Mat IL = mpFeatureExtractorLeft->mvImagePyramid[kpL.octave]
                              .rowRange(scaledvL - w, scaledvL + w + 1)
                              .colRange(scaleduL - w, scaleduL + w + 1);
 
@@ -829,14 +832,14 @@ void Frame::ComputeStereoMatches()
 
             const float iniu = scaleduR0 + L - w;
             const float endu = scaleduR0 + L + w + 1;
-            if (iniu < 0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+            if (iniu < 0 || endu >= mpFeatureExtractorRight->mvImagePyramid[kpL.octave].cols)
             {
                 continue;
             }
 
             for (int incR = -L; incR <= +L; incR++)
             {
-                cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave]
+                cv::Mat IR = mpFeatureExtractorRight->mvImagePyramid[kpL.octave]
                                  .rowRange(scaledvL - w, scaledvL + w + 1)
                                  .colRange(scaleduR0 + incR - w, scaleduR0 + incR + w + 1);
 

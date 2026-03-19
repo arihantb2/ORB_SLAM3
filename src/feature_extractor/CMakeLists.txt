@@ -7,7 +7,8 @@
 add_library(feature_extractor SHARED
     FeatureGrid.cc
     FeatureExtractor.cc
-    ORBFeatureExtractor.cc
+    GridBasedORBFeatureExtractor.cc
+    VanillaORBFeatureExtractor.cc
     SIFTFeatureExtractor.cc
 )
 
