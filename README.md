@@ -3,9 +3,13 @@
 A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) packaged as a CMake library for use in a ROS 2 workspace.
 
 **Removed from upstream:**
+
 - RGB-D sensor support
 - Fisheye / KannalaBrandt8 lens model
 - `RECENTLY_LOST` relocalization — tracking loss resets the map immediately
+- Loop closing / loop closure
+- Map merging
+- Multi-map Atlas (system always maintains exactly one map)
 - Dataset example executables (`Examples/`)
 - Python bindings
 
@@ -25,6 +29,7 @@ A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) pa
 ## Building
 
 **Standalone:**
+
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -32,11 +37,13 @@ make -j$(nproc)
 ```
 
 **ROS 2 / colcon:**
+
 ```bash
 colcon build --packages-select orbslam3
 ```
 
 Downstream packages:
+
 ```cmake
 find_package(ORB_SLAM3 REQUIRED)
 target_link_libraries(my_target ORB_SLAM3::ORB_SLAM3)

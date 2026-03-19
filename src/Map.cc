@@ -19,7 +19,6 @@
 #include "Map.h"
 
 #include "KeyFrame.h"
-#include "KeyFrameDatabase.h"
 #include "MapPoint.h"
 #include "ORBVocabulary.h"
 

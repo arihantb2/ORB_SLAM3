@@ -1,24 +1,29 @@
-# End-to-End SIFT Support Design (ORB-SLAM3)
+# SIFT Support Design (Tracking + Mapping, no LC/Reloc/Merge)
 
 ## 1. Summary
-Your repository already contains an `SIFTFeatureExtractor` that produces `CV_32F` SIFT descriptors and is wired into `Tracking` via `FeatureExtractor.type: "SIFT"`. The missing pieces for “end-to-end” operation (tracking + mapping + relocalization + loop closure) are mostly backend assumptions that are currently hard-coded for ORB-style *binary* descriptors and *ORB/binary* BoW vocabularies.
+Your repository already contains an `SIFTFeatureExtractor` that produces `CV_32F` SIFT descriptors and is wired into `Tracking` via `FeatureExtractor.type: "SIFT"`.
+
+In your current architecture, you have removed **loop closure**, **relocalization**, and **map merge**. That simplifies what “end-to-end” means: **tracking + local mapping** must work with SIFT without any binary-descriptor assumptions.
+
+Decision (per user):
+- When using SIFT features, **disable BoW-based reference keyframe tracking** (`TrackReferenceKeyFrameWithBoW()` / `ORBmatcher::SearchByBoW()`).
 
 This document analyzes the current call graph where SIFT fails, then proposes a phased implementation plan:
 
 1. **Phase A (required):** Make descriptor distance + thresholds work for both binary and float descriptors by introducing a **descriptor metric strategy** and replacing Hamming/binary thresholds in geometric matching code.
-2. **Phase B (required for full relocalization/loop closure):** Make place recognition work for SIFT. The simplest safe approach for a first milestone is to **bypass BoW for SIFT** and drive relocalization/loop candidate selection via direct descriptor matching + existing geometric validation.
+2. **Phase B (required):** Remove / gate the remaining **BoW-dependent calls** in the tracking/mapping pipeline that are no longer desired in SIFT mode.
 
-The design targets minimal disruption: geometry code remains the same; only descriptor handling and BoW gating change.
+The design targets minimal disruption: geometry code remains the same; only descriptor handling, thresholds, and BoW-dependent paths change.
 
 ## 2. Scope
 In scope:
 - Ensure `FeatureExtractor.type: "SIFT"` runs through the full ORB-SLAM3 pipeline.
-- Ensure pose estimation can recover from tracking loss (relocalization).
-- Ensure loop closure logic can find candidates and validate them geometrically.
+- Ensure pose tracking and local mapping work without BoW assumptions.
+  - Specifically: reference-keyframe tracking must work **without** BoW in SIFT mode.
 
 Out of scope for this design doc:
-- Implementing a float-descriptor BoW vocabulary backend (e.g., DBoW3-like) from scratch.
-- Achieving ORB-equivalent loop closure performance immediately; performance will require threshold calibration.
+- Loop closure / relocalization / merge (these components are removed in this repo).
+- Implementing a float-descriptor vocabulary backend (e.g., DBoW3-like) from scratch.
 
 ## 3. Current State (What Works)
 - `SIFTFeatureExtractor` exists and is already instantiated in `Tracking::loadFromSettings()` when `FeatureExtractor.type == "SIFT"`.
@@ -34,7 +39,7 @@ Relevant files:
 - `src/ORB_SLAM3/src/Tracking.cc` (SIFT instantiation)
 
 ## 4. What Prevents End-to-End SIFT
-SIFT fails end-to-end because several ORB-SLAM3 components assume ORB descriptors:
+SIFT fails end-to-end because several remaining ORB-SLAM3 components assume ORB descriptors:
 
 ### 4.1 Hamming distance is hard-coded
 `ORBmatcher::DescriptorDistance(const cv::Mat&, const cv::Mat&)` implements Hamming distance using popcount on `int32_t` words.
@@ -63,26 +68,28 @@ Examples:
 - MapPoint distinctive descriptor selection uses `ORBmatcher::DescriptorDistance(...)`.
   - `src/ORB_SLAM3/src/MapPoint.cc` (`MapPoint::ComputeDistinctiveDescriptors()`)
 
-### 4.4 BoW/place recognition is binary-orb vocabulary dependent
-The system always loads `ORBVocabulary`, which is defined as:
+### 4.4 BoW is still present in code (but should be gated for SIFT)
+Even though you removed loop closure / relocalization / merge, the code still contains BoW computation and BoW-based matching calls.
+
+The system loads `ORBVocabulary`, which is defined as:
 - `DBoW2::TemplatedVocabulary<DBoW2::FORB::TDescriptor, DBoW2::FORB>`
 
-This is designed for ORB binary descriptors. For SIFT, `Frame::ComputeBoW()` currently still calls `mpORBvocabulary->transform(...)` with SIFT float descriptors.
+This is designed for ORB binary descriptors. For SIFT, `Frame::ComputeBoW()` and `KeyFrame::ComputeBoW()` still call `mpORBvocabulary->transform(...)` with SIFT float descriptors.
 
 In practice, this causes either incorrect quantization or an invalid assumption inside DBoW2’s binary descriptor pipeline.
 
-Also, relocalization explicitly calls `TrackReferenceKeyFrameWithBoW()`:
+Also, reference-keyframe tracking currently calls `TrackReferenceKeyFrameWithBoW()` (BoW-based). This must be disabled/replaced in SIFT mode:
 - `src/ORB_SLAM3/src/Tracking.cc`
 
-Loop closure candidate retrieval depends on BoW:
-- `src/ORB_SLAM3/src/LoopClosing.cc` (functions that call `SearchByBoW()` and use BoW candidate sets)
+Local mapping currently calls `ComputeBoW()` on each new keyframe during `ProcessNewKeyFrame()`. Since BoW is not required in your stripped pipeline, this should be skipped (at least for SIFT mode, and optionally for all modes):
+- `src/ORB_SLAM3/src/LocalMapping.cc`
 
 Relevant files:
 - `src/ORB_SLAM3/include/ORBVocabulary.h`
 - `src/ORB_SLAM3/src/System.cc` (loads ORBVocabulary unconditionally)
 - `src/ORB_SLAM3/src/Frame.cc` (`Frame::ComputeBoW()`)
 - `src/ORB_SLAM3/src/Tracking.cc` (`TrackReferenceKeyFrameWithBoW`)
-- `src/ORB_SLAM3/src/LoopClosing.cc` (BoW-driven candidate selection)
+- `src/ORB_SLAM3/src/LocalMapping.cc` (calls `KeyFrame::ComputeBoW()` during KF insertion)
 - `src/ORB_SLAM3/src/Converter.cc` (`Converter::toDescriptorVector` only slices rows; no dtype conversion)
 
 ## 5. Requirements
@@ -93,8 +100,8 @@ For “end-to-end SIFT” mode, the system must:
    - pose tracking (reference/keyframe matching and motion model projection matching)
    - stereo matching (if stereo mode is used)
    - MapPoint distinctive descriptor selection (used later for matching)
-3. Provide a functioning relocalization strategy when tracking is LOST.
-4. Provide loop closure candidate generation and geometric validation that work with SIFT descriptors.
+3. In SIFT mode, reference-keyframe tracking must **not** depend on BoW (`SearchByBoW`).
+4. Gate BoW computation so SIFT float descriptors are never fed into the binary ORB vocabulary.
 5. Keep existing ORB/GridORB modes behavior unchanged (backward compatibility).
 
 ## 6. Proposed Implementation
@@ -126,38 +133,42 @@ Calibration requirement:
 - L2 thresholds are dataset-dependent. Provide defaults but expect tuning:
   - simplest start: empirical thresholds and/or normalize SIFT descriptors consistently
 
-### 6.2 Phase B (Required for full loop closure + relocalization): BoW bypass for SIFT
-Goal: make place recognition work without float-vocabulary dependencies in the first milestone.
+### 6.2 Phase B (Required): Disable BoW ref-KF tracking for SIFT
+Goal: keep SIFT mode functional without BoW-based reference tracking.
 
 Constraint:
 - Current `ORBVocabulary` and `DBoW2` are wired for binary ORB descriptors.
 - Implementing float vocabulary is a separate backend project.
 
-Recommended first milestone:
+Recommended approach in this repo (SIFT mode):
 - When `FeatureExtractor.type == "SIFT"`:
-  1. **Disable BoW-driven relocalization**
-     - Replace `Tracking::TrackReferenceKeyFrameWithBoW()` with a direct descriptor matching method that:
-       - matches SIFT descriptors between reference KF and current frame using L2 + ratio test
-       - resolves correspondences using MapPoint observations (same geometric optimization logic as today)
-  2. **Disable BoW-driven loop candidate retrieval**
-     - In `LoopClosing`, bypass `DetectCommonRegionsFromBoW()` and instead:
-       - select a candidate set of KeyFrames from a bounded strategy (time window, covisibility neighborhood, and/or all keyframes in map until a limit)
-       - score each candidate by number of successful descriptor matches passing the L2 ratio test
-       - run existing geometric validation (projection / Sim3 estimation) on the top-K candidates
-
-This keeps the robust geometric core intact while removing the only dependency that cannot currently support float descriptors.
+  1. **Replace reference-keyframe tracking that currently uses BoW**
+     - Replace `Tracking::TrackReferenceKeyFrameWithBoW()` with a non-BoW method.
+     - Recommended implementation:
+       - **Projection-only matching (preferred):**
+         - Use `ORBmatcher::SearchByProjection(...)` variants (with L2 metric) to match `mpReferenceKF`’s map points into `mCurrentFrame`.
+         - Continue using the existing pose optimization + outlier rejection logic.
+     - Fallback implementation:
+       - **Direct descriptor matching:**
+         - Run L2 KNN matching between `mCurrentFrame.mDescriptors` and `mpReferenceKF->mDescriptors`, apply ratio test, then map matches to MapPoints via KeyFrame observation lists.
+  2. **Skip BoW computation for SIFT keyframes**
+     - `LocalMapping::ProcessNewKeyFrame()` currently calls `KeyFrame::ComputeBoW()` unconditionally.
+     - In SIFT mode, this should be a no-op (or skipped at the call site).
+  3. **(Optional) Make ORB vocabulary optional**
+     - `System` currently loads `ORBVocabulary` unconditionally.
+     - If BoW is no longer used anywhere in your stripped pipeline, allow constructing `System` without loading a vocabulary file (or accept an empty/unused vocabulary pointer).
 
 Where to implement the gating:
 - `src/ORB_SLAM3/src/Tracking.cc`
-- `src/ORB_SLAM3/src/LoopClosing.cc`
-- `src/ORB_SLAM3/src/System.cc` (optionally create vocabulary lazily or allow dummy vocabulary in SIFT mode)
+- `src/ORB_SLAM3/src/LocalMapping.cc`
+- `src/ORB_SLAM3/src/System.cc` (make vocabulary optional or unused)
 
 ### 6.3 Compatibility guarantees
 - Default metric for ORB mode remains identical to current Hamming + current thresholds.
 - BoW behavior remains unchanged for ORB/GridORB.
 - SIFT mode uses:
   - L2 metric in all descriptor comparisons
-  - direct matching for relocalization and loop candidate selection (BoW bypass)
+  - non-BoW reference-keyframe tracking
 
 ## 7. Concrete Change List (High Level)
 This is intentionally a checklist, not the implementation.
@@ -168,18 +179,16 @@ Phase A:
 3. Update stereo matching and MapPoint distinctive descriptor computation similarly.
 
 Phase B:
-1. Add a “SIFT mode” gate:
-   - when SIFT is active, use direct matching for reference KF relocalization instead of BoW.
-2. Update loop closure:
-   - when SIFT is active, replace BoW candidate search with direct descriptor match scoring + geometric validation.
+1. Replace `Tracking::TrackReferenceKeyFrameWithBoW()` with a non-BoW tracking path in SIFT mode.
+2. Skip `ComputeBoW()` in local mapping for SIFT mode (and optionally stop computing BoW entirely if unused).
+3. (Optional) Make `ORBVocabulary` optional if it is not used by your stripped pipeline.
 
 ## 8. Risks and Tradeoffs
 1. Threshold tuning for L2:
    - If L2 thresholds are too strict, pose estimation will lose matches.
    - If too loose, geometric validation might reject more often, reducing loop closure frequency.
-2. BoW efficiency loss:
-   - Direct matching over many KeyFrames may be slower than BoW gating.
-   - This is acceptable for first end-to-end support but should later be optimized.
+2. Removing BoW coupling:
+   - If `TrackReferenceKeyFrameWithBoW()` is replaced with projection-only matching, behavior may differ from BoW matching and needs threshold calibration.
 3. MapPoint distinctiveness:
    - MapPoint stores a single “best/most representative” descriptor cloned from observed descriptors.
    - The selection logic must use the correct metric to remain meaningful in SIFT mode.
@@ -190,8 +199,6 @@ Phase B:
 - `mono_sift.yaml`
   - initialization succeeds
   - tracking doesn’t crash during normal operation
-  - tracking can recover after forced `LOST` scenarios (relocalization path)
-  - loop closure events occur on repeated trajectories (when loop closure is enabled)
 - `stereo_sift.yaml` (if stereo is used)
   - stereo init succeeds
   - `Frame::ComputeStereoMatches()` produces reasonable depths (no descriptor-distance crash)
@@ -205,13 +212,20 @@ Phase B:
 - Log distance metric type in SIFT mode.
 - Log match counts:
   - best/second best distances for L2 ratio test (stats only, not per-descriptor dumps)
-  - number of relocalization matches before optimization
-  - number of loop candidate KeyFrames and matches used for Sim3
+  - number of reference-keyframe matches before/after pose optimization
 
 ## 10. Key Open Questions
-1. For the first milestone, is it acceptable to **temporarily disable BoW** for SIFT (relocalization + loop candidate selection via direct matching)?
-2. Do you want “end-to-end” to include loop closure even when BoW is disabled? (This design assumes yes via direct candidate selection + geometric validation.)
-3. Should L2 distance be:
+1. Should SIFT matching use raw L2 or squared L2 (and be consistent everywhere)?
+2. Should SIFT descriptors be normalized before computing L2 (if not already normalized by OpenCV)?
+3. For the non-BoW reference-keyframe tracking path, do you prefer:
+   - projection-only matching (minimal new code, uses geometry), or
+   - descriptor-only matching (more direct, potentially heavier)?
+4. Should `System` stop loading `ORBVocabulary` entirely once BoW is removed from tracking/mapping?
+5. Should ORB mode keep BoW (current behavior) while SIFT mode skips it?
+
+## 11. Notes on Repository State
+At the time of writing, `System` no longer constructs a `LoopClosing` thread, and there is no `KeyFrameDatabase` wiring in `System`. However, BoW-based code paths still exist in `Tracking` and `LocalMapping` and must be gated or removed for SIFT mode.
+
    - raw L2, or
    - squared L2,
    - and should SIFT descriptors be normalized before computing L2?

@@ -21,11 +21,8 @@
 
 #include "Frame.h"
 #include "KeyFrame.h"
-#include "LoopClosing.h"
 #include "Map.h"
 #include "MapPoint.h"
-
-#include <gtsam/geometry/Similarity3.h>
 
 #include <math.h>
 #include <set>
@@ -33,8 +30,6 @@
 
 namespace ORB_SLAM3
 {
-
-class LoopClosing;
 
 class Optimizer
 {
@@ -56,26 +51,6 @@ public:
                                       int& num_MPs, int& num_edges);
 
     int static PoseOptimization(Frame* pFrame);
-
-    // if bFixScale is true, 6DoF optimization (stereo), 7DoF otherwise (mono)
-    void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
-                                       const LoopClosing::KeyFrameAndPose& NonCorrectedSim3,
-                                       const LoopClosing::KeyFrameAndPose& CorrectedSim3,
-                                       const std::map<KeyFrame*, std::set<KeyFrame*>>& LoopConnections,
-                                       const bool& bFixScale);
-    void static OptimizeEssentialGraph(KeyFrame* pCurKF, std::vector<KeyFrame*>& vpFixedKFs,
-                                       std::vector<KeyFrame*>& vpFixedCorrectedKFs,
-                                       std::vector<KeyFrame*>& vpNonFixedKFs,
-                                       std::vector<MapPoint*>& vpNonCorrectedMPs);
-
-    // if bFixScale is true, optimize SE3 (stereo), Sim3 otherwise (mono) (NEW)
-    static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches1,
-                            gtsam::Similarity3& g2oS12, const float th2, const bool bFixScale,
-                            Eigen::Matrix<double, 7, 7>& mAcumHessian, const bool bAllPoints = false);
-
-    // Local BA in welding area when two maps are merged
-    void static LocalBundleAdjustment(KeyFrame* pMainKF, std::vector<KeyFrame*> vpAdjustKF,
-                                      std::vector<KeyFrame*> vpFixedKF, bool* pbStopFlag);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 };

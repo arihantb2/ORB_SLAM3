@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME} SHARED
     System.cc
     Tracking.cc
     LocalMapping.cc
-    LoopClosing.cc
     # ORBextractor.cc is retired — logic now lives in feature_extractor
     ORBmatcher.cc
     Converter.cc
@@ -20,8 +19,6 @@ add_library(${PROJECT_NAME} SHARED
     MapDrawer.cc
     Optimizer.cc
     Frame.cc
-    KeyFrameDatabase.cc
-    Sim3Solver.cc
     Viewer.cc
     GTSAMTypes.cc
     CameraModels/Pinhole.cpp

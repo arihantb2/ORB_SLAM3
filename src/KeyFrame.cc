@@ -88,7 +88,7 @@ KeyFrame::KeyFrame()
 {
 }
 
-KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
+KeyFrame::KeyFrame(Frame& F, Map* pMap)
     : mnFrameId(F.mnId),
       mTimeStamp(F.mTimeStamp),
       mnGridCols(FRAME_GRID_COLS),
@@ -137,7 +137,6 @@ KeyFrame::KeyFrame(Frame& F, Map* pMap, KeyFrameDatabase* pKFDB)
       mnMaxY(F.mnMaxY),
       mK_(F.mK_),
       mvpMapPoints(F.mvpMapPoints),
-      mpKeyFrameDB(pKFDB),
       mpORBvocabulary(F.mpORBvocabulary),
       mbFirstConnection(true),
       mpParent(NULL),
@@ -621,32 +620,6 @@ void KeyFrame::SetFirstConnection(bool bFirst)
     mbFirstConnection = bFirst;
 }
 
-void KeyFrame::AddLoopEdge(KeyFrame* pKF)
-{
-    std::unique_lock<std::mutex> lockCon(mMutexConnections);
-    mbNotErase = true;
-    mspLoopEdges.insert(pKF);
-}
-
-std::set<KeyFrame*> KeyFrame::GetLoopEdges()
-{
-    std::unique_lock<std::mutex> lockCon(mMutexConnections);
-    return mspLoopEdges;
-}
-
-void KeyFrame::AddMergeEdge(KeyFrame* pKF)
-{
-    std::unique_lock<std::mutex> lockCon(mMutexConnections);
-    mbNotErase = true;
-    mspMergeEdges.insert(pKF);
-}
-
-std::set<KeyFrame*> KeyFrame::GetMergeEdges()
-{
-    std::unique_lock<std::mutex> lockCon(mMutexConnections);
-    return mspMergeEdges;
-}
-
 void KeyFrame::SetNotErase()
 {
     std::unique_lock<std::mutex> lock(mMutexConnections);
@@ -655,13 +628,8 @@ void KeyFrame::SetNotErase()
 
 void KeyFrame::SetErase()
 {
-    {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
-        if (mspLoopEdges.empty())
-        {
-            mbNotErase = false;
-        }
-    }
+    std::unique_lock<std::mutex> lock(mMutexConnections);
+    mbNotErase = false;
 
     if (mbToBeErased)
     {
@@ -783,7 +751,6 @@ void KeyFrame::SetBadFlag()
     }
 
     mpMap->EraseKeyFrame(this);
-    mpKeyFrameDB->erase(this);
 }
 
 bool KeyFrame::isBad()
@@ -1032,11 +999,6 @@ bool KeyFrame::ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u, f
     kp = cv::Point2f(u, v);
 
     return true;
-}
-
-void KeyFrame::SetKeyFrameDatabase(KeyFrameDatabase* pKFDB)
-{
-    mpKeyFrameDB = pKFDB;
 }
 
 }  // namespace ORB_SLAM3

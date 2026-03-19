@@ -31,7 +31,6 @@ namespace ORB_SLAM3
 class System;
 class Settings;
 class Tracking;
-class LoopClosing;
 class Atlas;
 class KeyFrame;
 class Map;
@@ -42,8 +41,6 @@ class LocalMapping
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, Settings* settings);
-
-    void SetLoopCloser(LoopClosing* pLoopCloser);
 
     void SetTracker(Tracking* pTracker);
 
@@ -151,8 +148,6 @@ protected:
     std::mutex mMutexFinish;
 
     Atlas* mpAtlas;
-
-    LoopClosing* mpLoopCloser;
     Tracking* mpTracker;
 
     std::list<KeyFrame*> mlNewKeyFrames;
