@@ -155,8 +155,7 @@ public:
           FeatureExtractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
           const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = nullptr);
     Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, ORBVocabulary* voc,
-          GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth,
-          Frame* pPrevF = nullptr);
+          GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF = nullptr);
 
     void ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1);
     void ComputeBoW();

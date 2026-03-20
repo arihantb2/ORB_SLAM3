@@ -375,7 +375,8 @@ static void computeOrbDescriptor(const cv::KeyPoint& kpt, const cv::Mat& img, co
 // GridBasedORBFeatureExtractor constructor
 // ============================================================================
 
-GridBasedORBFeatureExtractor::GridBasedORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels, int iniThFAST, int minThFAST)
+GridBasedORBFeatureExtractor::GridBasedORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels, int iniThFAST,
+                                                           int minThFAST)
     : FeatureExtractor(nfeatures, scaleFactor, nlevels), mIniThFAST(iniThFAST), mMinThFAST(minThFAST)
 {
     // Copy the 512-point rBRIEF pattern
@@ -490,7 +491,8 @@ void GridBasedORBFeatureExtractor::detect(std::vector<std::vector<cv::KeyPoint>>
 // GridBasedORBFeatureExtractor::computeOrientation
 // ============================================================================
 
-void GridBasedORBFeatureExtractor::computeOrientation(const cv::Mat& levelImage, std::vector<cv::KeyPoint>& levelKeypoints)
+void GridBasedORBFeatureExtractor::computeOrientation(const cv::Mat& levelImage,
+                                                      std::vector<cv::KeyPoint>& levelKeypoints)
 {
     for (cv::KeyPoint& kp : levelKeypoints)
         kp.angle = IC_Angle(levelImage, kp.pt, mumax);
@@ -500,8 +502,8 @@ void GridBasedORBFeatureExtractor::computeOrientation(const cv::Mat& levelImage,
 // GridBasedORBFeatureExtractor::computeDescriptors
 // ============================================================================
 
-void GridBasedORBFeatureExtractor::computeDescriptors(const cv::Mat& workingMat, std::vector<cv::KeyPoint>& levelKeypoints,
-                                             cv::Mat& descriptors)
+void GridBasedORBFeatureExtractor::computeDescriptors(const cv::Mat& workingMat,
+                                                      std::vector<cv::KeyPoint>& levelKeypoints, cv::Mat& descriptors)
 {
     descriptors = cv::Mat::zeros(static_cast<int>(levelKeypoints.size()), 32, CV_8UC1);
 

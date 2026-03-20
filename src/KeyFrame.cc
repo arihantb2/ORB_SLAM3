@@ -191,6 +191,11 @@ void KeyFrame::ComputeBoW()
 {
     if (mBowVec.empty() || mFeatVec.empty())
     {
+        // BoW vocabulary in this codebase is ORB/binary (FORB). Skip for float descriptors (e.g., SIFT).
+        if (!mpORBvocabulary || mDescriptors.type() != CV_8UC1)
+        {
+            return;
+        }
         std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         // Feature vector associate features with nodes in the 4th level (from leaves up)
         // We assume the vocabulary tree has 6 levels, change the 4 otherwise

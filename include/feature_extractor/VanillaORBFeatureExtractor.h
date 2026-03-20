@@ -42,8 +42,7 @@ protected:
     void detect(std::vector<std::vector<cv::KeyPoint>>& allKeypoints) override;
 
     // No-op: cv::ORB::detect() already sets kp.angle.
-    void computeOrientation(const cv::Mat& levelImage,
-                            std::vector<cv::KeyPoint>& levelKeypoints) override;
+    void computeOrientation(const cv::Mat& levelImage, std::vector<cv::KeyPoint>& levelKeypoints) override;
 
     // cv::ORB::compute() on the Gaussian-blurred level image.
     // Output: CV_8UC1, 32 bytes/row.

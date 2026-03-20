@@ -19,6 +19,7 @@
 #include "LoopClosing.h"
 
 #include "Atlas.h"
+#include "FeatureMatcher.h"
 #include "GTSAMTypes.h"
 #include "KeyFrame.h"
 #include "KeyFrameDatabase.h"
@@ -26,7 +27,6 @@
 #include "Map.h"
 #include "MapPoint.h"
 #include "ORBVocabulary.h"
-#include "ORBmatcher.h"
 #include "Optimizer.h"
 #include "Sim3Solver.h"
 #include "System.h"
@@ -434,8 +434,8 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*>& vpBowCand, 
 
     int nNumCovisibles = 10;
 
-    ORBmatcher matcherBoW(0.9, true);
-    ORBmatcher matcher(0.75, true);
+    FeatureMatcher matcherBoW(0.9, true);
+    FeatureMatcher matcher(0.75, true);
 
     // Varibles to select the best numbe
     KeyFrame* pBestMatchedKF;
@@ -798,7 +798,7 @@ int LoopClosing::FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatche
     }
 
     Sophus::Sim3f mScw = fromGTSAMSim3(g2oScw);
-    ORBmatcher matcher(0.9, true);
+    FeatureMatcher matcher(0.9, true);
 
     vpMatchedMapPoints.resize(pCurrentKF->GetMapPointMatches().size(), static_cast<MapPoint*>(NULL));
     int num_matches = matcher.SearchByProjection(pCurrentKF, mScw, vpMapPoints, vpMatchedMapPoints, 3, 1.5);
@@ -1502,7 +1502,7 @@ void LoopClosing::CheckObservations(std::set<KeyFrame*>& spKFsMap1, std::set<Key
 
 void LoopClosing::SearchAndFuse(const KeyFrameAndPose& CorrectedPosesMap, std::vector<MapPoint*>& vpMapPoints)
 {
-    ORBmatcher matcher(0.8);
+    FeatureMatcher matcher(0.8);
 
     int total_replaces = 0;
 
@@ -1539,7 +1539,7 @@ void LoopClosing::SearchAndFuse(const KeyFrameAndPose& CorrectedPosesMap, std::v
 
 void LoopClosing::SearchAndFuse(const std::vector<KeyFrame*>& vConectedKFs, std::vector<MapPoint*>& vpMapPoints)
 {
-    ORBmatcher matcher(0.8);
+    FeatureMatcher matcher(0.8);
 
     int total_replaces = 0;
 

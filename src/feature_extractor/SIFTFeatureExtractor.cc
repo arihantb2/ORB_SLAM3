@@ -8,9 +8,8 @@
 namespace ORB_SLAM3
 {
 
-SIFTFeatureExtractor::SIFTFeatureExtractor(int nfeatures, int nOctaveLayers,
-                                           double contrastThreshold, double edgeThreshold,
-                                           double sigma, int nlevels)
+SIFTFeatureExtractor::SIFTFeatureExtractor(int nfeatures, int nOctaveLayers, double contrastThreshold,
+                                           double edgeThreshold, double sigma, int nlevels)
     : FeatureExtractor(nfeatures, 2.0f, nlevels)
 {
     // Pass nfeatures=0 so cv::SIFT reports all detected keypoints without
@@ -71,8 +70,7 @@ void SIFTFeatureExtractor::detect(std::vector<std::vector<cv::KeyPoint>>& allKey
         }
         const int w = mvImagePyramid[level].cols;
         const int h = mvImagePyramid[level].rows;
-        allKeypoints[level] = distributeOctTree(perLevel[level], 0, w, 0, h,
-                                                mnFeaturesPerLevel[level], level);
+        allKeypoints[level] = distributeOctTree(perLevel[level], 0, w, 0, h, mnFeaturesPerLevel[level], level);
         for (auto& kp : allKeypoints[level])
             kp.octave = level;
     }
@@ -84,8 +82,7 @@ void SIFTFeatureExtractor::computeOrientation(const cv::Mat& /*levelImage*/,
     // cv::SIFT::detect() already sets kp.angle — nothing to do here.
 }
 
-void SIFTFeatureExtractor::computeDescriptors(const cv::Mat& /*workingMat*/,
-                                              std::vector<cv::KeyPoint>& levelKeypoints,
+void SIFTFeatureExtractor::computeDescriptors(const cv::Mat& /*workingMat*/, std::vector<cv::KeyPoint>& levelKeypoints,
                                               cv::Mat& descriptors)
 {
     if (levelKeypoints.empty())

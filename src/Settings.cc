@@ -21,7 +21,6 @@
 #include "CameraModels/GeometricCamera.h"
 #include "CameraModels/Metashape.h"
 #include "CameraModels/Pinhole.h"
-#include "Converter.h"
 #include "Optimizer.h"
 #include "Verbose.h"
 
@@ -340,130 +339,58 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
 {
     bool found;
 
-    thFarPoints_ = readParameter<float>(fSettings, "System.thFarPoints", found, false);
+    thFarPoints_ = readParameter<float>(fSettings, "System.thFarPoints", found, 0.0f, false);
 
     localMappingOptimizeEveryTSeconds_ =
-        readParameter<float>(fSettings, "LocalMapping.OptimizeEveryTSeconds", found, false);
-    if (!found)
-        localMappingOptimizeEveryTSeconds_ = 5.0f;
-
-    localMappingMinKeyframesForLBA_ = readParameter<int>(fSettings, "LocalMapping.MinKeyframesForLBA", found, false);
-    if (!found)
-        localMappingMinKeyframesForLBA_ = 2;
+        readParameter<float>(fSettings, "LocalMapping.OptimizeEveryTSeconds", found, 5.0f, false);
+    localMappingMinKeyframesForLBA_ = readParameter<int>(fSettings, "LocalMapping.MinKeyframesForLBA", found, 2, false);
 
     localMappingMPCullingMinObsMono_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsMono", found, false);
-    if (!found)
-        localMappingMPCullingMinObsMono_ = 2;
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsMono", found, 2, false);
     localMappingMPCullingMinObsStereo_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsStereo", found, false);
-    if (!found)
-        localMappingMPCullingMinObsStereo_ = 3;
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsStereo", found, 3, false);
     localMappingMPCullingMinKFAgeForObsCheck_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinKFAgeForObsCheck", found, false);
-    if (!found)
-        localMappingMPCullingMinKFAgeForObsCheck_ = 2;
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinKFAgeForObsCheck", found, 2, false);
     localMappingMPCullingMaxKFAgeInRecent_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MaxKFAgeInRecent", found, false);
-    if (!found)
-        localMappingMPCullingMaxKFAgeInRecent_ = 3;
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MaxKFAgeInRecent", found, 3, false);
     localMappingMPCullingMinFoundRatio_ =
-        readParameter<float>(fSettings, "LocalMapping.MapPointCulling.MinFoundRatio", found, false);
-    if (!found)
-        localMappingMPCullingMinFoundRatio_ = 0.25f;
+        readParameter<float>(fSettings, "LocalMapping.MapPointCulling.MinFoundRatio", found, 0.25f, false);
 
     localMappingCreateNewMapPointsCovisibilityMono_ =
-        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsCovisibilityMono_ = 30;
+        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono", found, 30, false);
     localMappingCreateNewMapPointsCovisibilityStereo_ =
-        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsCovisibilityStereo_ = 10;
+        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo", found, 10, false);
     localMappingCreateNewMapPointsMatchRatio_ =
-        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MatchRatio", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsMatchRatio_ = 0.6f;
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MatchRatio", found, 0.6f, false);
     localMappingCreateNewMapPointsMinBaselineDepthRatio_ =
-        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsMinBaselineDepthRatio_ = 0.01f;
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio", found, 0.01f, false);
     localMappingCreateNewMapPointsMaxCosParallax_ =
-        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MaxCosParallax", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsMaxCosParallax_ = 0.9998f;
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MaxCosParallax", found, 0.9998f, false);
     localMappingCreateNewMapPointsScaleConsistencyFactor_ =
-        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor", found, false);
-    if (!found)
-        localMappingCreateNewMapPointsScaleConsistencyFactor_ = 1.5f;
+        readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor", found, 1.5f, false);
 
     localMappingSearchInNeighborsNumNeighborKFs_ =
-        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumNeighborKFs", found, false);
-    if (!found)
-        localMappingSearchInNeighborsNumNeighborKFs_ = 30;
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumNeighborKFs", found, 30, false);
     localMappingSearchInNeighborsNumSecondNeighbors_ =
-        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumSecondNeighbors", found, false);
-    if (!found)
-        localMappingSearchInNeighborsNumSecondNeighbors_ = 20;
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.NumSecondNeighbors", found, 20, false);
     localMappingSearchInNeighborsMaxTemporalNeighbors_ =
-        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.MaxTemporalNeighbors", found, false);
-    if (!found)
-        localMappingSearchInNeighborsMaxTemporalNeighbors_ = 20;
+        readParameter<int>(fSettings, "LocalMapping.SearchInNeighbors.MaxTemporalNeighbors", found, 20, false);
 
     localMappingKeyFrameCullingRedundantRatio_ =
-        readParameter<float>(fSettings, "LocalMapping.KeyFrameCulling.RedundantObservationRatio", found, false);
-    if (!found)
-        localMappingKeyFrameCullingRedundantRatio_ = 0.9f;
+        readParameter<float>(fSettings, "LocalMapping.KeyFrameCulling.RedundantObservationRatio", found, 0.9f, false);
     localMappingKeyFrameCullingMinObsInOthers_ =
-        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MinObservationsInOthers", found, false);
-    if (!found)
-        localMappingKeyFrameCullingMinObsInOthers_ = 3;
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MinObservationsInOthers", found, 3, false);
     localMappingKeyFrameCullingMaxKeyframesToCheck_ =
-        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MaxKeyframesToCheck", found, false);
-    if (!found)
-        localMappingKeyFrameCullingMaxKeyframesToCheck_ = 100;
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.MaxKeyframesToCheck", found, 100, false);
     localMappingKeyFrameCullingEarlyExitAfterAbort_ =
-        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.EarlyExitAfterAbort", found, false);
-    if (!found)
-        localMappingKeyFrameCullingEarlyExitAfterAbort_ = 20;
+        readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.EarlyExitAfterAbort", found, 20, false);
 
-    monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "MonocularInit.SearchWindowSize", found, false);
-    if (!found)
-    {
-        monocularInitSearchWindowSize_ = 100;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "[WARNING] MonocularInit.SearchWindowSize not found. Defaulting to 100." << std::endl;
-    }
+    monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "MonocularInit.SearchWindowSize", found, 100, false);
+    monocularInitMinKeypoints_ = readParameter<int>(fSettings, "MonocularInit.MinKeypoints", found, 100, false);
+    monocularInitNNRatio_ = readParameter<float>(fSettings, "MonocularInit.NNRatio", found, 0.9f, false);
+    monocularInitMinMatches_ = readParameter<int>(fSettings, "MonocularInit.MinMatches", found, 100, false);
 
-    monocularInitMinKeypoints_ = readParameter<int>(fSettings, "MonocularInit.MinKeypoints", found, false);
-    if (!found)
-    {
-        monocularInitMinKeypoints_ = 100;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "[WARNING] MonocularInit.MinKeypoints not found. Defaulting to 100." << std::endl;
-    }
-
-    monocularInitNNRatio_ = readParameter<float>(fSettings, "MonocularInit.NNRatio", found, false);
-    if (!found)
-    {
-        monocularInitNNRatio_ = 0.9f;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "[WARNING] MonocularInit.NNRatio not found. Defaulting to 0.9." << std::endl;
-    }
-
-    monocularInitMinMatches_ = readParameter<int>(fSettings, "MonocularInit.MinMatches", found, false);
-    if (!found)
-    {
-        monocularInitMinMatches_ = 100;
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "[WARNING] MonocularInit.MinMatches not found. Defaulting to 100." << std::endl;
-    }
-
-    stereoInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinKeypoints", found, false);
-    if (!found)
-    {
-        stereoInitMinKeypoints_ = 500;
-    }
+    stereoInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinKeypoints", found, 500, false);
 
     // Local bundle adjustment prior toggles for Optimizer.
     // Exposed as integer flags (0/1) in the YAML config.
@@ -471,185 +398,59 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     bool use_scale_priors = true;
     bool use_odometry_priors = false;
 
-    int pose_priors_flag = readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.PosePriors", found, false);
-    if (found)
-    {
-        use_pose_priors = (pose_priors_flag != 0);
-    }
+    const int pose_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.PosePriors", found, 0, false);
+    use_pose_priors = (pose_priors_flag != 0);
 
-    int scale_priors_flag = readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.ScalePriors", found, false);
-    if (found)
-    {
-        use_scale_priors = (scale_priors_flag != 0);
-    }
+    const int scale_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.ScalePriors", found, 1, false);
+    use_scale_priors = (scale_priors_flag != 0);
 
-    int odom_priors_flag =
-        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.OdometryPriors", found, false);
-    if (found)
-    {
-        use_odometry_priors = (odom_priors_flag != 0);
-    }
+    const int odom_priors_flag =
+        readParameter<int>(fSettings, "Optimizer.LocalBundleAdjustment.OdometryPriors", found, 0, false);
+    use_odometry_priors = (odom_priors_flag != 0);
 
     Optimizer::ConfigureLocalBundleAdjustmentPriors(use_pose_priors, use_scale_priors, use_odometry_priors);
 
-    referenceKeyframeNNRatio_ = readParameter<float>(fSettings, "Tracking.ReferenceKeyframe.NNRatio", found, false);
-    if (!found)
-    {
-        referenceKeyframeNNRatio_ = 0.7f;
-    }
+    referenceKeyframeNNRatio_ =
+        readParameter<float>(fSettings, "Tracking.ReferenceKeyframe.NNRatio", found, 0.7f, false);
     referenceKeyframeMinBoWMatches_ =
-        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinBoWMatches", found, false);
-    if (!found)
-    {
-        referenceKeyframeMinBoWMatches_ = 15;
-    }
+        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinBoWMatches", found, 15, false);
     referenceKeyframeMinOptimizedMapMatches_ =
-        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinOptimizedMapMatches", found, false);
-    if (!found)
-    {
-        referenceKeyframeMinOptimizedMapMatches_ = 10;
-    }
+        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinOptimizedMapMatches", found, 10, false);
 
-    referenceKeyframeQuadSearchWindowSize_ =
-        readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.QuadSearchWindowSize", found, false);
-    if (!found)
-    {
-        referenceKeyframeQuadSearchWindowSize_ = 500;
-    }
-
-    stereoUseQuadMatchingReferenceKeyFrame_ =
-        static_cast<bool>(readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.UseQuadMatching", found, false));
-    if (!found)
-    {
-        stereoUseQuadMatchingReferenceKeyFrame_ = true;
-    }
-
-    motionModelNNRatio_ = readParameter<float>(fSettings, "Tracking.MotionModel.NNRatio", found, false);
-    if (!found)
-    {
-        motionModelNNRatio_ = 0.9f;
-    }
+    motionModelNNRatio_ = readParameter<float>(fSettings, "Tracking.MotionModel.NNRatio", found, 0.9f, false);
     motionModelProjectionSearchThStereo_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThStereo", found, false);
-    if (!found)
-    {
-        motionModelProjectionSearchThStereo_ = 7;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThStereo", found, 7, false);
     motionModelProjectionSearchThMono_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThMono", found, false);
-    if (!found)
-    {
-        motionModelProjectionSearchThMono_ = 30;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThMono", found, 30, false);
     motionModelMinInitialMatches_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.MinInitialMatches", found, false);
-    if (!found)
-    {
-        motionModelMinInitialMatches_ = 20;
-    }
-
-    motionModelQuadSearchWindowSize_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.QuadSearchWindowSize", found, false);
-    if (!found)
-    {
-        motionModelQuadSearchWindowSize_ = 250;
-    }
-
-    stereoUseQuadMatchingMotionModel_ =
-        static_cast<bool>(readParameter<int>(fSettings, "Tracking.MotionModel.UseQuadMatching", found, false));
-    if (!found)
-    {
-        stereoUseQuadMatchingMotionModel_ = true;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.MinInitialMatches", found, 20, false);
     motionModelRetryProjectionSearchThStereo_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThStereo", found, false);
-    if (!found)
-    {
-        motionModelRetryProjectionSearchThStereo_ = 14;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThStereo", found, 14, false);
     motionModelRetryProjectionSearchThMono_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThMono", found, false);
-    if (!found)
-    {
-        motionModelRetryProjectionSearchThMono_ = 60;
-    }
-    motionModelMinRetryMatches_ = readParameter<int>(fSettings, "Tracking.MotionModel.MinRetryMatches", found, false);
-    if (!found)
-    {
-        motionModelMinRetryMatches_ = 20;
-    }
-
-    motionModelQuadSearchWindowSizeRetry_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.QuadSearchWindowSizeRetry", found, false);
-    if (!found)
-    {
-        motionModelQuadSearchWindowSizeRetry_ = 500;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThMono", found, 60, false);
+    motionModelMinRetryMatches_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.MinRetryMatches", found, 20, false);
     motionModelMinOptimizedMapMatches_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.MinOptimizedMapMatches", found, false);
-    if (!found)
-    {
-        motionModelMinOptimizedMapMatches_ = 10;
-    }
+        readParameter<int>(fSettings, "Tracking.MotionModel.MinOptimizedMapMatches", found, 10, false);
 
-    localMapGenericMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.GenericMinInliers", found, false);
-    if (!found)
-    {
-        localMapGenericMinInliers_ = 10;
-    }
-    localMapVisualMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.VisualMinInliers", found, false);
-    if (!found)
-    {
-        localMapVisualMinInliers_ = 30;
-    }
+    localMapGenericMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.GenericMinInliers", found, 10, false);
+    localMapVisualMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.VisualMinInliers", found, 30, false);
 
-    newKFMinTrackedClosePoints_ = readParameter<int>(fSettings, "Tracking.NewKF.MinTrackedClosePoints", found, false);
-    if (!found)
-    {
-        newKFMinTrackedClosePoints_ = 100;
-    }
+    newKFMinTrackedClosePoints_ =
+        readParameter<int>(fSettings, "Tracking.NewKF.MinTrackedClosePoints", found, 100, false);
     newKFMinNonTrackedClosePoints_ =
-        readParameter<int>(fSettings, "Tracking.NewKF.MinNonTrackedClosePoints", found, false);
-    if (!found)
-    {
-        newKFMinNonTrackedClosePoints_ = 70;
-    }
-    newKFRefRatioMono_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioMono", found, false);
-    if (!found)
-    {
-        newKFRefRatioMono_ = 0.9f;
-    }
-    newKFRefRatioStereoFewKFs_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereoFewKFs", found, false);
-    if (!found)
-    {
-        newKFRefRatioStereoFewKFs_ = 0.4f;
-    }
-    newKFRefRatioStereo_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereo", found, false);
-    if (!found)
-    {
-        newKFRefRatioStereo_ = 0.75f;
-    }
-    newKFWeakTrackingRatio_ = readParameter<float>(fSettings, "Tracking.NewKF.WeakTrackingRatio", found, false);
-    if (!found)
-    {
-        newKFWeakTrackingRatio_ = 0.25f;
-    }
-    newKFMinInliers_ = readParameter<int>(fSettings, "Tracking.NewKF.MinInliers", found, false);
-    if (!found)
-    {
-        newKFMinInliers_ = 15;
-    }
-    newKFMaxKFsInQueue_ = readParameter<int>(fSettings, "Tracking.NewKF.MaxKFsInQueue", found, false);
-    if (!found)
-    {
-        newKFMaxKFsInQueue_ = 3;
-    }
+        readParameter<int>(fSettings, "Tracking.NewKF.MinNonTrackedClosePoints", found, 70, false);
+    newKFRefRatioMono_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioMono", found, 0.9f, false);
+    newKFRefRatioStereoFewKFs_ =
+        readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereoFewKFs", found, 0.4f, false);
+    newKFRefRatioStereo_ = readParameter<float>(fSettings, "Tracking.NewKF.RefRatioStereo", found, 0.75f, false);
+    newKFWeakTrackingRatio_ = readParameter<float>(fSettings, "Tracking.NewKF.WeakTrackingRatio", found, 0.25f, false);
+    newKFMinInliers_ = readParameter<int>(fSettings, "Tracking.NewKF.MinInliers", found, 15, false);
+    newKFMaxKFsInQueue_ = readParameter<int>(fSettings, "Tracking.NewKF.MaxKFsInQueue", found, 3, false);
 
-    lostResetMinKFs_ = readParameter<int>(fSettings, "Tracking.LostResetMinKFs", found, false);
-    if (!found)
-    {
-        lostResetMinKFs_ = 999999;
-    }
+    lostResetMinKFs_ = readParameter<int>(fSettings, "Tracking.LostResetMinKFs", found, 999999, false);
 }
 
 void Settings::precomputeRectificationMaps()
@@ -829,11 +630,8 @@ std::ostream& operator<<(std::ostream& output, const Settings& settings)
         output << "\t-Stereo depth threshold : " << settings.thDepth_ << std::endl;
     }
 
-    output << "\t-Features per image: " << settings.nFeatures_ << std::endl;
-    output << "\t-ORB scale factor: " << settings.scaleFactor_ << std::endl;
-    output << "\t-ORB number of scales: " << settings.nLevels_ << std::endl;
-    output << "\t-Initial FAST threshold: " << settings.initThFAST_ << std::endl;
-    output << "\t-Min FAST threshold: " << settings.minThFAST_ << std::endl;
+    // Extractor type
+    output << "\t-Extractor type: " << settings.featureExtractorType_ << std::endl;
 
     return output;
 }

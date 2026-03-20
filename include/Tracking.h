@@ -318,6 +318,8 @@ public:
     float mReferenceKeyframeNNRatio = 0.7f;
     int mReferenceKeyframeMinBoWMatches = 15;
     int mReferenceKeyframeMinOptimizedMapMatches = 10;
+    // In SIFT mode, BoW-based reference-keyframe tracking is disabled.
+    bool mUseBoWReferenceKeyframeTracking = true;
     float mMotionModelNNRatio = 0.9f;
     int mMotionModelProjectionSearchThStereo = 7;
     int mMotionModelProjectionSearchThMono = 30;
@@ -352,6 +354,7 @@ protected:
     void CheckReplacedInLastFrame();
     void UpdateLastFrame();
     RefKeyFrameTrackingResult TrackReferenceKeyFrameWithBoW();
+    RefKeyFrameTrackingResult TrackReferenceKeyFrameNoBoW();
     MotionModelTrackingResult TrackWithMotionModel();
 
     void UpdateLocalMap();

@@ -6,7 +6,7 @@ Your repository already contains an `SIFTFeatureExtractor` that produces `CV_32F
 In your current architecture, you have removed **loop closure**, **relocalization**, and **map merge**. That simplifies what “end-to-end” means: **tracking + local mapping** must work with SIFT without any binary-descriptor assumptions.
 
 Decision (per user):
-- When using SIFT features, **disable BoW-based reference keyframe tracking** (`TrackReferenceKeyFrameWithBoW()` / `ORBmatcher::SearchByBoW()`).
+- When using SIFT features, **disable BoW-based reference keyframe tracking** (`TrackReferenceKeyFrameWithBoW()` / `FeatureMatcher::SearchByBoW()`).
 
 This document analyzes the current call graph where SIFT fails, then proposes a phased implementation plan:
 
@@ -42,30 +42,30 @@ Relevant files:
 SIFT fails end-to-end because several remaining ORB-SLAM3 components assume ORB descriptors:
 
 ### 4.1 Hamming distance is hard-coded
-`ORBmatcher::DescriptorDistance(const cv::Mat&, const cv::Mat&)` implements Hamming distance using popcount on `int32_t` words.
+`FeatureMatcher::DescriptorDistance(const cv::Mat&, const cv::Mat&)` implements Hamming distance for binary ORB descriptors and L2 for float SIFT descriptors.
 
 This is binary-descriptor-specific and is incompatible with `CV_32F` descriptors.
 
 Relevant file:
-- `src/ORB_SLAM3/src/ORBmatcher.cc` (`ORBmatcher::DescriptorDistance`)
+- `src/ORB_SLAM3/src/FeatureMatcher.cc` / `src/ORB_SLAM3/include/FeatureMatcher.h`
 
 ### 4.2 ORB thresholds are used with binary-distance scale
-ORBmatcher uses constants:
-- `ORBmatcher::TH_LOW = 50`
-- `ORBmatcher::TH_HIGH = 100`
+FeatureMatcher uses ORB baseline constants (for binary descriptors):
+- `FeatureMatcher::TH_LOW = 50`
+- `FeatureMatcher::TH_HIGH = 100`
 
 These thresholds are meaningful for Hamming distance. They are not correct for float descriptor L2 distances.
 
 Relevant file:
-- `src/ORB_SLAM3/src/ORBmatcher.cc` (TH_LOW/TH_HIGH and acceptance logic)
+- `src/ORB_SLAM3/src/FeatureMatcher.cc` (acceptance logic via per-instance thresholds)
 
 ### 4.3 Other descriptor users also call the Hamming path
-Even if `ORBmatcher` is fixed, SIFT still breaks if other code paths compute descriptor distances via `ORBmatcher::DescriptorDistance()` and/or compare to `TH_*`.
+Even if `FeatureMatcher` is fixed, SIFT still breaks if other code paths compute descriptor distances via `FeatureMatcher::DescriptorDistance()` and/or compare to binary thresholds.
 
 Examples:
-- Stereo matching uses `ORBmatcher::DescriptorDistance(dL, dR)` and `ORBmatcher::TH_*` thresholds.
+- Stereo matching uses `FeatureMatcher::DescriptorDistance(dL, dR)` and descriptor-type-appropriate thresholds.
   - `src/ORB_SLAM3/src/Frame.cc` (`Frame::ComputeStereoMatches()`)
-- MapPoint distinctive descriptor selection uses `ORBmatcher::DescriptorDistance(...)`.
+- MapPoint distinctive descriptor selection uses `FeatureMatcher::DescriptorDistance(...)`.
   - `src/ORB_SLAM3/src/MapPoint.cc` (`MapPoint::ComputeDistinctiveDescriptors()`)
 
 ### 4.4 BoW is still present in code (but should be gated for SIFT)
@@ -112,20 +112,20 @@ Goal: remove binary assumptions from geometric matching code.
 Approach:
 1. Add a descriptor-metric abstraction that provides:
    - `distance(a,b)` where `a,b` are descriptor rows (`cv::Mat` of one keypoint descriptor)
-   - `thLow()` / `thHigh()` equivalents to replace ORBmatcher’s Hamming thresholds
+   - `thLow()` / `thHigh()` equivalents to replace binary Hamming thresholds
 2. Select the metric based on the active feature extractor:
    - For `DescriptorType::BINARY`: use Hamming/popcount
    - For `DescriptorType::FLOAT32`: use L2 distance (or squared L2 consistently)
 3. Replace all uses in the matcher and other direct descriptor-distance call sites:
    - `DescriptorDistance(...)` => metric->distance(...)
-   - comparisons to `ORBmatcher::TH_LOW/TH_HIGH` => metric->thLow()/metric->thHigh()
+   - comparisons to `FeatureMatcher::TH_LOW/TH_HIGH` => matcher.thLow()/matcher.thHigh()
 
 Why metric injection instead of duplicating matchers:
 - ORB-SLAM3 matcher contains extensive geometry logic (projection search, fusion, rotation histograms).
 - The only feature-type-specific part is descriptor distance + thresholds.
 
 Files to modify (typical list):
-- `src/ORB_SLAM3/src/ORBmatcher.cc` and `src/ORB_SLAM3/include/ORBmatcher.h`
+- `src/ORB_SLAM3/src/FeatureMatcher.cc` and `src/ORB_SLAM3/include/FeatureMatcher.h`
 - `src/ORB_SLAM3/src/Frame.cc` (`ComputeStereoMatches` needs L2 and float thresholds)
 - `src/ORB_SLAM3/src/MapPoint.cc` (`ComputeDistinctiveDescriptors` needs metric distance)
 
@@ -146,7 +146,7 @@ Recommended approach in this repo (SIFT mode):
      - Replace `Tracking::TrackReferenceKeyFrameWithBoW()` with a non-BoW method.
      - Recommended implementation:
        - **Projection-only matching (preferred):**
-         - Use `ORBmatcher::SearchByProjection(...)` variants (with L2 metric) to match `mpReferenceKF`’s map points into `mCurrentFrame`.
+         - Use `FeatureMatcher::SearchByProjection(...)` variants (with L2 metric) to match `mpReferenceKF`’s map points into `mCurrentFrame`.
          - Continue using the existing pose optimization + outlier rejection logic.
      - Fallback implementation:
        - **Direct descriptor matching:**
@@ -175,7 +175,7 @@ This is intentionally a checklist, not the implementation.
 
 Phase A:
 1. Add metric abstraction (`DescriptorMetric`) with Hamming and L2 implementations.
-2. Update `ORBmatcher` to use injected metric instead of binary-only Hamming.
+2. Update `FeatureMatcher` to use descriptor-type-aware distance/thresholding instead of binary-only Hamming.
 3. Update stereo matching and MapPoint distinctive descriptor computation similarly.
 
 Phase B:

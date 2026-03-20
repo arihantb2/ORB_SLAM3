@@ -8,8 +8,8 @@ namespace ORB_SLAM3
 // the valid image region.
 static constexpr int EDGE_THRESHOLD = 19;
 
-VanillaORBFeatureExtractor::VanillaORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels,
-                                                       int fastThreshold, cv::ORB::ScoreType scoreType)
+VanillaORBFeatureExtractor::VanillaORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels, int fastThreshold,
+                                                       cv::ORB::ScoreType scoreType)
     : FeatureExtractor(nfeatures, scaleFactor, nlevels)
 {
     // nlevels=1 prevents cv::ORB from building its own internal pyramid; we
@@ -55,8 +55,7 @@ void VanillaORBFeatureExtractor::computeOrientation(const cv::Mat& /*levelImage*
 }
 
 void VanillaORBFeatureExtractor::computeDescriptors(const cv::Mat& workingMat,
-                                                    std::vector<cv::KeyPoint>& levelKeypoints,
-                                                    cv::Mat& descriptors)
+                                                    std::vector<cv::KeyPoint>& levelKeypoints, cv::Mat& descriptors)
 {
     mORB->compute(workingMat, levelKeypoints, descriptors);
 }

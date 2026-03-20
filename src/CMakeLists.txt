@@ -10,7 +10,7 @@ add_library(${PROJECT_NAME} SHARED
     Tracking.cc
     LocalMapping.cc
     # ORBextractor.cc is retired — logic now lives in feature_extractor
-    ORBmatcher.cc
+    FeatureMatcher.cc
     Converter.cc
     MapPoint.cc
     KeyFrame.cc

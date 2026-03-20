@@ -218,7 +218,6 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph, const b
                 glVertex3f(Ow(0), Ow(1), Ow(2));
                 glVertex3f(Owp(0), Owp(1), Owp(2));
             }
-
         }
 
         glEnd();

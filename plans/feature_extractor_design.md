@@ -6,7 +6,7 @@
    - 2.1 [Data Flow](#21-data-flow)
    - 2.2 [ORBextractor — Feature Extraction Pipeline](#22-orbextractor--feature-extraction-pipeline)
    - 2.3 [Feature Grid — Frame's Spatial Index](#23-feature-grid--frames-spatial-index)
-   - 2.4 [ORBmatcher — Dependency Surface](#24-orbmatcher--dependency-surface)
+   - 2.4 [FeatureMatcher — Dependency Surface](#24-featurematcher--dependency-surface)
 3. [FeatureExtractor Interface Design](#3-featureextractor-interface-design)
    - 3.1 [Supporting Types](#31-supporting-types)
    - 3.2 [FeatureGrid](#32-featuregrid)
@@ -37,7 +37,7 @@ This work isolates the feature extraction and spatial indexing logic from ORB-SL
 1. **Replace** `ORBextractor` with an abstract `FeatureExtractor` base class, keeping ORB as one concrete implementation.
 2. **Move the feature grid** (`mGrid`, `AssignFeaturesToGrid`, `GetFeaturesInArea`, `PosInGrid`) out of `Frame` and into `FeatureExtractor`, so it becomes part of the extraction contract.
 3. **Enable SIFT (and other detectors)** with minimal per-type code: only the detection kernel, descriptor computation, and orientation assignment vary between types.
-4. **Isolate the descriptor distance metric** from `ORBmatcher` so that SIFT's L2 distance can be used without duplicating the entire matching infrastructure.
+4. **Isolate the descriptor distance metric** from `FeatureMatcher` so that SIFT's L2 distance can be used without duplicating the entire matching infrastructure.
 
 ### What this refactor does NOT do
 
@@ -52,7 +52,7 @@ This work isolates the feature extraction and spatial indexing logic from ORB-SL
 | `ORBextractor` → `FeatureExtractor` hierarchy | Yes |
 | Feature grid abstracted into `FeatureGrid` | Yes |
 | Grid assignment / query moved out of `Frame` | Yes |
-| `ORBmatcher::DescriptorDistance` isolated | Yes |
+| `FeatureMatcher::DescriptorDistance` isolated | Yes |
 | SIFT specialization (structure only) | Yes |
 | BoW vocabulary re-training for SIFT | No |
 | Changing map, optimizer, loop-closer | No |
@@ -78,7 +78,7 @@ System::TrackStereo / TrackMonocular
             ├─ ComputeStereoMatches()  → mvDepth, mvuRight
             └─ AssignFeaturesToGrid() → mGrid[64][48]
 
-        ORBmatcher reads Frame / KeyFrame:
+        FeatureMatcher reads Frame / KeyFrame:
             mvKeys, mvKeysUn, mDescriptors, mFeatVec,
             mvScaleFactors[level], mvLevelSigma2[level], mvInvLevelSigma2[level],
             GetFeaturesInArea(x, y, r, minLevel, maxLevel)
@@ -159,16 +159,16 @@ Computes cell range covering the (x±r, y±r) rectangle, iterates those cells, f
 **`PosInGrid(kp, posX, posY)` — `src/Frame.cc` lines 689–701:**
 `posX = round((kp.pt.x - mnMinX) * mfGridElementWidthInv)`. Returns false if out of bounds.
 
-**This grid is the primary coupling point for `ORBmatcher`** — all projection-based matchers call `GetFeaturesInArea()`.
+**This grid is the primary coupling point for `FeatureMatcher`** — all projection-based matchers call `GetFeaturesInArea()`.
 
 ---
 
-### 2.4 ORBmatcher — Dependency Surface
+### 2.4 FeatureMatcher — Dependency Surface
 
-**Header:** `include/ORBmatcher.h`
-**Implementation:** `src/ORBmatcher.cc`
+**Header:** `include/FeatureMatcher.h`
+**Implementation:** `src/FeatureMatcher.cc`
 
-ORBmatcher never touches `ORBextractor` directly. Its feature-related dependencies are:
+FeatureMatcher never touches `ORBextractor` directly. Its feature-related dependencies are:
 
 | What it accesses | Where | Why |
 |---|---|---|
@@ -183,9 +183,9 @@ ORBmatcher never touches `ORBextractor` directly. Its feature-related dependenci
 | `mFeatVec` | Frame / KeyFrame | DBoW2 FeatureVector for vocab-guided matching |
 | `GetFeaturesInArea(x, y, r, l0, l1)` | Frame / KeyFrame | Grid-accelerated candidate lookup |
 
-**`DescriptorDistance()` implementation (`src/ORBmatcher.cc` lines 1906–1922):**
+**`DescriptorDistance()` implementation (`src/FeatureMatcher.cc`):**
 ```cpp
-int ORBmatcher::DescriptorDistance(const cv::Mat& a, const cv::Mat& b) {
+int FeatureMatcher::DescriptorDistance(const cv::Mat& a, const cv::Mat& b) {
     const int* pa = a.ptr<int32_t>();
     const int* pb = b.ptr<int32_t>();
     int dist = 0;
@@ -200,7 +200,7 @@ int ORBmatcher::DescriptorDistance(const cv::Mat& a, const cv::Mat& b) {
 }
 ```
 
-This hard-codes binary, 32-byte (256-bit), Hamming distance. It is the only ORB-specific code in `ORBmatcher`.
+This hard-codes binary, 32-byte (256-bit), Hamming distance. It is the only ORB-specific code in `FeatureMatcher`.
 
 ---
 
@@ -593,7 +593,7 @@ private:
 
 #### Scale table note
 
-The base class scale tables (`mvScaleFactor`, `mvLevelSigma2`, etc.) are initialised with `scaleFactor = 2.0` and `nlevels` set to the number of SIFT octaves. These tables are what `ORBmatcher` uses to compute search radii (`radius = th * mvScaleFactors[predictedLevel]`). Since the exposed pyramid also uses 2× downscaling and SIFT's octave index matches it, the search radii are correct without any additional mapping.
+The base class scale tables (`mvScaleFactor`, `mvLevelSigma2`, etc.) are initialised with `scaleFactor = 2.0` and `nlevels` set to the number of SIFT octaves. These tables are what `FeatureMatcher` uses to compute search radii (`radius = th * mvScaleFactors[predictedLevel]`). Since the exposed pyramid also uses 2× downscaling and SIFT's octave index matches it, the search radii are correct without any additional mapping.
 
 **Per-type specialization summary:**
 
@@ -615,27 +615,27 @@ The base class scale tables (`mvScaleFactor`, `mvLevelSigma2`, etc.) are initial
 
 ### 4.1 The Problem
 
-`ORBmatcher` is a large class (~1900 lines) containing sophisticated matching algorithms: projection-based search, BoW-guided search, triangulation search, Sim3 matching, and fusing. All of these use **two ORB-specific pieces**:
+`FeatureMatcher` is a large class (~1900 lines) containing sophisticated matching algorithms: projection-based search, BoW-guided search, triangulation search, Sim3 matching, and fusing. All of these use **two ORB-specific pieces**:
 
 1. `DescriptorDistance()` — Hamming distance on 32-byte binary descriptors
 2. `TH_LOW = 50` and `TH_HIGH = 100` — thresholds calibrated for the 0–256 Hamming range
 
-Everything else in `ORBmatcher` is **feature-type-agnostic geometry**: projection, area search, rotation histograms, scale-radius heuristics. None of it reads `ORBextractor` directly.
+Everything else in `FeatureMatcher` is **feature-type-agnostic geometry**: projection, area search, rotation histograms, scale-radius heuristics. None of it reads `ORBextractor` directly.
 
-Replacing `ORBmatcher` wholesale for SIFT would duplicate ~1900 lines for the sake of 20 lines of distance logic.
+Replacing `FeatureMatcher` wholesale for SIFT would duplicate ~1900 lines for the sake of 20 lines of distance logic.
 
 ---
 
 ### 4.2 Options Considered
 
-**Option A — Duplicate ORBmatcher as SIFTMatcher (rejected)**
+**Option A — Duplicate FeatureMatcher as SIFTMatcher (rejected)**
 Copies all geometric matching logic just to change the distance function. Creates a maintenance burden every time the matching logic is updated.
 
 **Option B — Full `FeatureMatcher` abstract base class (rejected for now)**
 Extracting a virtual interface for all 16 overloaded `Search*()` methods is an O(large) refactor with no immediate benefit beyond what Option C provides. The matching logic has no branching on feature type — only the distance function does.
 
-**Option C — `DescriptorMetric` strategy injected into ORBmatcher (recommended)**
-ORBmatcher becomes a `FeatureMatcher` with a pluggable distance metric. This is ~30 lines of new code and a single-point change in `ORBmatcher`.
+**Option C — `DescriptorMetric` strategy injected into FeatureMatcher (recommended)**
+FeatureMatcher becomes a `FeatureMatcher` with a pluggable distance metric. This is ~30 lines of new code and a single-point change in `FeatureMatcher`.
 
 ---
 
@@ -651,8 +651,8 @@ public:
     // Distance between two descriptor rows. Range must be [0, maxDistance()].
     virtual int distance(const cv::Mat& a, const cv::Mat& b) const = 0;
 
-    // Thresholds equivalent to TH_LOW and TH_HIGH in ORBmatcher.
-    // ORBmatcher uses them as: accept match if dist < thHigh,
+    // Thresholds equivalent to TH_LOW and TH_HIGH in FeatureMatcher.
+    // FeatureMatcher uses them as: accept match if dist < thHigh,
     // prefer match if dist < thLow. Both scale linearly with maxDistance().
     virtual int thLow()  const = 0;
     virtual int thHigh() const = 0;
@@ -681,14 +681,14 @@ private:
 };
 ```
 
-**Changes to ORBmatcher:**
+**Changes to FeatureMatcher:**
 
 ```cpp
-class ORBmatcher {
+class FeatureMatcher {
 public:
     // DescriptorMetric defaults to HammingMetric for backward compatibility.
     // Pass an L2Metric for SIFT.
-    explicit ORBmatcher(float nnratio = 0.6,
+    explicit FeatureMatcher(float nnratio = 0.6,
                         bool checkOri = true,
                         std::shared_ptr<DescriptorMetric> metric =
                             std::make_shared<HammingMetric>());
@@ -706,14 +706,14 @@ private:
 ```
 
 **Impact:**
-- ~35 call sites in ORBmatcher.cc replace `DescriptorDistance(a,b)` with `mMetric->distance(a,b)` and constants with `mMetric->thLow()/thHigh()`.
+- ~35 call sites in FeatureMatcher.cc replace `DescriptorDistance(a,b)` with `mMetric->distance(a,b)` and constants with `mMetric->thLow()/thHigh()`.
 - No algorithmic changes. No new files except `DescriptorMetric.h/.cc`.
-- All existing users of `ORBmatcher` continue to work with no change (default metric = Hamming).
+- All existing users of `FeatureMatcher` continue to work with no change (default metric = Hamming).
 
 **Usage with SIFT:**
 ```cpp
 auto metric = std::make_shared<L2Metric>(/*thLow=*/200, /*thHigh=*/400);
-ORBmatcher matcher(0.7f, true, metric);
+FeatureMatcher matcher(0.7f, true, metric);
 matcher.SearchByProjection(frame, mapPoints, 3.0f);
 ```
 
@@ -721,7 +721,7 @@ matcher.SearchByProjection(frame, mapPoints, 3.0f);
 
 ### 4.4 BoW Vocabulary Caveat
 
-`ORBmatcher::SearchByBoW()` and `SearchForTriangulation()` rely on `Frame::mFeatVec` (DBoW2 `FeatureVector`). DBoW2 vocabularies are trained on **binary** ORB descriptors and cannot be directly used with SIFT float descriptors.
+`FeatureMatcher::SearchByBoW()` and `SearchForTriangulation()` rely on `Frame::mFeatVec` (DBoW2 `FeatureVector`). DBoW2 vocabularies are trained on **binary** ORB descriptors and cannot be directly used with SIFT float descriptors.
 
 Options when using SIFT:
 - **Disable SearchByBoW** and fall back to brute-force or projection-only methods. This affects relocalization and loop closure quality.
@@ -834,8 +834,8 @@ No other changes to KeyFrame are needed.
 | `src/Frame.cc` | `ExtractORB` calls `FeatureExtractor::operator()`; `AssignFeaturesToGrid` delegates to `FeatureGrid` |
 | `include/Tracking.h` | `mpORBextractorLeft/Right/Ini` → `FeatureExtractor*` |
 | `src/Tracking.cc` | Instantiates `ORBFeatureExtractor` (or SIFT variant) |
-| `include/ORBmatcher.h` | Add `DescriptorMetric` constructor param; `DescriptorDistance` becomes non-static |
-| `src/ORBmatcher.cc` | Replace `DescriptorDistance()` / `TH_LOW` / `TH_HIGH` with metric calls |
+| `include/FeatureMatcher.h` | Add `DescriptorMetric` constructor param; `DescriptorDistance` becomes non-static |
+| `src/FeatureMatcher.cc` | Replace `DescriptorDistance()` / `TH_LOW` / `TH_HIGH` with metric calls |
 | `include/KeyFrame.h` | `mGrid` type change to match `FeatureGrid::data()` layout (already matches) |
 | `src/KeyFrame.cc` | Update grid copy from Frame to use `FeatureGrid` accessors |
 | `CMakeLists.txt` | Add new source files |
@@ -859,8 +859,8 @@ No other changes to KeyFrame are needed.
 5. Update `Frame.h/.cc` to use `FeatureExtractor*` and `FeatureGrid`
 6. Update `KeyFrame.cc` grid copy
 7. Update `Tracking.cc` to instantiate `ORBFeatureExtractor`
-8. `DescriptorMetric.h/.cc` — inject into ORBmatcher
-9. Update `ORBmatcher.cc` call sites
+8. `DescriptorMetric.h/.cc` — inject into FeatureMatcher
+9. Update `FeatureMatcher.cc` call sites
 10. `SIFTFeatureExtractor.h/.cc` — SIFT specialization (requires opencv_features2d with SIFT)
 
 ### Verification

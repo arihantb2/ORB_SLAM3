@@ -34,11 +34,8 @@ public:
     // edgeThreshold    : principal-curvature ratio for edge rejection
     // sigma            : Gaussian sigma applied to level-0 image before DoG
     // nlevels          : number of pyramid levels (== number of SIFT octaves)
-    SIFTFeatureExtractor(int nfeatures, int nOctaveLayers = 3,
-                         double contrastThreshold = 0.03,
-                         double edgeThreshold = 10.0,
-                         double sigma = 1.6,
-                         int nlevels = 4);
+    SIFTFeatureExtractor(int nfeatures, int nOctaveLayers = 3, double contrastThreshold = 0.03,
+                         double edgeThreshold = 10.0, double sigma = 1.6, int nlevels = 4);
 
     DescriptorType getDescriptorType() const override { return DescriptorType::FLOAT32; }
 
@@ -51,8 +48,7 @@ protected:
     void detect(std::vector<std::vector<cv::KeyPoint>>& allKeypoints) override;
 
     // No-op: cv::SIFT::detect() already writes kp.angle.
-    void computeOrientation(const cv::Mat& levelImage,
-                            std::vector<cv::KeyPoint>& levelKeypoints) override;
+    void computeOrientation(const cv::Mat& levelImage, std::vector<cv::KeyPoint>& levelKeypoints) override;
 
     // Computes 128-float SIFT descriptors for one pyramid level.
     // Uses mvImagePyramid[0] with full-resolution keypoint coordinates so that
@@ -60,8 +56,7 @@ protected:
     // image passed to compute().
     // Output: descriptors is CV_32F, rows = levelKeypoints.size(), cols = 128.
     // Note: workingMat (pre-blurred level image from base class) is unused here.
-    void computeDescriptors(const cv::Mat& workingMat,
-                            std::vector<cv::KeyPoint>& levelKeypoints,
+    void computeDescriptors(const cv::Mat& workingMat, std::vector<cv::KeyPoint>& levelKeypoints,
                             cv::Mat& descriptors) override;
 
 private:

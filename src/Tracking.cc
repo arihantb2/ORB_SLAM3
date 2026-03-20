@@ -21,18 +21,18 @@
 
 #include "Atlas.h"
 #include "CameraModels/GeometricCamera.h"
+#include "FeatureMatcher.h"
 #include "GeometricTools.h"
 #include "LocalMapping.h"
 #include "MapDrawer.h"
 #include "ORBVocabulary.h"
-#include "feature_extractor/GridBasedORBFeatureExtractor.h"
-#include "feature_extractor/VanillaORBFeatureExtractor.h"
-#include "feature_extractor/SIFTFeatureExtractor.h"
-#include "ORBmatcher.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
 #include "Viewer.h"
+#include "feature_extractor/GridBasedORBFeatureExtractor.h"
+#include "feature_extractor/SIFTFeatureExtractor.h"
+#include "feature_extractor/VanillaORBFeatureExtractor.h"
 
 #include <algorithm>
 #include <mutex>
@@ -42,8 +42,8 @@
 namespace ORB_SLAM3
 {
 
-Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, const std::string& strSettingPath,
-                   const int sensor, Settings* settings, const bool newMaps)
+Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
+                   const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
       mbMapUpdated(false),
@@ -199,6 +199,8 @@ void Tracking::loadFromSettings(Settings* settings)
     mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
     mReferenceKeyframeMinBoWMatches = settings->referenceKeyframeMinBoWMatches();
     mReferenceKeyframeMinOptimizedMapMatches = settings->referenceKeyframeMinOptimizedMapMatches();
+    // SIFT mode: disable BoW-based reference keyframe tracking.
+    mUseBoWReferenceKeyframeTracking = (extractorType != "SIFT");
 
     // Motion model tracking thresholds
     mMotionModelNNRatio = settings->motionModelNNRatio();
@@ -255,11 +257,10 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
     Verbose::Print(Verbose::VERBOSITY_QUIET)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
-    if (mSensor == System::STEREO)
-    {
-        mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpFeatureExtractorLeft, mpFeatureextractorRight,
-                              mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera);
-    }
+
+    // Create the current frame, extracting features and computing stereo matches.
+    mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpFeatureExtractorLeft, mpFeatureextractorRight,
+                          mpORBVocabulary, mK, mDistCoef, mbf, mThDepth, mpCamera);
 
     if (posePrior.has_value())
     {
@@ -300,18 +301,16 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
 
-    if (mSensor == System::MONOCULAR)
+    // Create the current frame, extracting features.
+    if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
     {
-        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
-        {
-            mCurrentFrame =
-                Frame(image, timestamp, mpIniFeatureExtractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
-        }
-        else
-        {
-            mCurrentFrame =
-                Frame(image, timestamp, mpFeatureExtractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
-        }
+        mCurrentFrame =
+            Frame(image, timestamp, mpIniFeatureExtractor, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
+    }
+    else
+    {
+        mCurrentFrame =
+            Frame(image, timestamp, mpFeatureExtractorLeft, mpORBVocabulary, mpCamera, mDistCoef, mbf, mThDepth);
     }
 
     if (posePrior.has_value())
@@ -489,9 +488,13 @@ void Tracking::UpdateAfterTracking(bool bOK)
 void Tracking::TrackFrame(TrackingResult& tracking_result)
 {
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
+    auto trackReferenceKF = [&]() -> RefKeyFrameTrackingResult
+    {
+        return mUseBoWReferenceKeyframeTracking ? TrackReferenceKeyFrameWithBoW() : TrackReferenceKeyFrameNoBoW();
+    };
     if (!mbVelocity)
     {
-        tracking_result.ref_key_frame_result = TrackReferenceKeyFrameWithBoW();
+        tracking_result.ref_key_frame_result = trackReferenceKF();
         tracking_result.ref_keyframe_tracking_primary = true;
         if (!tracking_result.ref_key_frame_result.success)
         {
@@ -507,7 +510,7 @@ void Tracking::TrackFrame(TrackingResult& tracking_result)
         {
             Verbose::Print(Verbose::VERBOSITY_QUIET)
                 << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL failed." << std::endl;
-            tracking_result.ref_key_frame_result = TrackReferenceKeyFrameWithBoW();
+            tracking_result.ref_key_frame_result = trackReferenceKF();
             tracking_result.ref_keyframe_tracking_fallback = true;
             if (!tracking_result.ref_key_frame_result.success)
             {
@@ -931,7 +934,9 @@ void Tracking::MonocularInitialization()
             << std::endl;
 
         // Find correspondences
-        ORBmatcher matcher(mMonocularInitNNRatio, true);
+        const DescriptorType descriptorType =
+            (mInitialFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
+        FeatureMatcher matcher(mMonocularInitNNRatio, true, descriptorType);
         int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
                                                        mMonocularInitSearchWindowSize);
 
@@ -1260,7 +1265,8 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
 
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
-    ORBmatcher matcher(mReferenceKeyframeNNRatio, true);
+    // BoW matching is only valid for ORB/binary descriptors in this codebase.
+    FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, DescriptorType::BINARY);
     std::vector<MapPoint*> vpMapPointMatches;
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
@@ -1353,9 +1359,105 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
     return result;
 }
 
+RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
+{
+    RefKeyFrameTrackingResult result;
+
+    const DescriptorType descriptorType =
+        (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
+    FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, descriptorType);
+
+    // Match by projection from the reference keyframe into the current frame.
+    // This avoids BoW and works for both ORB (binary) and SIFT (float) via the matcher metric.
+    std::set<MapPoint*> sAlreadyFound;
+    const float searchTh = (mSensor == System::STEREO) ? static_cast<float>(mMotionModelProjectionSearchThStereo)
+                                                       : static_cast<float>(mMotionModelProjectionSearchThMono);
+
+    // ORBdist is a descriptor-distance acceptance threshold. Use the matcher's configured thHigh().
+    const int nmatches =
+        matcher.SearchByProjection(mCurrentFrame, mpReferenceKF, sAlreadyFound, searchTh, matcher.thHigh());
+    result.num_matches = nmatches;
+
+    // Build match list for introspection (best-effort; source index resolved via MapPoint observations).
+    for (int i = 0; i < mCurrentFrame.N; i++)
+    {
+        MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        if (!pMP || pMP->isBad())
+        {
+            continue;
+        }
+
+        MatchedKeypoint m;
+        m.current_kp_idx = i;
+        m.current_kp = mCurrentFrame.mvKeysUn[i];
+
+        auto obs = pMP->GetObservations();
+        auto it = obs.find(mpReferenceKF);
+        if (it != obs.end())
+        {
+            const int refIdx = std::get<0>(it->second);
+            if (refIdx >= 0 && refIdx < static_cast<int>(mpReferenceKF->mvKeysUn.size()))
+            {
+                m.source_kp_idx = refIdx;
+                m.source_kp = mpReferenceKF->mvKeysUn[refIdx];
+            }
+        }
+
+        result.kf_matches.push_back(m);
+        result.keypoints_matches.push_back({m.current_kp, m.source_kp});
+    }
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatches=" << nmatches << std::endl;
+
+    if (nmatches < mReferenceKeyframeMinBoWMatches)
+    {
+        Verbose::Print(Verbose::VERBOSITY_QUIET)
+            << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed: nmatches=" << nmatches
+            << " < MinMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
+        return result;
+    }
+
+    mCurrentFrame.SetPose(mLastFrame.GetPose());
+    Optimizer::PoseOptimization(&mCurrentFrame);
+
+    int nmatchesMap = result.num_matches;
+    nmatchesMap = DiscardOutliersAndCountInliers(mCurrentFrame, nmatchesMap, true);
+
+    for (auto& m : result.kf_matches)
+    {
+        m.is_inlier = (m.current_kp_idx >= 0 && m.current_kp_idx < mCurrentFrame.N &&
+                       mCurrentFrame.mvpMapPoints[m.current_kp_idx] != nullptr);
+        if (m.is_inlier)
+        {
+            result.kf_matches_optimized.push_back(m);
+            result.keypoints_inliers_optimized.push_back(m.current_kp);
+            result.keypoints_matches_optimized.push_back({m.current_kp, m.source_kp});
+        }
+        else
+        {
+            result.keypoints_outliers_optimized.push_back(m.current_kp);
+        }
+    }
+
+    result.num_matches_optimized = nmatchesMap;
+    result.pose = mCurrentFrame.GetPose().inverse();
+
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatchesMap=" << nmatchesMap << std::endl;
+
+    if (nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches)
+    {
+        result.success = true;
+    }
+    return result;
+}
+
 MotionModelTrackingResult Tracking::TrackWithMotionModel()
 {
-    ORBmatcher matcher(mMotionModelNNRatio, true);
+    const DescriptorType descriptorType =
+        (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
+    FeatureMatcher matcher(mMotionModelNNRatio, true, descriptorType);
 
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
@@ -1893,7 +1995,9 @@ void Tracking::SearchLocalPoints()
 
     if (nToMatch > 0)
     {
-        ORBmatcher matcher(0.8);
+        const DescriptorType descriptorType =
+            (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
+        FeatureMatcher matcher(0.8, true, descriptorType);
         int th = 1;
 
         if (mState == LOST)

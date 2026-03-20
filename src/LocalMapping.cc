@@ -19,11 +19,11 @@
 #include "LocalMapping.h"
 
 #include "Atlas.h"
+#include "FeatureMatcher.h"
 #include "GeometricTools.h"
 #include "KeyFrame.h"
 #include "Map.h"
 #include "MapPoint.h"
-#include "ORBmatcher.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "Tracking.h"
@@ -335,7 +335,10 @@ void LocalMapping::CreateNewMapPoints()
     const int nn = mbMonocular ? mCreateNewMapPointsCovisibilityMono : mCreateNewMapPointsCovisibilityStereo;
     std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
-    ORBmatcher matcher(mCreateNewMapPointsMatchRatio, false);
+    const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
+                                              ? DescriptorType::FLOAT32
+                                              : DescriptorType::BINARY;
+    FeatureMatcher matcher(mCreateNewMapPointsMatchRatio, false, descriptorType);
 
     Sophus::SE3<float> sophTcw1 = mpCurrentKeyFrame->GetPose();
     Eigen::Matrix<float, 3, 4> eigTcw1 = sophTcw1.matrix3x4();
@@ -653,7 +656,10 @@ void LocalMapping::SearchInNeighbors()
     }
 
     // Search matches by projection from current KF in target KFs
-    ORBmatcher matcher;
+    const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
+                                              ? DescriptorType::FLOAT32
+                                              : DescriptorType::BINARY;
+    FeatureMatcher matcher(0.6f, true, descriptorType);
     std::vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
     for (std::vector<KeyFrame*>::iterator vit = vpTargetKFs.begin(), vend = vpTargetKFs.end(); vit != vend; vit++)
     {

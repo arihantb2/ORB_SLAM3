@@ -20,11 +20,11 @@
 
 #include "CameraModels/GeometricCamera.h"
 #include "Converter.h"
-#include "GTSAMTypes.h"
+#include "FeatureMatcher.h"
 #include "KeyFrame.h"
 #include "MapPoint.h"
 #include "feature_extractor/FeatureExtractor.h"
-#include "ORBmatcher.h"
+#include "feature_extractor/FeatureTypes.h"
 
 #include <CameraModels/Pinhole.h>
 #include <thread>
@@ -641,6 +641,11 @@ void Frame::ComputeBoW()
 {
     if (mBowVec.empty())
     {
+        // BoW vocabulary in this codebase is ORB/binary (FORB). Skip for float descriptors (e.g., SIFT).
+        if (!mpORBvocabulary || mDescriptors.type() != CV_8UC1)
+        {
+            return;
+        }
         std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
         mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
     }
@@ -718,7 +723,11 @@ void Frame::ComputeStereoMatches()
     mvDepth = std::vector<float>(N, -1.0f);
     vDescIndex = std::vector<int>(N, -1);
 
-    const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
+    const DescriptorType descriptorType =
+        (mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
+    const int thLow = FeatureMatcher::DefaultThLow(descriptorType);
+    const int thHigh = FeatureMatcher::DefaultThHigh(descriptorType);
+    const int thDescDist = (thHigh + thLow) / 2;
 
     const int nRows = mpFeatureExtractorLeft->mvImagePyramid[0].rows;
 
@@ -742,6 +751,10 @@ void Frame::ComputeStereoMatches()
 
         for (int yi = minr; yi <= maxr; yi++)
         {
+            if (yi < 0 || yi >= nRows)
+            {
+                continue;
+            }
             vRowIndices[yi].push_back(iR);
         }
     }
@@ -762,7 +775,12 @@ void Frame::ComputeStereoMatches()
         const float& vL = kpL.pt.y;
         const float& uL = kpL.pt.x;
 
-        const std::vector<size_t>& vCandidates = vRowIndices[vL];
+        const int row = cvRound(vL);
+        if (row < 0 || row >= nRows)
+        {
+            continue;
+        }
+        const std::vector<size_t>& vCandidates = vRowIndices[row];
 
         if (vCandidates.empty())
         {
@@ -777,7 +795,7 @@ void Frame::ComputeStereoMatches()
             continue;
         }
 
-        int bestDist = ORBmatcher::TH_HIGH;
+        int bestDist = thHigh;
         size_t bestIdxR = static_cast<size_t>(-1);  // sentinel: no match
 
         const cv::Mat& dL = mDescriptors.row(iL);
@@ -798,7 +816,7 @@ void Frame::ComputeStereoMatches()
             if (uR >= minU && uR <= maxU)
             {
                 const cv::Mat& dR = mDescriptorsRight.row(iR);
-                const int dist = ORBmatcher::DescriptorDistance(dL, dR);
+                const int dist = FeatureMatcher::DescriptorDistance(dL, dR);
 
                 if (dist < bestDist)
                 {
@@ -809,7 +827,7 @@ void Frame::ComputeStereoMatches()
         }
 
         // Subpixel match by correlation
-        if (bestDist < thOrbDist && bestIdxR != static_cast<size_t>(-1))
+        if (bestDist < thDescDist && bestIdxR != static_cast<size_t>(-1))
         {
             // coordinates in image pyramid at keypoint scale
             const float uR0 = mvKeysRight[bestIdxR].pt.x;

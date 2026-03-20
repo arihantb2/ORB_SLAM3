@@ -16,14 +16,15 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ORBMATCHER_H
-#define ORBMATCHER_H
+#ifndef FEATUREMATCHER_H
+#define FEATUREMATCHER_H
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <set>
 #include <utility>
 #include <vector>
+#include "feature_extractor/FeatureTypes.h"
 #include "sophus/sim3.hpp"
 
 namespace ORB_SLAM3
@@ -33,13 +34,18 @@ class Frame;
 class KeyFrame;
 class MapPoint;
 
-class ORBmatcher
+class FeatureMatcher
 {
 public:
-    ORBmatcher(float nnratio = 0.6, bool checkOri = true);
+    FeatureMatcher(float nnratio = 0.6, bool checkOri = true, DescriptorType descriptorType = DescriptorType::BINARY);
 
-    // Computes the Hamming distance between two ORB descriptors
+    // Computes descriptor distance (Hamming for binary ORB, L2 for float SIFT).
     static int DescriptorDistance(const cv::Mat& a, const cv::Mat& b);
+    static int DefaultThLow(DescriptorType descriptorType);
+    static int DefaultThHigh(DescriptorType descriptorType);
+
+    int thLow() const { return mThLow; }
+    int thHigh() const { return mThHigh; }
 
     // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
     // Used to track the local map (Tracking)
@@ -109,8 +115,11 @@ protected:
 
     float mfNNratio;
     bool mbCheckOrientation;
+    DescriptorType mDescriptorType;
+    int mThLow;
+    int mThHigh;
 };
 
 }  // namespace ORB_SLAM3
 
-#endif  // ORBMATCHER_H
+#endif  // FEATUREMATCHER_H
