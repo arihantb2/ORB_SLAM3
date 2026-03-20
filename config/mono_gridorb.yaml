@@ -16,6 +16,26 @@ Camera.fps: 2
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
 
+#--------------------------------------------------------------------------------------------
+# GridORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# Number of features per image
+FeatureExtractor.GridORB.nFeatures: 2000
+FeatureExtractor.GridORB.nInitFeatures: 5000
+
+# Scale factor between levels in the scale pyramid
+FeatureExtractor.GridORB.scaleFactor: 1.2
+
+# Number of levels in the scale pyramid
+FeatureExtractor.GridORB.nLevels: 8
+
+# FAST thresholds — image is divided into a grid; at each cell FAST corners are extracted
+# imposing a minimum response. iniThFAST is tried first; if no corners are detected,
+# minThFAST is used as fallback. Lower values help in low-contrast images.
+FeatureExtractor.GridORB.iniThFAST: 15
+FeatureExtractor.GridORB.minThFAST: 5
+
 # -------------------------------------------------------------------------------------------
 # Monocular Initialization Parameters
 # -------------------------------------------------------------------------------------------
@@ -101,26 +121,6 @@ LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
 LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3
 LocalMapping.KeyFrameCulling.MaxKeyframesToCheck: 100
 LocalMapping.KeyFrameCulling.EarlyExitAfterAbort: 20
-
-#--------------------------------------------------------------------------------------------
-# GridORB Parameters
-#--------------------------------------------------------------------------------------------
-
-# Number of features per image
-FeatureExtractor.GridORB.nFeatures: 2000
-FeatureExtractor.GridORB.nInitFeatures: 5000
-
-# Scale factor between levels in the scale pyramid
-FeatureExtractor.GridORB.scaleFactor: 1.2
-
-# Number of levels in the scale pyramid
-FeatureExtractor.GridORB.nLevels: 8
-
-# FAST thresholds — image is divided into a grid; at each cell FAST corners are extracted
-# imposing a minimum response. iniThFAST is tried first; if no corners are detected,
-# minThFAST is used as fallback. Lower values help in low-contrast images.
-FeatureExtractor.GridORB.iniThFAST: 15
-FeatureExtractor.GridORB.minThFAST: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

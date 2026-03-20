@@ -47,10 +47,10 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     Verbose::SetLogFile(strLogFile);
     Verbose::SetConsole(bVerboseConsole);
     // Fix verbosity
-    Verbose::SetTh(Verbose::VERBOSITY_QUIET);
+    Verbose::SetTh(Verbose::VERBOSITY_DEBUG);
 
     // Output welcome message
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << std::endl
         << "ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and "
            "Juan D. Tardós, University of Zaragoza."
@@ -63,15 +63,15 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
         << "under certain conditions. See LICENSE.txt." << std::endl
         << std::endl;
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Input sensor was set to: ";
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Input sensor was set to: ";
 
     if (mSensor == MONOCULAR)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Monocular" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Monocular" << std::endl;
     }
     else if (mSensor == STEREO)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Stereo" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Stereo" << std::endl;
     }
     // Check algorithm config file
     cv::FileStorage fsSettings(strConfigFile.c_str(), cv::FileStorage::READ);
@@ -84,7 +84,7 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     if (!node.empty() && node.isString() && node.string() == "1.0")
     {
         settings_ = new Settings(strConfigFile, mSensor, calib);
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << (*settings_) << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << (*settings_) << std::endl;
     }
     else
     {
@@ -97,12 +97,12 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     {
         newMaps = (node.operator int()) == 1;
     }
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << std::endl;
 
     mStrVocabularyFilePath = strVocFile;
 
     //Load ORB Vocabulary
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << std::endl
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << std::endl
                                              << "Loading ORB Vocabulary. This could take a while..." << std::endl;
 
     mpVocabulary = new ORBVocabulary();
@@ -111,10 +111,10 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     {
         throw std::runtime_error("Could not load vocabulary from file: " + strVocFile);
     }
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Vocabulary loaded!" << std::endl << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Vocabulary loaded!" << std::endl << std::endl;
 
     //Create the Atlas
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "Initialization of Atlas from scratch " << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Initialization of Atlas from scratch " << std::endl;
     mpAtlas = new Atlas(0);
 
     const bool monocular = mSensor == MONOCULAR;

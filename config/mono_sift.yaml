@@ -27,6 +27,10 @@ Camera.RGB: 1
 # Total desired keypoints across all pyramid levels
 FeatureExtractor.SIFT.nFeatures: 2000
 
+# Optional: keypoint budget for mpIniFeatureExtractor (NOT_INITIALIZED + brief post-init).
+# If omitted, defaults to 2.5 * nFeatures (same rule as ORB / GridORB), e.g. 5000 for nFeatures=2000.
+FeatureExtractor.SIFT.nInitFeatures: 5000
+
 # Number of pyramid levels.
 # Each level downscales by scaleFactor=2.0 (SIFT's native octave step).
 # 4 levels covers the same spatial range as ORB's 8 levels at scaleFactor=1.2.

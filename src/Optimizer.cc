@@ -356,12 +356,12 @@ int Optimizer::PoseOptimization(Frame* pFrame)
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nInitialCorrespondences=" << nInitialCorrespondences
         << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nMatches=" << nInitialCorrespondences - nBad << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << pFrame->mnId << "] POSE_OPTIMIZATION: nOutliers=" << nBad << std::endl;
 
     gtsam::Pose3 Tcw_final = initial.at<gtsam::Pose3>(poseK);
@@ -513,7 +513,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             // skip between factors between keyframes that are not sequential
             if (std::abs(static_cast<int>(pKFiNext->mnId - pKFi->mnId)) > 1)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId
                     << "] LOCAL_BUNDLE_ADJUSTMENT: skipping between factor between non-sequential keyframes "
                     << pKFi->mnId << "->" << pKFiNext->mnId << std::endl;
@@ -524,7 +524,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             const auto ext_T_ciNext = sophusToGTSAMPose(pKFiNext->mPosePrior.value());
             const auto T_ci_ciNext = ext_T_ci.inverse() * ext_T_ciNext;
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: adding between factor between keyframes "
                 << pKFi->mnId << "->" << pKFiNext->mnId << " T_ci_ciNext=" << T_ci_ciNext.translation().transpose()
                 << std::endl;
@@ -539,7 +539,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             graph.add(factor);
             num_between_factors++;
         }
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_between_factors=" << num_between_factors
             << std::endl;
     }
@@ -561,7 +561,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             // skip scale factors between keyframes that are not sequential
             if (std::abs(static_cast<int>(pKFiNext->mnId - pKFi->mnId)) > 1)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId
                     << "] LOCAL_BUNDLE_ADJUSTMENT: skipping scale factor between non-sequential keyframes "
                     << pKFi->mnId << "->" << pKFiNext->mnId << std::endl;
@@ -573,7 +573,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             const auto T_ci_ciNext = ext_T_ci.inverse() * ext_T_ciNext;
             const auto translation_norm = T_ci_ciNext.translation().norm();
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: adding scale factor between keyframes " << pKFi->mnId
                 << "->" << pKFiNext->mnId << " T_ci_ciNext=" << T_ci_ciNext.translation().transpose()
                 << " translation norm=" << translation_norm << std::endl;
@@ -588,7 +588,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             graph.add(factor);
             num_scale_factors++;
         }
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_scale_factors=" << num_scale_factors << std::endl;
     }
 
@@ -599,7 +599,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         auto initKF = pCurrentMap->GetOriginKF();
         int num_pose_prior_factors = 0;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: initKF=" << initKF->mnId << std::endl;
 
         if (initKF && initKF->hasPosePrior())
@@ -619,7 +619,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                     continue;
                 }
 
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: pKF" << pKFi->mnId
                     << "->mPosePrior=" << pKFi->mPosePrior.value().matrix().block<3, 1>(0, 3).transpose() << std::endl;
 
@@ -633,16 +633,16 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 const auto factor = boost::make_shared<PriorFactorTcw>(poseKey(static_cast<uint32_t>(pKFi->mnId)),
                                                                        ciPrior_T_w.inverse(), robust_noise);
 
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId
                     << "Prior: " << ciPrior_T_w.inverse().translation().transpose() << std::endl;
 
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId << "] w_T_c" << pKFi->mnId << ": "
                     << pKFi->GetPose().inverse().translation().transpose() << std::endl;
 
                 const auto error_vector = factor->evaluateError(sophusToGTSAMPose(pKFi->GetPose()));
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << pKF->mnId << "] " << pKFi->mnId << "Error: " << error_vector.transpose() << std::endl;
 
                 graph.add(factor);
@@ -650,7 +650,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             }
         }
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << pKF->mnId << "] LOCAL_BUNDLE_ADJUSTMENT: num_pose_prior_factors=" << num_pose_prior_factors
             << std::endl;
     }

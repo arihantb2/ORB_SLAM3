@@ -23,10 +23,12 @@
 #include "FeatureMatcher.h"
 #include "KeyFrame.h"
 #include "MapPoint.h"
+#include "Verbose.h"
 #include "feature_extractor/FeatureExtractor.h"
 #include "feature_extractor/FeatureTypes.h"
 
 #include <CameraModels/Pinhole.h>
+#include <chrono>
 #include <thread>
 
 #include <map>
@@ -181,7 +183,7 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
             nStereoInliers++;
         }
     }
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mnId << "] STEREO_PINHOLE_FRAME: stereo_inlier_matches=" << nStereoInliers << " (keypoints=" << N
         << " ratio=" << (N > 0 ? static_cast<float>(nStereoInliers) / N : 0.f) << ")." << std::endl;
 
@@ -263,7 +265,7 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* e
     // Feature Extraction
     ExtractFeatures(true, imGray, 0, 1000);
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mnId << "] MONOCULAR_FRAME: num_features=" << mvKeys.size() << std::endl;
 
     N = mvKeys.size();
@@ -356,6 +358,7 @@ void Frame::AssignFeaturesToGrid()
 
 void Frame::ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1)
 {
+    const auto start = std::chrono::steady_clock::now();
     std::vector<int> vLapping = {x0, x1};
     if (left)
     {
@@ -365,6 +368,13 @@ void Frame::ExtractFeatures(bool left, const cv::Mat& im, const int x0, const in
     {
         (*mpFeatureExtractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight, vLapping);
     }
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    const size_t nFeatures = left ? mvKeys.size() : mvKeysRight.size();
+    const char* side = left ? "left" : "right";
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[" << mnId << "] FEATURE_DETECTION_" << side
+                                             << ": duration=" << durationMs << " ms, count=" << nFeatures << std::endl;
 }
 
 bool Frame::isSet() const

@@ -47,6 +47,8 @@ public:
         if (!path.empty())
         {
             log_file_ = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::trunc);
+            std::cout << "[ORB-SLAM3::Verbose] Logging to file: " << path << std::endl;
+            std::cout.flush();
         }
     }
 
@@ -114,21 +116,6 @@ public:
     };
 
     static VerboseStream Print(eLevel lev = VERBOSITY_NORMAL) { return VerboseStream(lev); }
-
-    static void PrintMess(const std::string& str, eLevel lev)
-    {
-        std::lock_guard<std::mutex> lock(cout_mutex);
-        if (log_file_ && *log_file_)
-        {
-            *log_file_ << "[" << LevelToString(lev) << "] " << str << std::endl;
-            log_file_->flush();
-        }
-        if (console_enabled.load(std::memory_order_relaxed) && lev <= th.load(std::memory_order_relaxed))
-        {
-            std::cout << str << std::endl;
-        }
-    }
-
     static void SetTh(eLevel _th) { th.store(_th, std::memory_order_relaxed); }
 };
 

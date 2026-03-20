@@ -49,7 +49,7 @@ Atlas::~Atlas()
 void Atlas::CreateNewMap()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
-    Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Creation of new map with id: " << Map::nNextId << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Creation of new map with id: " << Map::nNextId << std::endl;
     if (mpCurrentMap)
     {
         if (mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
@@ -60,7 +60,7 @@ void Atlas::CreateNewMap()
         mpCurrentMap = static_cast<Map*>(NULL);
     }
 
-    Verbose::Print(Verbose::VERBOSITY_NORMAL)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "Creation of new map with last KF id: " << mnLastInitKFidMap << std::endl;
 
     mpCurrentMap = new Map(mnLastInitKFidMap);

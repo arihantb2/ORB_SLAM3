@@ -70,21 +70,21 @@ Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atl
     lastID = 0;
 
     std::vector<GeometricCamera*> vpCams = mpAtlas->GetAllCameras();
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "There are " << vpCams.size() << " cameras in the atlas" << std::endl;
     for (GeometricCamera* pCam : vpCams)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "Camera " << pCam->GetId();
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Camera " << pCam->GetId();
         if (pCam->GetType() == GeometricCamera::CAM_PINHOLE)
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is pinhole" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is pinhole" << std::endl;
         }
         else if (pCam->GetType() == GeometricCamera::CAM_METASHAPE)
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is metashape" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is metashape" << std::endl;
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << " is unknown" << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << " is unknown" << std::endl;
         }
     }
 }
@@ -250,11 +250,11 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
         throw std::runtime_error("[Tracking::GrabImageStereo]: Input image must be grayscale");
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[-] TRACKING_STEREO" << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[-] TRACKING_STEREO" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
 
@@ -264,7 +264,7 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
 
     if (posePrior.has_value())
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_STEREO: TwcPrior" << mCurrentFrame.mnId << ": "
             << posePrior.value().translation().transpose() << std::endl;
         mCurrentFrame.setPosePrior(posePrior.value());
@@ -278,7 +278,7 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
     result.image_left = imageLeft.clone();
     result.image_right = imageRight.clone();
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
 
@@ -293,11 +293,11 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
         throw std::runtime_error("[Tracking::GrabImageMonocular]: Input image must be grayscale");
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[-] TRACKING_MONOCULAR" << std::endl;
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[-] TRACKING_MONOCULAR" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
 
@@ -315,7 +315,7 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
 
     if (posePrior.has_value())
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_MONOCULAR: TwcPrior" << mCurrentFrame.mnId << ": "
             << posePrior.value().translation().transpose() << std::endl;
         mCurrentFrame.setPosePrior(posePrior.value());
@@ -328,7 +328,7 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
     // image_right is left default-constructed (empty) for monocular.
     result.image_left = image.clone();
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
 
@@ -419,18 +419,18 @@ void Tracking::UpdateAfterTracking(bool bOK)
         const Eigen::Vector3f& p_cLastcCurr_cLast = R_cLastw * p_cLastcCurr_w;
         const Eigen::Vector3f& p_cLastcCurr_cLast_norm = p_cLastcCurr_cLast.normalized();
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
             << mCurrentFrame.mnId << "_w: " << p_cLastcCurr_w.transpose() << " m" << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
             << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << ": " << p_cLastcCurr_cLast.transpose() << " m"
             << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: p_c" << mLastFrame.mnId << "c"
             << mCurrentFrame.mnId << "_c" << mLastFrame.mnId << "_norm: " << p_cLastcCurr_cLast_norm.transpose() << " m"
             << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "UPDATE_AFTER_TRACKING: Motion ||p||_c" << mLastFrame.mnId << "c"
             << mCurrentFrame.mnId << ": " << p_cLastcCurr_w.norm() << " m" << std::endl;
 
@@ -498,7 +498,7 @@ void Tracking::TrackFrame(TrackingResult& tracking_result)
         tracking_result.ref_keyframe_tracking_primary = true;
         if (!tracking_result.ref_key_frame_result.success)
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed." << std::endl;
         }
     }
@@ -508,13 +508,13 @@ void Tracking::TrackFrame(TrackingResult& tracking_result)
         tracking_result.motion_model_tracking_primary = true;
         if (!tracking_result.motion_model_result.success)
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL failed." << std::endl;
             tracking_result.ref_key_frame_result = trackReferenceKF();
             tracking_result.ref_keyframe_tracking_fallback = true;
             if (!tracking_result.ref_key_frame_result.success)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed (fallback)." << std::endl;
             }
         }
@@ -534,20 +534,20 @@ void Tracking::ComputeVelocityFromPriors()
         return T_cCurrcLast;
     };
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] COMPUTE_VELOCITY_FROM_PRIORS: mCurrentFrame.hasPosePrior: " << std::boolalpha
         << mCurrentFrame.hasPosePrior() << std::endl;
 
     if (mState == NOT_INITIALIZED)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId
             << "] COMPUTE_VELOCITY_FROM_PRIORS: mInitialFrame.hasPosePrior: " << std::boolalpha
             << mInitialFrame.hasPosePrior() << std::endl;
     }
     else
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId
             << "] COMPUTE_VELOCITY_FROM_PRIORS: mLastFrame.hasPosePrior: " << std::boolalpha
             << mLastFrame.hasPosePrior() << std::endl;
@@ -567,14 +567,14 @@ void Tracking::ComputeVelocityFromPriors()
         const Eigen::Vector3f& p_cLastPriorcCurrPrior_cLast =
             mLastFrame.mPosePrior->inverse().rotationMatrix() * p_cLastPriorcCurrPrior_w;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
             << mCurrentFrame.mnId << "Prior_w: " << p_cLastPriorcCurrPrior_w.transpose() << " m" << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mLastFrame.mnId << "Priorc"
             << mCurrentFrame.mnId << "Prior_c" << mLastFrame.mnId << ": " << p_cLastPriorcCurrPrior_cLast.transpose()
             << " m" << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Motion ||p||_c" << mLastFrame.mnId
             << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cLastPriorcCurrPrior_w.norm() << " m" << std::endl;
     }
@@ -587,15 +587,15 @@ void Tracking::ComputeVelocityFromPriors()
         const Eigen::Vector3f& p_cInitialPriorcCurrPrior_cInitial =
             mInitialFrame.mPosePrior->inverse().rotationMatrix() * p_cInitialPriorcCurrPrior_w;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mInitialFrame.mnId
             << "Priorc" << mCurrentFrame.mnId << "Prior_w: " << p_cInitialPriorcCurrPrior_w.transpose() << " m"
             << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: p_c" << mInitialFrame.mnId
             << "Priorc" << mCurrentFrame.mnId << "Prior_c" << mInitialFrame.mnId << ": "
             << p_cInitialPriorcCurrPrior_cInitial.transpose() << " m" << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Motion ||p||_c" << mInitialFrame.mnId
             << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cInitialPriorcCurrPrior_w.norm() << " m" << std::endl;
     }
@@ -606,7 +606,7 @@ TrackingResult Tracking::Track()
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if (!pCurrentMap)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "ERROR: There is not an active map in the atlas" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "ERROR: There is not an active map in the atlas" << std::endl;
     }
 
     if (mState != NO_IMAGES_YET)
@@ -668,12 +668,12 @@ TrackingResult Tracking::Track()
             {
                 mState = LOST;
                 mTimeStampLost = mCurrentFrame.mTimeStamp;
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_LOST. Pose estimation failed" << std::endl;
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_OK. Pose estimation succeeded" << std::endl;
             }
         }
@@ -697,13 +697,13 @@ TrackingResult Tracking::Track()
             auto local_map_result = TrackLocalMap();
             if (!local_map_result.success)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP failed." << std::endl;
             }
             else
             {
                 mState = OK;
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP ok: inliers=" << mnMatchesInliers << std::endl;
             }
 
@@ -715,7 +715,7 @@ TrackingResult Tracking::Track()
         {
             if (mSensor == System::STEREO || mSensor == System::MONOCULAR)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId
                     << "] Tracking LOST (frames_since_last_kf=" << (mCurrentFrame.mnId - mnLastKeyFrameId) << ")."
                     << std::endl;
@@ -830,7 +830,7 @@ void Tracking::StereoInitialization()
 {
     if (mCurrentFrame.N < mStereoInitMinKeypoints)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] STEREO_INIT failed: keypoints=" << mCurrentFrame.N
             << " < MinKeypoints=" << mStereoInitMinKeypoints << "." << std::endl;
         return;
@@ -881,7 +881,7 @@ void Tracking::StereoInitialization()
     mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
 
     mState = OK;
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] STEREO_INIT ok: keypoints=" << mCurrentFrame.N
         << " map_points=" << mpAtlas->MapPointsInMap() << "." << std::endl;
 }
@@ -895,7 +895,7 @@ void Tracking::MonocularInitialization()
         {
             mInitialFrame = Frame(mCurrentFrame);
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId
                 << "] MONOCULAR_INITIALIZATION: Set mInitialFrame to id: " << mInitialFrame.mnId << std::endl;
 
@@ -917,19 +917,19 @@ void Tracking::MonocularInitialization()
         if ((int)mCurrentFrame.mvKeys.size() <= mMonocularInitMinKeypoints)
         {
             mbReadyToInitializate = false;
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough detected features ["
                 << mCurrentFrame.mvKeys.size() << "] to initialize." << std::endl;
             return;
         }
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mInitialFrame[" << mInitialFrame.mnId
             << "].hasPosePrior: " << std::boolalpha << mInitialFrame.hasPosePrior() << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mCurrentFrame[" << mCurrentFrame.mnId
             << "].hasPosePrior: " << std::boolalpha << mCurrentFrame.hasPosePrior() << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mbVelocity: " << std::boolalpha << mbVelocity
             << std::endl;
 
@@ -940,14 +940,14 @@ void Tracking::MonocularInitialization()
         int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
                                                        mMonocularInitSearchWindowSize);
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] " << "MONOCULAR_INITIALIZATION: nmatches: " << nmatches << std::endl;
 
         // Check if there are enough correspondences
         if (nmatches < mMonocularInitMinMatches)
         {
             mbReadyToInitializate = false;
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough correspondences [" << nmatches
                 << "] to initialize." << std::endl;
             return;
@@ -974,11 +974,11 @@ void Tracking::MonocularInitialization()
 
             const auto& Twc = Tcw.inverse();
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] "
                 << "MONOCULAR_INITIALIZATION: Twc: " << Twc.translation().transpose() << std::endl;
 
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] "
                 << "MONOCULAR_INITIALIZATION: Motion ||p||_cInitialcCurr: " << Twc.translation().norm() << " m"
                 << std::endl;
@@ -1046,7 +1046,7 @@ void Tracking::CreateInitialMapMonocular()
     if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity)
     {
         scalingFactor = mVelocity.translation().norm() / Tc2w.translation().norm();
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Scaling factor from velocity ["
             << scalingFactor << "]." << std::endl;
     }
@@ -1055,20 +1055,20 @@ void Tracking::CreateInitialMapMonocular()
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
         scalingFactor = 1.0f / medianDepth;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Median depth [" << medianDepth << "]."
             << std::endl;
 
         if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 50)  // TODO Check, originally 100 tracks
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
                 << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Wrong initialization, reseting..."
                 << std::endl;
             mpSystem->ResetActiveMap();
             return;
         }
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] CREATE_INITIAL_MAP_MONOCULAR: Scaling factor from median depth ["
             << scalingFactor << "]." << std::endl;
     }
@@ -1082,11 +1082,11 @@ void Tracking::CreateInitialMapMonocular()
 
     const auto& Twc = Tc2w.inverse();
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] "
         << "CREATE_INITIAL_MAP_MONOCULAR: After scaling Twc: " << Twc.translation().transpose() << std::endl;
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] "
         << "CREATE_INITIAL_MAP_MONOCULAR: After scaling Motion ||p||_cInitialcCurr: " << Twc.translation().norm()
         << " m" << std::endl;
@@ -1132,7 +1132,7 @@ void Tracking::CreateInitialMapMonocular()
 
     initID = pKFcur->mnId;
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION ok: New Map created with "
         << mpAtlas->MapPointsInMap() << " points." << std::endl;
 }
@@ -1301,12 +1301,12 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
         result.keypoints_matches.push_back({m.current_kp, m.source_kp});  // legacy field
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_WITH_BOW: nmatches=" << nmatches << std::endl;
 
     if (nmatches < mReferenceKeyframeMinBoWMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed: nmatches=" << nmatches
             << " < MinBoWMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
         Verbose::Print(Verbose::VERBOSITY_DEBUG) << "TRACK_REF_KF: Less than 15 matches!!\n";
@@ -1341,19 +1341,19 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
     result.num_matches_optimized = nmatchesMap;
     result.pose = mCurrentFrame.GetPose().inverse();
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_WITH_BOW: nmatchesMap=" << nmatchesMap << std::endl;
 
     if (nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_WITH_BOW ok: nmatches=" << nmatches
             << " nmatchesMap=" << nmatchesMap << std::endl;
         result.success = true;
         return result;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_WITH_BOW failed: nmatchesMap=" << nmatchesMap
         << " < MinOptimizedMapMatches=" << mReferenceKeyframeMinOptimizedMapMatches << std::endl;
     return result;
@@ -1367,15 +1367,7 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
         (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
     FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, descriptorType);
 
-    // Match by projection from the reference keyframe into the current frame.
-    // This avoids BoW and works for both ORB (binary) and SIFT (float) via the matcher metric.
-    std::set<MapPoint*> sAlreadyFound;
-    const float searchTh = (mSensor == System::STEREO) ? static_cast<float>(mMotionModelProjectionSearchThStereo)
-                                                       : static_cast<float>(mMotionModelProjectionSearchThMono);
-
-    // ORBdist is a descriptor-distance acceptance threshold. Use the matcher's configured thHigh().
-    const int nmatches =
-        matcher.SearchByProjection(mCurrentFrame, mpReferenceKF, sAlreadyFound, searchTh, matcher.thHigh());
+    const int nmatches = matcher.SearchByBruteForce(mpReferenceKF, mCurrentFrame);
     result.num_matches = nmatches;
 
     // Build match list for introspection (best-effort; source index resolved via MapPoint observations).
@@ -1407,12 +1399,12 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
         result.keypoints_matches.push_back({m.current_kp, m.source_kp});
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatches=" << nmatches << std::endl;
 
     if (nmatches < mReferenceKeyframeMinBoWMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed: nmatches=" << nmatches
             << " < MinMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
         return result;
@@ -1443,7 +1435,7 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
     result.num_matches_optimized = nmatchesMap;
     result.pose = mCurrentFrame.GetPose().inverse();
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatchesMap=" << nmatchesMap << std::endl;
 
     if (nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches)
@@ -1485,7 +1477,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
 
     result.num_matches = nmatches;
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
 
     // If few matches, uses a wider window search
@@ -1493,7 +1485,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
                                               : mMotionModelRetryProjectionSearchThMono;
     if (nmatches < mMotionModelMinInitialMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches [" << nmatches
             << "] < MinInitialMatches=" << mMotionModelMinInitialMatches << "." << std::endl;
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
@@ -1503,7 +1495,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
         result.retry = true;
         result.num_matches_retry = nmatches;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
     }
 
@@ -1545,7 +1537,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
 
     if (nmatches < mMotionModelMinRetryMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches [" << nmatches
             << "] with wider search < MinRetryMatches=" << mMotionModelMinRetryMatches << "." << std::endl;
         return result;
@@ -1578,18 +1570,18 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatchesMap=" << nmatchesMap << std::endl;
 
     if (nmatchesMap < mMotionModelMinOptimizedMapMatches)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches after pose optimization ["
             << nmatchesMap << "] < MinOptimizedMapMatches=" << mMotionModelMinOptimizedMapMatches << "." << std::endl;
         return result;
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL ok: nmatchesMap=" << nmatchesMap << std::endl;
     result.success = true;
     return result;
@@ -1661,7 +1653,7 @@ LocalMapTrackingResult Tracking::TrackLocalMap()
 
     if (mnMatchesInliers < mLocalMapVisualMinInliers)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP failed: inliers=" << mnMatchesInliers
             << " < VisualMinInliers=" << mLocalMapVisualMinInliers << "." << std::endl;
         return result;
@@ -1830,7 +1822,7 @@ bool Tracking::NeedNewKeyFrame()
     // Otherwise send a signal to interrupt BA
     if (bLocalMappingIdle || mpLocalMapper->IsInitializing())
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] NEED_NEW_KEYFRAME: reason=" << kfReason << std::endl;
         return true;
     }
@@ -1844,7 +1836,7 @@ bool Tracking::NeedNewKeyFrame()
     const bool canInsert = (queueSize < mNewKFMaxKFsInQueue);
     if (canInsert)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] NEED_NEW_KEYFRAME: reason=" << kfReason << std::endl;
     }
     return canInsert;
@@ -1938,7 +1930,7 @@ void Tracking::CreateNewKeyFrame()
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACKING_CREATED_NEW_KEYFRAME" << std::endl;
 }
 
@@ -2168,7 +2160,8 @@ void Tracking::UpdateLocalKeyFrames()
 
 void Tracking::Reset(bool bLocMap)
 {
-    Verbose::PrintMess("System Reseting", Verbose::VERBOSITY_DEBUG);
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "System Reseting" << std::endl;
+
     if (mpViewer)
     {
         mpViewer->RequestStop();

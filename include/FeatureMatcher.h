@@ -80,6 +80,7 @@ public:
     // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
     int SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>& vpMapPointMatches);
     int SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches12);
+    int SearchByBruteForce(KeyFrame* pKF, Frame& F);
 
     // Matching for the Map Initialization (only used in the monocular case)
     int SearchForInitialization(Frame& F1, Frame& F2, std::vector<cv::Point2f>& vbPrevMatched,
@@ -112,6 +113,12 @@ protected:
     float RadiusByViewingCos(const float& viewCos);
 
     void ComputeThreeMaxima(std::vector<int>* histo, const int L, int& ind1, int& ind2, int& ind3);
+
+    // When BoW feature vectors are empty (e.g. SIFT float descriptors skip ORB vocabulary), triangulate
+    // using descriptor + epipolar checks over octave-filtered candidate pairs.
+    int SearchForTriangulationNoBoW(KeyFrame* pKF1, KeyFrame* pKF2,
+                                    std::vector<std::pair<size_t, size_t>>& vMatchedPairs, const bool bOnlyStereo,
+                                    const bool bCoarse);
 
     float mfNNratio;
     bool mbCheckOrientation;

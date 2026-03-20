@@ -48,7 +48,7 @@ float Settings::readParameter<float>(cv::FileStorage& fSettings, const std::stri
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return 0.0f;
         }
@@ -76,7 +76,7 @@ int Settings::readParameter<int>(cv::FileStorage& fSettings, const std::string& 
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return 0;
         }
@@ -105,7 +105,7 @@ std::string Settings::readParameter<std::string>(cv::FileStorage& fSettings, con
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return std::string();
         }
@@ -134,7 +134,7 @@ cv::Mat Settings::readParameter<cv::Mat>(cv::FileStorage& fSettings, const std::
         }
         else
         {
-            Verbose::Print(Verbose::VERBOSITY_QUIET) << name << " optional parameter does not exist..." << std::endl;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG) << name << " optional parameter does not exist..." << std::endl;
             found = false;
             return cv::Mat();
         }
@@ -280,7 +280,8 @@ void Settings::readSIFT(cv::FileStorage& fSettings)
     nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nInitFeatures", found, false);
     if (!found)
     {
-        nInitFeatures_ = nFeatures_;
+        // Match ORB / GridORB: denser features during NOT_INITIALIZED / short post-init window.
+        nInitFeatures_ = static_cast<int>(2.5f * nFeatures_);
     }
     nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nLevels", found, false);
     if (!found)

@@ -213,7 +213,7 @@ private:
             }
             else
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << name << " optional parameter does not exist..." << std::endl;
             }
 

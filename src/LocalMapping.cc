@@ -68,7 +68,7 @@ void LocalMapping::loadFromSettings(Settings* settings)
     mbFarPoints = (mThFarPoints != 0);
     if (mbFarPoints)
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "Discard points further than " << mThFarPoints << " m from current camera" << std::endl;
     }
 
@@ -119,10 +119,10 @@ bool LocalMapping::RunLoop()
     // Check if there are keyframes in the queue
     if (CheckNewKeyFrames())
     {
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
-        Verbose::Print(Verbose::VERBOSITY_QUIET) << "[-:-] LOCAL_MAPPING_LOOP";
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[-:-] LOCAL_MAPPING_LOOP";
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
         const auto start_time = std::chrono::steady_clock::now();
 
@@ -150,7 +150,7 @@ bool LocalMapping::RunLoop()
             const auto time_since_last_optimize = mpCurrentKeyFrame->mTimeStamp - prevOptimizedKFTimestamp;
             if (time_since_last_optimize < mOptimizeEveryTSeconds - LBA_TIME_EPSILON)
             {
-                Verbose::Print(Verbose::VERBOSITY_QUIET)
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                     << "] Skipping LBA because it's too soon (time_since_last_optimize=" << time_since_last_optimize
                     << " s < OptimizeEveryTSeconds=" << mOptimizeEveryTSeconds << " s)." << std::endl;
@@ -172,7 +172,7 @@ bool LocalMapping::RunLoop()
                 {
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
                                                      num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
-                    Verbose::Print(Verbose::VERBOSITY_QUIET)
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG)
                         << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                         << "] LBA performed with " << num_FixedKF_BA << " fixed KFs, " << num_OptKF_BA
                         << " optimized KFs, " << num_MPs_BA << " MapPoints, and " << num_edges_BA << " edges."
@@ -188,11 +188,11 @@ bool LocalMapping::RunLoop()
 
         const auto end_time = std::chrono::steady_clock::now();
         const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
             << "] LOCAL_MAPPING_LOOP: duration=" << duration << " ms" << std::endl;
 
-        Verbose::Print(Verbose::VERBOSITY_QUIET)
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
     }
     else if (Stop())
@@ -237,7 +237,7 @@ void LocalMapping::SetNewKeyFrame()
         pending_KFs_count = mlNewKeyFrames.size();
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                                              << "] SET_NEW_KEYFRAME: pending KFs=" << pending_KFs_count << std::endl;
 }
 
