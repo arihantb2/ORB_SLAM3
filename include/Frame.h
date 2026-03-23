@@ -19,10 +19,8 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include "DBoW2/BowVector.h"
-#include "DBoW2/FeatureVector.h"
-
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
+#include "bow/BowTypes.h"
 
 #include "Settings.h"
 
@@ -49,7 +47,7 @@ public:
     // --- Public member variables ---
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    ORBVocabulary* mpORBvocabulary;
+    IBowVocabulary* mpORBvocabulary;
     FeatureExtractor* mpFeatureExtractorLeft;
     FeatureExtractor* mpFeatureExtractorRight;
 
@@ -80,8 +78,8 @@ public:
     std::vector<float> mvuRight;
     std::vector<float> mvDepth;
 
-    DBoW2::BowVector mBowVec;
-    DBoW2::FeatureVector mFeatVec;
+    BowVector mBowVec;
+    FeatureVector mFeatVec;
 
     cv::Mat mDescriptors;
     cv::Mat mDescriptorsRight;
@@ -152,9 +150,9 @@ public:
     Frame();
     Frame(const Frame& frame);
     Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, FeatureExtractor* extractorLeft,
-          FeatureExtractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
+          FeatureExtractor* extractorRight, IBowVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
           const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF = nullptr);
-    Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, ORBVocabulary* voc,
+    Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, IBowVocabulary* voc,
           GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF = nullptr);
 
     void ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1);

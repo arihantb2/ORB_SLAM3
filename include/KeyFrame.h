@@ -19,10 +19,9 @@
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
 
-#include <DBoW2/BowVector.h>
-#include <DBoW2/FeatureVector.h>
 #include "Frame.h"
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
+#include "bow/BowTypes.h"
 
 #include "CameraModels/GeometricCamera.h"
 
@@ -97,8 +96,8 @@ public:
     const cv::Mat mDescriptors, mDescriptorsRight;
     const std::vector<int> vDescIndex;
 
-    DBoW2::BowVector mBowVec;
-    DBoW2::FeatureVector mFeatVec;
+    BowVector mBowVec;
+    FeatureVector mFeatVec;
 
     Sophus::SE3f mTcp;
 
@@ -205,7 +204,7 @@ protected:
 
     std::vector<MapPoint*> mvpMapPoints;
 
-    ORBVocabulary* mpORBvocabulary;
+    IBowVocabulary* mpORBvocabulary;
 
     std::vector<std::vector<std::vector<size_t>>> mGrid;
 

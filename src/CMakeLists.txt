@@ -2,6 +2,9 @@
 # Must be added before the main library so the target exists when linked below.
 add_subdirectory(feature_extractor)
 
+# bow (vocabulary factory + adapters)
+add_subdirectory(bow)
+
 # ORB_SLAM3 library
 
 add_library(${PROJECT_NAME} SHARED
@@ -47,19 +50,9 @@ target_link_libraries(${PROJECT_NAME}
     ${EIGEN3_LIBS}
     ${Pangolin_LIBRARIES}
     gtsam
-    DBoW2::DBoW2
+    ${PROJECT_NAME}_bow
     -lcrypto
 )
-
-# If RealSense SDK is found the library is added
-if(realsense2_FOUND)
-    target_include_directories(${PROJECT_NAME} PRIVATE
-        ${realsense_INCLUDE_DIR}
-    )
-    target_link_libraries(${PROJECT_NAME}
-        ${realsense2_LIBRARY}
-    )
-endif()
 
 # Install the library
 install(TARGETS ${PROJECT_NAME}

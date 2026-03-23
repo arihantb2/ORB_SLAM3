@@ -20,7 +20,6 @@
 
 #include "KeyFrame.h"
 #include "MapPoint.h"
-#include "ORBVocabulary.h"
 
 #include <mutex>
 

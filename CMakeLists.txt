@@ -77,6 +77,7 @@ find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Pangolin REQUIRED)
 find_package(DBoW2 REQUIRED)
+find_package(fbow REQUIRED)
 find_package(GTSAM REQUIRED)
 message(STATUS "Found GTSAM version: ${GTSAM_VERSION}")
 

@@ -25,7 +25,6 @@
 #include "GeometricTools.h"
 #include "LocalMapping.h"
 #include "MapDrawer.h"
-#include "ORBVocabulary.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
@@ -42,7 +41,7 @@
 namespace ORB_SLAM3
 {
 
-Tracking::Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
+Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
                    const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
@@ -490,6 +489,14 @@ void Tracking::TrackFrame(TrackingResult& tracking_result)
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     auto trackReferenceKF = [&]() -> RefKeyFrameTrackingResult
     {
+        if (mUseBoWReferenceKeyframeTracking)
+        {
+            mCurrentFrame.ComputeBoW();
+            if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
+            {
+                return TrackReferenceKeyFrameNoBoW();
+            }
+        }
         return mUseBoWReferenceKeyframeTracking ? TrackReferenceKeyFrameWithBoW() : TrackReferenceKeyFrameNoBoW();
     };
     if (!mbVelocity)
@@ -1262,6 +1269,10 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
 
     // Compute Bag of Words vector
     mCurrentFrame.ComputeBoW();
+    if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
+    {
+        return TrackReferenceKeyFrameNoBoW();
+    }
 
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver

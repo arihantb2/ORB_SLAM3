@@ -23,7 +23,7 @@
 #include <list>
 #include <vector>
 
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
 
 #include <mutex>
 
@@ -40,7 +40,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     KeyFrameDatabase() {}
-    KeyFrameDatabase(const ORBVocabulary& voc);
+    KeyFrameDatabase(const IBowVocabulary& voc);
 
     void add(KeyFrame* pKF);
 
@@ -62,7 +62,7 @@ public:
 
 protected:
     // Associated vocabulary
-    const ORBVocabulary* mpVoc;
+    const IBowVocabulary* mpVoc;
 
     // Inverted file
     std::vector<std::list<KeyFrame*>> mvInvertedFile;

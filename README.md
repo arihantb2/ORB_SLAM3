@@ -21,7 +21,7 @@ A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) pa
 ## Prerequisites
 
 - C++17, CMake ≥ 3.10
-- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, Pangolin, DBoW2, g2o
+- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, Pangolin, DBoW2, fbow
 - `Vocabulary/ORBvoc.txt` (or its `.tar.gz` — CMake extracts it automatically)
 
 ---
@@ -73,6 +73,26 @@ slam.Shutdown();
 ```
 
 **Config files:** `config/mono.yaml` and `config/stereo.yaml` are **algorithm-only** (tracking, ORB, local mapping, viewer). Camera calibration lives in `config/camera_calib_mono.yaml` and `config/camera_calib_stereo.yaml` and is loaded by the wrapper. Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
+
+---
+
+## Vocabulary backend (DBoW2 vs fbow)
+
+ORB-SLAM3 can switch the Bag-of-Words (BoW) backend via the algorithm config YAML passed to `System`.
+
+Example snippet for using `fbow`:
+
+```yaml
+Vocabulary.type: "fbow"
+Vocabulary.path: "src/ORB_SLAM3/Vocabulary/orb_mur.fbow"
+```
+
+Notes:
+
+- If `Vocabulary.type` / `Vocabulary.path` are omitted, the system defaults to `dbow2` and uses the `--vocab-file` argument provided by the wrapper.
+- Descriptor type must match the vocabulary:
+  - `ORB` / `GridORB` (binary descriptors, `CV_8UC1`) expects an `fbow` vocabulary trained on binary descriptors.
+  - `SIFT` (float descriptors, `CV_32FC1`) requires an `fbow` vocabulary trained on float descriptors. If it doesn’t match, BoW-based reference-keyframe tracking falls back to non-BoW matching for runtime stability.
 
 ---
 
