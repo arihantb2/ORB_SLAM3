@@ -1,4 +1,5 @@
 Vocabulary/ORBvoc.txt
+*.fbow
 build/**
 install/**
 build
