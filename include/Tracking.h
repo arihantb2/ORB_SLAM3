@@ -28,7 +28,7 @@
 #include <vector>
 
 #include "Frame.h"
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
 
 namespace ORB_SLAM3
 {
@@ -254,8 +254,8 @@ class Tracking
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Tracking(System* pSys, ORBVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas, const std::string& strSettingPath,
-             const int sensor, Settings* settings, const bool newMaps);
+    Tracking(System* pSys, IBowVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
+             const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
 
     ~Tracking();
 
@@ -393,7 +393,7 @@ protected:
     FeatureExtractor* mpIniFeatureExtractor;
 
     // BoW
-    ORBVocabulary* mpORBVocabulary;
+    IBowVocabulary* mpORBVocabulary;
 
     // Initalization (only for monocular)
     bool mbReadyToInitializate;

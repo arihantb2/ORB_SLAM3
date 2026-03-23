@@ -10,6 +10,8 @@ File.version: "1.0"
 #   "SIFT"     — cv::SIFT + quadtree, float descriptors (see mono_sift.yaml)
 FeatureExtractor.type: "GridORB"
 
+Vocabulary.type: "fbow"
+
 # Camera frames per second
 Camera.fps: 2
 

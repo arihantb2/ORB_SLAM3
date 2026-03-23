@@ -29,7 +29,7 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "DBoW2/FeatureVector.h"
+#include "bow/BowTypes.h"
 
 namespace ORB_SLAM3
 {
@@ -508,7 +508,7 @@ int FeatureMatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>&
 
     vpMapPointMatches = std::vector<MapPoint*>(F.N, static_cast<MapPoint*>(NULL));
 
-    const DBoW2::FeatureVector& vFeatVecKF = pKF->mFeatVec;
+    const FeatureVector& vFeatVecKF = pKF->mFeatVec;
 
     int nmatches = 0;
 
@@ -516,10 +516,10 @@ int FeatureMatcher::SearchByBoW(KeyFrame* pKF, Frame& F, std::vector<MapPoint*>&
     const float factor = InitRotationHistogram(rotHist, HISTO_LENGTH);
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
-    DBoW2::FeatureVector::const_iterator KFit = vFeatVecKF.begin();
-    DBoW2::FeatureVector::const_iterator Fit = F.mFeatVec.begin();
-    DBoW2::FeatureVector::const_iterator KFend = vFeatVecKF.end();
-    DBoW2::FeatureVector::const_iterator Fend = F.mFeatVec.end();
+    FeatureVector::const_iterator KFit = vFeatVecKF.begin();
+    FeatureVector::const_iterator Fit = F.mFeatVec.begin();
+    FeatureVector::const_iterator KFend = vFeatVecKF.end();
+    FeatureVector::const_iterator Fend = F.mFeatVec.end();
 
     while (KFit != KFend && Fit != Fend)
     {
@@ -853,12 +853,12 @@ int FeatureMatcher::SearchForInitialization(Frame& F1, Frame& F2, std::vector<cv
 int FeatureMatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint*>& vpMatches12)
 {
     const std::vector<cv::KeyPoint>& vKeysUn1 = pKF1->mvKeysUn;
-    const DBoW2::FeatureVector& vFeatVec1 = pKF1->mFeatVec;
+    const FeatureVector& vFeatVec1 = pKF1->mFeatVec;
     const std::vector<MapPoint*> vpMapPoints1 = pKF1->GetMapPointMatches();
     const cv::Mat& Descriptors1 = pKF1->mDescriptors;
 
     const std::vector<cv::KeyPoint>& vKeysUn2 = pKF2->mvKeysUn;
-    const DBoW2::FeatureVector& vFeatVec2 = pKF2->mFeatVec;
+    const FeatureVector& vFeatVec2 = pKF2->mFeatVec;
     const std::vector<MapPoint*> vpMapPoints2 = pKF2->GetMapPointMatches();
     const cv::Mat& Descriptors2 = pKF2->mDescriptors;
 
@@ -870,10 +870,10 @@ int FeatureMatcher::SearchByBoW(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapP
 
     int nmatches = 0;
 
-    DBoW2::FeatureVector::const_iterator f1it = vFeatVec1.begin();
-    DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();
-    DBoW2::FeatureVector::const_iterator f1end = vFeatVec1.end();
-    DBoW2::FeatureVector::const_iterator f2end = vFeatVec2.end();
+    FeatureVector::const_iterator f1it = vFeatVec1.begin();
+    FeatureVector::const_iterator f2it = vFeatVec2.begin();
+    FeatureVector::const_iterator f1end = vFeatVec1.end();
+    FeatureVector::const_iterator f2end = vFeatVec2.end();
 
     while (f1it != f1end && f2it != f2end)
     {
@@ -1190,8 +1190,8 @@ int FeatureMatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
         return SearchForTriangulationNoBoW(pKF1, pKF2, vMatchedPairs, bOnlyStereo, bCoarse);
     }
 
-    const DBoW2::FeatureVector& vFeatVec1 = pKF1->mFeatVec;
-    const DBoW2::FeatureVector& vFeatVec2 = pKF2->mFeatVec;
+    const FeatureVector& vFeatVec1 = pKF1->mFeatVec;
+    const FeatureVector& vFeatVec2 = pKF2->mFeatVec;
 
     //Compute epipole in second image
     Sophus::SE3f T1w = pKF1->GetPose();
@@ -1221,10 +1221,10 @@ int FeatureMatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
     std::vector<int> rotHist[HISTO_LENGTH];
     const float factor = InitRotationHistogram(rotHist, HISTO_LENGTH);
 
-    DBoW2::FeatureVector::const_iterator f1it = vFeatVec1.begin();
-    DBoW2::FeatureVector::const_iterator f2it = vFeatVec2.begin();
-    DBoW2::FeatureVector::const_iterator f1end = vFeatVec1.end();
-    DBoW2::FeatureVector::const_iterator f2end = vFeatVec2.end();
+    FeatureVector::const_iterator f1it = vFeatVec1.begin();
+    FeatureVector::const_iterator f2it = vFeatVec2.begin();
+    FeatureVector::const_iterator f1end = vFeatVec1.end();
+    FeatureVector::const_iterator f2end = vFeatVec2.end();
 
     while (f1it != f1end && f2it != f2end)
     {

@@ -30,7 +30,7 @@
 #include <utility>
 #include <vector>
 
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
 
 namespace ORB_SLAM3
 {
@@ -53,7 +53,7 @@ public:
         KeyFrameAndPose;
 
 public:
-    LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc, const bool bFixScale, const bool bActiveLC);
+    LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, IBowVocabulary* pVoc, const bool bFixScale, const bool bActiveLC);
 
     void SetTracker(Tracking* pTracker);
 
@@ -132,7 +132,7 @@ protected:
     Tracking* mpTracker;
 
     KeyFrameDatabase* mpKeyFrameDB;
-    ORBVocabulary* mpORBVocabulary;
+    IBowVocabulary* mpORBVocabulary;
 
     LocalMapping* mpLocalMapper;
 

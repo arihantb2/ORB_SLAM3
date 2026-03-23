@@ -26,7 +26,6 @@
 #include "LocalMapping.h"
 #include "Map.h"
 #include "MapPoint.h"
-#include "ORBVocabulary.h"
 #include "Optimizer.h"
 #include "Sim3Solver.h"
 #include "System.h"
@@ -38,7 +37,7 @@
 namespace ORB_SLAM3
 {
 
-LoopClosing::LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc, const bool bFixScale,
+LoopClosing::LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, IBowVocabulary* pVoc, const bool bFixScale,
                          const bool bActiveLC)
     : mbResetRequested(false),
       mbResetActiveMapRequested(false),

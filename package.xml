@@ -13,6 +13,7 @@
   <depend>opencv4</depend>
   <depend>pangolin</depend>
   <depend>dbow2</depend>
+  <depend>fbow</depend>
   <depend>gtsam</depend>
 
   <export>

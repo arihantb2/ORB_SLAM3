@@ -191,8 +191,7 @@ void KeyFrame::ComputeBoW()
 {
     if (mBowVec.empty() || mFeatVec.empty())
     {
-        // BoW vocabulary in this codebase is ORB/binary (FORB). Skip for float descriptors (e.g., SIFT).
-        if (!mpORBvocabulary || mDescriptors.type() != CV_8UC1)
+        if (!mpORBvocabulary || !mpORBvocabulary->supportsDescriptorType(mDescriptors.type()))
         {
             return;
         }

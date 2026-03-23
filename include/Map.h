@@ -28,8 +28,6 @@
 #include <string>
 #include <vector>
 
-#include "ORBVocabulary.h"
-
 namespace ORB_SLAM3
 {
 

@@ -26,10 +26,10 @@
 #include "Atlas.h"
 #include "LocalMapping.h"
 #include "MapDrawer.h"
-#include "ORBVocabulary.h"
 #include "Settings.h"
 #include "Tracking.h"
 #include "Viewer.h"
+#include "bow/BowVocabularyFactory.h"
 
 namespace ORB_SLAM3
 {
@@ -100,16 +100,29 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << std::endl;
 
     mStrVocabularyFilePath = strVocFile;
+    mVocabularyType = "dbow2";
+    cv::FileNode vocabTypeNode = fsSettings["Vocabulary.type"];
+    if (!vocabTypeNode.empty() && vocabTypeNode.isString())
+    {
+        mVocabularyType = vocabTypeNode.string();
+    }
+    cv::FileNode vocabPathNode = fsSettings["Vocabulary.path"];
+    if (!vocabPathNode.empty() && vocabPathNode.isString())
+    {
+        mStrVocabularyFilePath = vocabPathNode.string();
+    }
 
     //Load ORB Vocabulary
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << std::endl
-                                             << "Loading ORB Vocabulary. This could take a while..." << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << std::endl
+        << "Loading Vocabulary of type (" << mVocabularyType << ") from file: " << mStrVocabularyFilePath
+        << ". This could take a while..." << std::endl;
 
-    mpVocabulary = new ORBVocabulary();
-    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    mpVocabulary = CreateBowVocabulary(mVocabularyType);
+    bool bVocLoad = mpVocabulary->load(mStrVocabularyFilePath);
     if (!bVocLoad)
     {
-        throw std::runtime_error("Could not load vocabulary from file: " + strVocFile);
+        throw std::runtime_error("Could not load vocabulary from file: " + mStrVocabularyFilePath);
     }
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Vocabulary loaded!" << std::endl << std::endl;
 
@@ -123,7 +136,8 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     mpMapDrawer = new MapDrawer(mpAtlas, settings_);
 
     //Initialize the Tracking thread
-    mpTracker = new Tracking(this, mpVocabulary, mpMapDrawer, mpAtlas, strConfigFile, mSensor, settings_, newMaps);
+    mpTracker =
+        new Tracking(this, mpVocabulary.get(), mpMapDrawer, mpAtlas, strConfigFile, mSensor, settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, settings_);

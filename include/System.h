@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <memory>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <optional>
@@ -29,7 +30,7 @@
 #include <vector>
 
 #include "CameraModels/CameraCalibrationInput.h"
-#include "ORBVocabulary.h"
+#include "bow/IBowVocabulary.h"
 
 namespace ORB_SLAM3
 {
@@ -121,7 +122,8 @@ private:
     eSensor mSensor;
 
     // ORB vocabulary used for place recognition and feature matching.
-    ORBVocabulary* mpVocabulary;
+    std::unique_ptr<IBowVocabulary> mpVocabulary;
+    std::string mVocabularyType;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Atlas* mpAtlas;

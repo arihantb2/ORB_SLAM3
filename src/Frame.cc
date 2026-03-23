@@ -129,7 +129,7 @@ Frame::Frame(const Frame& frame)
 }
 
 Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeStamp, FeatureExtractor* extractorLeft,
-             FeatureExtractor* extractorRight, ORBVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
+             FeatureExtractor* extractorRight, IBowVocabulary* voc, cv::Mat& K, cv::Mat& distCoef, const float& bf,
              const float& thDepth, GeometricCamera* pCamera, Frame* pPrevF)
     : mpORBvocabulary(voc),
       mpFeatureExtractorLeft(extractorLeft),
@@ -232,7 +232,7 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, ORBVocabulary* voc,
+Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, IBowVocabulary* voc,
              GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF)
     : mpORBvocabulary(voc),
       mpFeatureExtractorLeft(extractor),
@@ -651,8 +651,7 @@ void Frame::ComputeBoW()
 {
     if (mBowVec.empty())
     {
-        // BoW vocabulary in this codebase is ORB/binary (FORB). Skip for float descriptors (e.g., SIFT).
-        if (!mpORBvocabulary || mDescriptors.type() != CV_8UC1)
+        if (!mpORBvocabulary || !mpORBvocabulary->supportsDescriptorType(mDescriptors.type()))
         {
             return;
         }
