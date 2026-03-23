@@ -20,8 +20,8 @@
 #define KEYFRAME_H
 
 #include "Frame.h"
-#include "bow/IBowVocabulary.h"
 #include "bow/BowTypes.h"
+#include "bow/IBowVocabulary.h"
 
 #include "CameraModels/GeometricCamera.h"
 

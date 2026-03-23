@@ -81,8 +81,8 @@ bool FbowVocabularyAdapter::supportsDescriptorType(int cvType) const
     return cvType == static_cast<int>(vocab_.getDescType());
 }
 
-void FbowVocabularyAdapter::transform(const std::vector<cv::Mat>& descriptors, BowVector& bowVec, FeatureVector& featVec,
-                                      int levelSup) const
+void FbowVocabularyAdapter::transform(const std::vector<cv::Mat>& descriptors, BowVector& bowVec,
+                                      FeatureVector& featVec, int levelSup) const
 {
     bowVec.clear();
     featVec.clear();

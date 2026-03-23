@@ -21,13 +21,13 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <memory>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
-#include <memory>
 
 #include "CameraModels/CameraCalibrationInput.h"
 #include "bow/IBowVocabulary.h"

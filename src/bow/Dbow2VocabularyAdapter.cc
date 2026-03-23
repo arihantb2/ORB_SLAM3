@@ -52,8 +52,8 @@ bool Dbow2VocabularyAdapter::supportsDescriptorType(int cvType) const
     return cvType == CV_8UC1;
 }
 
-void Dbow2VocabularyAdapter::transform(const std::vector<cv::Mat>& descriptors, BowVector& bowVec, FeatureVector& featVec,
-                                       int levelSup) const
+void Dbow2VocabularyAdapter::transform(const std::vector<cv::Mat>& descriptors, BowVector& bowVec,
+                                       FeatureVector& featVec, int levelSup) const
 {
     DBoW2::BowVector dbowBow;
     DBoW2::FeatureVector dbowFeat;

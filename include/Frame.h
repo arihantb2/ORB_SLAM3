@@ -19,8 +19,8 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include "bow/IBowVocabulary.h"
 #include "bow/BowTypes.h"
+#include "bow/IBowVocabulary.h"
 
 #include "Settings.h"
 
