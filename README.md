@@ -14,7 +14,7 @@ A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) pa
 - Python bindings
 
 **Camera models supported:** `PinHole`, `Rectified`, `Metashape`  
-**Sensor modes supported:** `MONOCULAR`, `STEREO`, `IMU_MONOCULAR`, `IMU_STEREO`
+**Sensor modes supported:** `MONOCULAR`, `STEREO`
 
 ---
 
