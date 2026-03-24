@@ -390,7 +390,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                                       int& num_MPs, int& num_edges,
                                       std::vector<unsigned long>& fixed_kf_ids,
                                       std::vector<unsigned long>& optimised_kf_ids,
-                                      std::vector<unsigned long>& outlier_mp_ids)
+                                      std::vector<unsigned long>& outlier_mp_ids,
+                                      std::vector<CovisibilityEdge>& covisibility_edges)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     std::list<KeyFrame*> lLocalKeyFrames;
@@ -471,6 +472,44 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
         optimised_kf_ids.push_back(pKFi->mnId);
     for (KeyFrame* pKFi : lFixedCameras)
         fixed_kf_ids.push_back(pKFi->mnId);
+
+    // When the map-origin KF is inside lLocalKeyFrames it receives a tight
+    // prior (sigma = 1e-9) that effectively anchors it.  Include its ID in
+    // fixed_kf_ids so that num_fixed_kfs == fixed_kf_ids.size() always holds.
+    // The ID also appears in optimised_kf_ids (it is a GTSAM variable).
+    const unsigned long initKFid = pCurrentMap->GetInitKFid();
+    for (KeyFrame* pKFi : lLocalKeyFrames)
+        if (pKFi->mnId == initKFid)
+            fixed_kf_ids.push_back(pKFi->mnId);
+
+    // Covisibility edges between all KF pairs in the LBA window.
+    // Optimised × optimised: iterate over unique pairs only (j > i).
+    {
+        const std::vector<KeyFrame*> vLocal(lLocalKeyFrames.begin(), lLocalKeyFrames.end());
+        for (size_t i = 0; i < vLocal.size(); ++i)
+        {
+            for (size_t j = i + 1; j < vLocal.size(); ++j)
+            {
+                const int w = vLocal[i]->GetWeight(vLocal[j]);
+                if (w > 0)
+                    covisibility_edges.push_back({vLocal[i]->mnId, vLocal[j]->mnId, w});
+            }
+        }
+    }
+    // Optimised × fixed.
+    for (KeyFrame* pKFlocal : lLocalKeyFrames)
+    {
+        for (KeyFrame* pKFfixed : lFixedCameras)
+        {
+            const int w = pKFlocal->GetWeight(pKFfixed);
+            if (w > 0)
+            {
+                const unsigned long id_a = std::min(pKFlocal->mnId, pKFfixed->mnId);
+                const unsigned long id_b = std::max(pKFlocal->mnId, pKFfixed->mnId);
+                covisibility_edges.push_back({id_a, id_b, w});
+            }
+        }
+    }
 
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;

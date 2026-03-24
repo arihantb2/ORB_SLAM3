@@ -39,9 +39,21 @@ namespace ORB_SLAM3
 /// The client accumulates these to build its own sparse map.
 struct NewMappingMapPoint
 {
-    unsigned long id = 0;                       ///< MapPoint::mnId
-    Eigen::Vector3f pos_world = Eigen::Vector3f::Zero();  ///< World-frame position
-    unsigned long first_kf_id = 0;              ///< mnId of the KeyFrame that created it
+    unsigned long id = 0;                                    ///< MapPoint::mnId
+    Eigen::Vector3f pos_world = Eigen::Vector3f::Zero();    ///< World-frame position
+    unsigned long first_kf_id = 0;                          ///< mnId of the KeyFrame that created it
+};
+
+/// One covisibility edge in the LBA window.
+///
+/// kf_id_a < kf_id_b is guaranteed (edges are stored in canonical order).
+/// weight is the number of shared MapPoint observations between the two
+/// KeyFrames as stored in their covisibility graph at the time LBA ran.
+struct CovisibilityEdge
+{
+    unsigned long kf_id_a = 0;
+    unsigned long kf_id_b = 0;
+    int weight = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -183,18 +195,30 @@ struct LocalBundleAdjustmentResult
     bool skipped = false;
 
     /// Reason LBA was skipped (empty string when skipped == false).
-    /// Values: "throttled", "too_few_keyframes", "stop_requested", "new_kf_arrived".
+    /// Values: "throttled", "too_few_keyframes", "stop_requested",
+    ///         "new_kf_arrived", "no_fixed_kfs".
     std::string skip_reason;
 
-    /// Number of KeyFrames held fixed (anchor nodes) in the optimisation graph.
+    /// Number of KeyFrames held as anchor nodes in the optimisation graph.
+    /// Always equals fixed_keyframe_ids.size().
+    ///
+    /// Note: includes the map-origin KeyFrame when it happens to fall inside
+    /// lLocalKeyFrames (it receives a tight prior factor that effectively fixes
+    /// it).  In that case the same ID appears in both fixed_keyframe_ids and
+    /// optimised_keyframe_ids.
     int num_fixed_kfs = 0;
 
-    /// mnId of every fixed KeyFrame (lFixedCameras inside
-    /// Optimizer::LocalBundleAdjustment). These are covisible neighbours whose
-    /// own neighbours fall outside the local window. Their poses are unchanged.
+    /// mnId of every anchor KeyFrame in the LBA window.
+    ///
+    /// Includes:
+    ///  - All lFixedCameras (covisible KFs outside the local optimisation
+    ///    window whose poses are held constant).
+    ///  - The map-origin KF when it is inside lLocalKeyFrames and pinned via
+    ///    a tight prior factor (sigma = 1e-9).
     std::vector<unsigned long> fixed_keyframe_ids;
 
     /// Number of KeyFrames whose poses were optimised.
+    /// Always equals optimised_keyframe_ids.size().
     int num_optimised_kfs = 0;
 
     /// mnId of every optimised KeyFrame (lLocalKeyFrames inside
@@ -214,6 +238,15 @@ struct LocalBundleAdjustmentResult
 
     /// Convenience count; equals outlier_map_point_ids.size().
     int num_outlier_map_points = 0;
+
+    /// Covisibility edges between all KeyFrame pairs inside the LBA window
+    /// (optimised × optimised and optimised × fixed).
+    ///
+    /// Each edge stores kf_id_a < kf_id_b and the shared-observation count
+    /// (covisibility weight) at the time LBA ran.  Fixed×fixed pairs are
+    /// omitted since they don't interact in the graph.
+    /// Empty when skipped == true.
+    std::vector<CovisibilityEdge> covisibility_edges;
 
     /// Wall-clock duration of this stage (milliseconds). Zero when skipped.
     double duration_ms = 0.0;

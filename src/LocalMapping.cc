@@ -213,9 +213,9 @@ bool LocalMapping::RunLoop()
                                                  result.lba.num_fixed_kfs, result.lba.num_optimised_kfs,
                                                  result.lba.num_map_points, result.lba.num_edges,
                                                  result.lba.fixed_keyframe_ids, result.lba.optimised_keyframe_ids,
-                                                 result.lba.outlier_map_point_ids);
-                result.lba.num_outlier_map_points =
-                    static_cast<int>(result.lba.outlier_map_point_ids.size());
+                                                 result.lba.outlier_map_point_ids,
+                                                 result.lba.covisibility_edges);
+                result.lba.num_outlier_map_points = static_cast<int>(result.lba.outlier_map_point_ids.size());
                 result.lba.duration_ms = elapsed_ms(t0);
 
                 // LBA exits immediately when there are no fixed-camera anchors;
