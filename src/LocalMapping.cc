@@ -198,7 +198,13 @@ bool LocalMapping::RunLoop()
             }
         }
 
-        if (!CheckNewKeyFrames() && !stopRequested() && b_doLBA)
+        // Snapshot the gate conditions once so skip_reason reflects the state
+        // that actually caused the gate to fail — not a re-evaluation that may
+        // have changed by the time we reach the else branch.
+        const bool kf_waiting  = CheckNewKeyFrames();
+        const bool stop_req    = stopRequested();
+
+        if (!kf_waiting && !stop_req && b_doLBA)
         {
             if (mpAtlas->KeyFramesInMap() > mMinKeyframesForLBA)
             {
@@ -212,6 +218,18 @@ bool LocalMapping::RunLoop()
                     static_cast<int>(result.lba.outlier_map_point_ids.size());
                 result.lba.duration_ms = elapsed_ms(t0);
 
+                // LBA exits immediately when there are no fixed-camera anchors;
+                // mark this so callers can distinguish it from a successful run.
+                if (result.lba.num_fixed_kfs == 0)
+                {
+                    result.lba.skipped = true;
+                    result.lba.skip_reason = "no_fixed_kfs";
+                }
+                else
+                {
+                    prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
+                }
+
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
                     << "] LBA performed with " << result.lba.num_fixed_kfs << " fixed KFs, "
@@ -219,7 +237,6 @@ bool LocalMapping::RunLoop()
                     << " MapPoints, " << result.lba.num_edges << " edges, and "
                     << result.lba.num_outlier_map_points << " outlier MPs." << std::endl;
 
-                prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
             }
             else
             {
@@ -237,7 +254,7 @@ bool LocalMapping::RunLoop()
         else if (!result.lba.skipped)
         {
             result.lba.skipped = true;
-            if (CheckNewKeyFrames())
+            if (kf_waiting)
                 result.lba.skip_reason = "new_kf_arrived";
             else
                 result.lba.skip_reason = "stop_requested";
@@ -256,12 +273,15 @@ bool LocalMapping::RunLoop()
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
 
-        // Fire callback
+        // Fire callback — copy under the lock so SetCallback() can't deadlock
+        // or block while the callback runs.
+        LocalMappingCallback cb;
         {
             std::unique_lock<std::mutex> lock(mMutexCallback);
-            if (mCallback)
-                mCallback(result);
+            cb = mCallback;
         }
+        if (cb)
+            cb(result);
     }
     else if (Stop())
     {
