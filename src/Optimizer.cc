@@ -41,6 +41,7 @@
 #include <mutex>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 namespace ORB_SLAM3
 {
@@ -387,7 +388,12 @@ void Optimizer::ConfigureLocalBundleAdjustmentPriors(bool use_pose_priors, bool 
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF,
-                                      int& num_MPs, int& num_edges)
+                                      int& num_MPs, int& num_edges, std::vector<unsigned long>& fixed_kf_ids,
+                                      std::vector<unsigned long>& optimised_kf_ids,
+                                      std::vector<LBAMapPoint>& lba_map_points,
+                                      std::vector<unsigned long>& outlier_mp_ids,
+                                      std::vector<CovisibilityEdge>& covisibility_edges,
+                                      std::vector<SpanningTreeEdge>& spanning_tree_edges)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     std::list<KeyFrame*> lLocalKeyFrames;
@@ -462,6 +468,72 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     if (num_fixedKF == 0)
     {
         return;
+    }
+
+    for (KeyFrame* pKFi : lLocalKeyFrames)
+        optimised_kf_ids.push_back(pKFi->mnId);
+    for (KeyFrame* pKFi : lFixedCameras)
+        fixed_kf_ids.push_back(pKFi->mnId);
+
+    // When the map-origin KF is inside lLocalKeyFrames it receives a tight
+    // prior (sigma = 1e-9) that effectively anchors it.  Include its ID in
+    // fixed_kf_ids so that num_fixed_kfs == fixed_kf_ids.size() always holds.
+    // The ID also appears in optimised_kf_ids (it is a GTSAM variable).
+    const unsigned long initKFid = pCurrentMap->GetInitKFid();
+    for (KeyFrame* pKFi : lLocalKeyFrames)
+        if (pKFi->mnId == initKFid)
+            fixed_kf_ids.push_back(pKFi->mnId);
+
+    // Covisibility edges between all KF pairs in the LBA window.
+    // Optimised × optimised: iterate over unique pairs only (j > i).
+    {
+        const std::vector<KeyFrame*> vLocal(lLocalKeyFrames.begin(), lLocalKeyFrames.end());
+        for (size_t i = 0; i < vLocal.size(); ++i)
+        {
+            for (size_t j = i + 1; j < vLocal.size(); ++j)
+            {
+                const int w = vLocal[i]->GetWeight(vLocal[j]);
+                if (w > 0)
+                    covisibility_edges.push_back({vLocal[i]->mnId, vLocal[j]->mnId, w});
+            }
+        }
+    }
+    // Optimised × fixed.
+    for (KeyFrame* pKFlocal : lLocalKeyFrames)
+    {
+        for (KeyFrame* pKFfixed : lFixedCameras)
+        {
+            const int w = pKFlocal->GetWeight(pKFfixed);
+            if (w > 0)
+            {
+                const unsigned long id_a = std::min(pKFlocal->mnId, pKFfixed->mnId);
+                const unsigned long id_b = std::max(pKFlocal->mnId, pKFfixed->mnId);
+                covisibility_edges.push_back({id_a, id_b, w});
+            }
+        }
+    }
+
+    // Spanning-tree edges: one entry per KF in the LBA window.
+    // Build a set of window IDs for the parent_in_lba_window flag.
+    {
+        std::unordered_set<unsigned long> windowIds;
+        for (unsigned long id : optimised_kf_ids)
+            windowIds.insert(id);
+        for (unsigned long id : fixed_kf_ids)
+            windowIds.insert(id);
+
+        auto collectSpanningEdges = [&](const std::list<KeyFrame*>& kfs)
+        {
+            for (KeyFrame* pKFi : kfs)
+            {
+                KeyFrame* pParent = pKFi->GetParent();
+                const unsigned long parent_id = pParent ? pParent->mnId : 0;
+                spanning_tree_edges.push_back(
+                    {pKFi->mnId, parent_id, pParent != nullptr && windowIds.count(parent_id) > 0});
+            }
+        };
+        collectSpanningEdges(lLocalKeyFrames);
+        collectSpanningEdges(lFixedCameras);
     }
 
     gtsam::NonlinearFactorGraph graph;
@@ -747,31 +819,105 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     {
         result = opt.optimize();
     }
-    (void)monoEdges;
-    (void)stereoEdges;
-
-    std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
-
-    for (KeyFrame* pKFi : lLocalKeyFrames)
     {
-        gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
-        if (result.exists(k))
-        {
-            gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(k);
-            pKFi->SetPose(gtsamToSophusPose(Tcw));
-        }
-    }
+        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
 
+        for (KeyFrame* pKFi : lLocalKeyFrames)
+        {
+            gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
+            if (result.exists(k))
+            {
+                gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(k);
+                pKFi->SetPose(gtsamToSophusPose(Tcw));
+            }
+        }
+
+        for (MapPoint* pMP : lLocalMapPoints)
+        {
+            gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
+            if (result.exists(pk))
+            {
+                pMP->SetWorldPos(result.at<gtsam::Point3>(pk).cast<float>());
+                pMP->UpdateNormalAndDepth();
+            }
+        }
+
+        pMap->IncreaseChangeIndex();
+    }  // map lock released before calling EraseObservation / SetBadFlag
+
+    lba_map_points.clear();
+    lba_map_points.reserve(lLocalMapPoints.size());
     for (MapPoint* pMP : lLocalMapPoints)
     {
-        gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
-        if (result.exists(pk))
+        if (!pMP || pMP->isBad())
         {
-            pMP->SetWorldPos(result.at<gtsam::Point3>(pk).cast<float>());
-            pMP->UpdateNormalAndDepth();
+            continue;
+        }
+        lba_map_points.push_back({pMP->mnId, pMP->GetWorldPos()});
+    }
+
+    // Post-optimisation outlier rejection: check reprojection error using the
+    // updated poses and 3-D positions, then erase high-error observations.
+    // Done outside the map lock because EraseObservation / SetBadFlag acquire
+    // their own per-object locks and may modify the map internally.
+    for (const auto& [pKFi, pMP, leftIndex] : monoEdges)
+    {
+        if (pMP->isBad())
+            continue;
+        const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
+        if (x3Dc(2) <= 0.0f)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
+            continue;
+        }
+        const cv::KeyPoint& kp = pKFi->mvKeysUn[leftIndex];
+        const float sigma2 = pKFi->mvLevelSigma2[kp.octave];
+        const cv::Point2f uv = pKFi->mpCamera->project(cv::Point3f(x3Dc(0), x3Dc(1), x3Dc(2)));
+        const float errX = uv.x - kp.pt.x;
+        const float errY = uv.y - kp.pt.y;
+        if ((errX * errX + errY * errY) > 5.991f * sigma2)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
         }
     }
-    pMap->IncreaseChangeIndex();
+
+    for (const auto& [pKFi, pMP, leftIndex] : stereoEdges)
+    {
+        if (pMP->isBad())
+            continue;
+        const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
+        if (x3Dc(2) <= 0.0f)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
+            continue;
+        }
+        const float invz = 1.0f / x3Dc(2);
+        const float u = pKFi->fx * x3Dc(0) * invz + pKFi->cx;
+        const float v = pKFi->fy * x3Dc(1) * invz + pKFi->cy;
+        const float u_r = u - pKFi->mbf * invz;
+        const cv::KeyPoint& kp = pKFi->mvKeysUn[leftIndex];
+        const float kp_ur = pKFi->mvuRight[leftIndex];
+        const float sigma2 = pKFi->mvLevelSigma2[kp.octave];
+        const float errX = u - kp.pt.x;
+        const float errY = v - kp.pt.y;
+        const float errXr = u_r - kp_ur;
+        if ((errX * errX + errY * errY + errXr * errXr) > 7.815f * sigma2)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
+        }
+    }
 }
 
 }  // namespace ORB_SLAM3

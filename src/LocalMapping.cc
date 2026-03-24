@@ -35,6 +35,14 @@
 #include <string>
 #include <tuple>
 
+namespace
+{
+inline double elapsed_ms(std::chrono::steady_clock::time_point t0)
+{
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+}
+}  // namespace
+
 namespace ORB_SLAM3
 {
 
@@ -99,6 +107,12 @@ void LocalMapping::SetTracker(Tracking* pTracker)
     mpTracker = pTracker;
 }
 
+void LocalMapping::SetCallback(LocalMappingCallback cb)
+{
+    std::unique_lock<std::mutex> lock(mMutexCallback);
+    mCallback = std::move(cb);
+}
+
 void LocalMapping::Run()
 {
     mbFinished = false;
@@ -124,23 +138,47 @@ bool LocalMapping::RunLoop()
         Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[-:-] LOCAL_MAPPING_LOOP";
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
-        const auto start_time = std::chrono::steady_clock::now();
+
+        LocalMappingResult result;
+        result.iteration = ++mIterationCounter;
+        const auto loop_start = std::chrono::steady_clock::now();
 
         // BoW conversion and insertion in Map
-        ProcessNewKeyFrame();
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            result.process_new_keyframe = ProcessNewKeyFrame();
+            result.process_new_keyframe.duration_ms = elapsed_ms(t0);
+        }
+        result.keyframe_id = result.process_new_keyframe.keyframe_id;
+        result.frame_id = result.process_new_keyframe.frame_id;
+        result.timestamp = result.process_new_keyframe.timestamp;
 
         // Check recent MapPoints
-        MapPointCulling();
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            result.map_point_culling = MapPointCulling();
+            result.map_point_culling.duration_ms = elapsed_ms(t0);
+        }
 
         // Triangulate new MapPoints
-        CreateNewMapPoints();
+        {
+            const auto t0 = std::chrono::steady_clock::now();
+            result.create_new_map_points = CreateNewMapPoints();
+            result.create_new_map_points.duration_ms = elapsed_ms(t0);
+        }
 
         mbAbortBA = false;
 
         if (!CheckNewKeyFrames())
         {
             // Find more matches in neighbor keyframes and fuse point duplications
-            SearchInNeighbors();
+            const auto t0 = std::chrono::steady_clock::now();
+            result.search_in_neighbors = SearchInNeighbors();
+            result.search_in_neighbors.duration_ms = elapsed_ms(t0);
+        }
+        else
+        {
+            result.search_in_neighbors_skipped = true;
         }
 
         constexpr double LBA_TIME_EPSILON = 0.1;  // 100ms
@@ -155,45 +193,92 @@ bool LocalMapping::RunLoop()
                     << "] Skipping LBA because it's too soon (time_since_last_optimize=" << time_since_last_optimize
                     << " s < OptimizeEveryTSeconds=" << mOptimizeEveryTSeconds << " s)." << std::endl;
                 b_doLBA = false;
+                result.lba.skipped = true;
+                result.lba.skip_reason = "throttled";
             }
         }
 
-        bool b_doneLBA = false;
-        int num_FixedKF_BA = 0;
-        int num_OptKF_BA = 0;
-        int num_MPs_BA = 0;
-        int num_edges_BA = 0;
+        // Snapshot the gate conditions once so skip_reason reflects the state
+        // that actually caused the gate to fail — not a re-evaluation that may
+        // have changed by the time we reach the else branch.
+        const bool kf_waiting = CheckNewKeyFrames();
+        const bool stop_req = stopRequested();
 
-        if (!CheckNewKeyFrames() && !stopRequested() && b_doLBA)
+        if (!kf_waiting && !stop_req && b_doLBA)
         {
             if (mpAtlas->KeyFramesInMap() > mMinKeyframesForLBA)
             {
+                const auto t0 = std::chrono::steady_clock::now();
+                Optimizer::LocalBundleAdjustment(
+                    mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(), result.lba.num_fixed_kfs,
+                    result.lba.num_optimised_kfs, result.lba.num_map_points, result.lba.num_edges,
+                    result.lba.fixed_keyframe_ids, result.lba.optimised_keyframe_ids, result.lba.lba_map_points,
+                    result.lba.outlier_map_point_ids, result.lba.covisibility_edges, result.lba.spanning_tree_edges);
+                result.lba.num_outlier_map_points = static_cast<int>(result.lba.outlier_map_point_ids.size());
+                result.lba.duration_ms = elapsed_ms(t0);
 
+                // LBA exits immediately when there are no fixed-camera anchors;
+                // mark this so callers can distinguish it from a successful run.
+                if (result.lba.num_fixed_kfs == 0)
                 {
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
-                                                     num_FixedKF_BA, num_OptKF_BA, num_MPs_BA, num_edges_BA);
-                    Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                        << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
-                        << "] LBA performed with " << num_FixedKF_BA << " fixed KFs, " << num_OptKF_BA
-                        << " optimized KFs, " << num_MPs_BA << " MapPoints, and " << num_edges_BA << " edges."
-                        << std::endl;
-                    b_doneLBA = true;
+                    result.lba.skipped = true;
+                    result.lba.skip_reason = "no_fixed_kfs";
                 }
-                prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
+                else
+                {
+                    prevOptimizedKFTimestamp = mpCurrentKeyFrame->mTimeStamp;
+                }
+
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                    << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId << "] LBA performed with "
+                    << result.lba.num_fixed_kfs << " fixed KFs, " << result.lba.num_optimised_kfs << " optimized KFs, "
+                    << result.lba.num_map_points << " MapPoints, " << result.lba.num_edges << " edges, and "
+                    << result.lba.num_outlier_map_points << " outlier MPs." << std::endl;
+            }
+            else
+            {
+                result.lba.skipped = true;
+                result.lba.skip_reason = "too_few_keyframes";
             }
 
             // Check redundant local Keyframes
-            KeyFrameCulling();
+            {
+                const auto t0 = std::chrono::steady_clock::now();
+                result.keyframe_culling = KeyFrameCulling();
+                result.keyframe_culling.duration_ms = elapsed_ms(t0);
+            }
+        }
+        else if (!result.lba.skipped)
+        {
+            result.lba.skipped = true;
+            if (kf_waiting)
+                result.lba.skip_reason = "new_kf_arrived";
+            else
+                result.lba.skip_reason = "stop_requested";
         }
 
-        const auto end_time = std::chrono::steady_clock::now();
-        const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
-            << "] LOCAL_MAPPING_LOOP: duration=" << duration << " ms" << std::endl;
+        // Assemble convenience deltas
+        result.added_map_points = result.create_new_map_points.new_map_points;
+        result.culled_map_point_ids = result.map_point_culling.culled_map_point_ids;
+        result.lba_outlier_map_point_ids = result.lba.outlier_map_point_ids;
+
+        result.total_duration_ms = elapsed_ms(loop_start);
 
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+            << "] LOCAL_MAPPING_LOOP: duration=" << result.total_duration_ms << " ms" << std::endl;
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "----------------------------------------------------------------------------------------------------";
+
+        // Fire callback — copy under the lock so SetCallback() can't deadlock
+        // or block while the callback runs.
+        LocalMappingCallback cb;
+        {
+            std::unique_lock<std::mutex> lock(mMutexCallback);
+            cb = mCallback;
+        }
+        if (cb)
+            cb(result);
     }
     else if (Stop())
     {
@@ -208,7 +293,7 @@ bool LocalMapping::RunLoop()
 
     ResetIfRequested();
 
-    // Tracking will see that Local Mapping is busy
+    // Tracking will see that Local Mapping is free
     SetAcceptKeyFrames(true);
 
     return CheckFinish();
@@ -241,15 +326,22 @@ void LocalMapping::SetNewKeyFrame()
                                              << "] SET_NEW_KEYFRAME: pending KFs=" << pending_KFs_count << std::endl;
 }
 
-void LocalMapping::ProcessNewKeyFrame()
+ProcessNewKeyFrameResult LocalMapping::ProcessNewKeyFrame()
 {
     SetNewKeyFrame();
+
+    ProcessNewKeyFrameResult result;
+    result.keyframe_id = mpCurrentKeyFrame->mnId;
+    result.frame_id = mpCurrentKeyFrame->mnFrameId;
+    result.timestamp = mpCurrentKeyFrame->mTimeStamp;
+    result.pose = mpCurrentKeyFrame->GetPoseInverse();
 
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
     const std::vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+    result.num_kf_map_point_slots = static_cast<int>(vpMapPointMatches.size());
 
     for (size_t i = 0; i < vpMapPointMatches.size(); i++)
     {
@@ -258,6 +350,7 @@ void LocalMapping::ProcessNewKeyFrame()
         {
             if (!pMP->isBad())
             {
+                result.num_associated_map_points++;
                 if (!pMP->IsInKeyFrame(mpCurrentKeyFrame))
                 {
                     pMP->AddObservation(mpCurrentKeyFrame, i);
@@ -267,6 +360,7 @@ void LocalMapping::ProcessNewKeyFrame()
                 else  // this can only happen for new stereo points inserted by the Tracking
                 {
                     mlpRecentAddedMapPoints.push_back(pMP);
+                    result.num_stereo_map_points_registered++;
                 }
             }
         }
@@ -277,6 +371,9 @@ void LocalMapping::ProcessNewKeyFrame()
 
     // Insert Keyframe in Map
     mpAtlas->AddKeyFrame(mpCurrentKeyFrame);
+
+    result.queue_size_after = KeyframesInQueue();
+    return result;
 }
 
 void LocalMapping::EmptyQueue()
@@ -287,15 +384,16 @@ void LocalMapping::EmptyQueue()
     }
 }
 
-void LocalMapping::MapPointCulling()
+MapPointCullingResult LocalMapping::MapPointCulling()
 {
+    MapPointCullingResult result;
+    result.num_recent_map_points_before = static_cast<int>(mlpRecentAddedMapPoints.size());
+
     // Check Recent Added MapPoints
     std::list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
 
     const int cnThObs = mbMonocular ? mMPCullingMinObsMono : mMPCullingMinObsStereo;
-
-    int borrar = mlpRecentAddedMapPoints.size();
 
     while (lit != mlpRecentAddedMapPoints.end())
     {
@@ -303,6 +401,7 @@ void LocalMapping::MapPointCulling()
 
         if (pMP->isBad())
         {
+            result.num_culled_already_bad++;
             lit = mlpRecentAddedMapPoints.erase(lit);
             continue;
         }
@@ -318,22 +417,36 @@ void LocalMapping::MapPointCulling()
         {
             if (shouldSetBad)
             {
+                result.culled_map_point_ids.push_back(pMP->mnId);
+                if (lowFoundRatio)
+                    result.num_culled_low_found_ratio++;
+                else
+                    result.num_culled_too_few_observations++;
                 pMP->SetBadFlag();
+            }
+            else
+            {
+                result.num_graduated++;
             }
             lit = mlpRecentAddedMapPoints.erase(lit);
             continue;
         }
 
         lit++;
-        borrar--;
     }
+
+    result.num_recent_map_points_after = static_cast<int>(mlpRecentAddedMapPoints.size());
+    return result;
 }
 
-void LocalMapping::CreateNewMapPoints()
+CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
 {
+    CreateNewMapPointsResult result;
+
     // Retrieve neighbor keyframes in covisibility graph
     const int nn = mbMonocular ? mCreateNewMapPointsCovisibilityMono : mCreateNewMapPointsCovisibilityStereo;
     std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+    result.num_neighbour_kfs = static_cast<int>(vpNeighKFs.size());
 
     const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
                                               ? DescriptorType::FLOAT32
@@ -364,7 +477,8 @@ void LocalMapping::CreateNewMapPoints()
     {
         if (i > 0 && CheckNewKeyFrames())
         {
-            return;
+            result.aborted_early = true;
+            return result;
         }
         KeyFrame* pKF2 = vpNeighKFs[i];
 
@@ -398,6 +512,7 @@ void LocalMapping::CreateNewMapPoints()
         bool bCoarse = false;
 
         matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, vMatchedIndices, false, bCoarse);
+        result.num_epipolar_matches += static_cast<int>(vMatchedIndices.size());
 
         Sophus::SE3<float> sophTcw2 = pKF2->GetPose();
         Eigen::Matrix<float, 3, 4> eigTcw2 = sophTcw2.matrix3x4();
@@ -475,12 +590,14 @@ void LocalMapping::CreateNewMapPoints()
             else if (bStereo1 && cosParallaxStereo1 < cosParallaxStereo2)
             {
                 countStereoAttempt++;
+                result.num_stereo_unproject_attempts++;
                 bPointStereo = true;
                 goodProj = mpCurrentKeyFrame->UnprojectStereo(idx1, x3D);
             }
             else if (bStereo2 && cosParallaxStereo2 < cosParallaxStereo1)
             {
                 countStereoAttempt++;
+                result.num_stereo_unproject_attempts++;
                 bPointStereo = true;
                 goodProj = pKF2->UnprojectStereo(idx2, x3D);
             }
@@ -595,6 +712,7 @@ void LocalMapping::CreateNewMapPoints()
             if (bPointStereo)
             {
                 countStereo++;
+                result.num_created_from_stereo++;
             }
             pMP->AddObservation(mpCurrentKeyFrame, idx1);
             pMP->AddObservation(pKF2, idx2);
@@ -608,15 +726,21 @@ void LocalMapping::CreateNewMapPoints()
 
             mpAtlas->AddMapPoint(pMP);
             mlpRecentAddedMapPoints.push_back(pMP);
+
+            result.num_created++;
+            result.new_map_points.push_back({pMP->mnId, pMP->GetWorldPos(), mpCurrentKeyFrame->mnId});
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << "] Added "
-                                             << mlpRecentAddedMapPoints.size() << " map points" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mpCurrentKeyFrame->mnFrameId << "] Added " << result.num_created << " map points" << std::endl;
+    return result;
 }
 
-void LocalMapping::SearchInNeighbors()
+SearchInNeighborsResult LocalMapping::SearchInNeighbors()
 {
+    SearchInNeighborsResult result;
+
     const std::vector<KeyFrame*> vpNeighKFs =
         mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(mSearchInNeighborsNumNeighborKFs);
     std::vector<KeyFrame*> vpTargetKFs;
@@ -630,6 +754,7 @@ void LocalMapping::SearchInNeighbors()
         vpTargetKFs.push_back(pKFi);
         pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
     }
+    result.num_first_level_neighbours = static_cast<int>(vpTargetKFs.size());
 
     // Add some covisible of covisible
     // Extend to some second neighbors if abort is not requested
@@ -651,9 +776,12 @@ void LocalMapping::SearchInNeighbors()
         }
         if (mbAbortBA)
         {
+            result.aborted_early = true;
             break;
         }
     }
+    result.num_second_level_neighbours = static_cast<int>(vpTargetKFs.size()) - result.num_first_level_neighbours;
+    result.num_target_kfs = static_cast<int>(vpTargetKFs.size());
 
     // Search matches by projection from current KF in target KFs
     const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
@@ -674,7 +802,8 @@ void LocalMapping::SearchInNeighbors()
 
     if (mbAbortBA)
     {
-        return;
+        result.aborted_early = true;
+        return result;
     }
     // Search matches by projection from target KFs in current KF
     std::vector<MapPoint*> vpFuseCandidates;
@@ -726,6 +855,7 @@ void LocalMapping::SearchInNeighbors()
 
     // Update connections in covisibility graph
     mpCurrentKeyFrame->UpdateConnections();
+    return result;
 }
 
 void LocalMapping::RequestStop()
@@ -807,8 +937,10 @@ void LocalMapping::InterruptBA()
     mbAbortBA = true;
 }
 
-void LocalMapping::KeyFrameCulling()
+KeyFrameCullingResult LocalMapping::KeyFrameCulling()
 {
+    KeyFrameCullingResult result;
+
     // Check redundant keyframes (only local keyframes)
     // A keyframe is considered redundant if the 90% of the MapPoints it sees, are seen
     // in at least other 3 keyframes (in the same or finer scale)
@@ -908,13 +1040,18 @@ void LocalMapping::KeyFrameCulling()
 
         if (nRedundantObservations > redundant_th * nMPs)
         {
+            result.culled_keyframe_ids.push_back(pKF->mnId);
+            result.num_kfs_culled++;
             pKF->SetBadFlag();
         }
         if ((count > mKeyFrameCullingEarlyExitAfterAbort && mbAbortBA) || count > mKeyFrameCullingMaxKeyframesToCheck)
         {
+            result.aborted_early = true;
             break;
         }
     }
+    result.num_kfs_checked = count;
+    return result;
 }
 
 void LocalMapping::RequestReset()

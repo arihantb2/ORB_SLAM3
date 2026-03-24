@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "CameraModels/CameraCalibrationInput.h"
+#include "LocalMappingResult.h"
 #include "bow/IBowVocabulary.h"
 
 namespace ORB_SLAM3
@@ -116,6 +117,10 @@ public:
     void ChangeDataset();
 
     float GetImageScale();
+
+    /// Register a callback to be invoked from the LocalMapping thread at the
+    /// end of every iteration that processes a KeyFrame. Pass nullptr to clear.
+    void SetLocalMappingCallback(LocalMappingCallback cb);
 
 private:
     // Input sensor
