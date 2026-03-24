@@ -150,8 +150,8 @@ bool LocalMapping::RunLoop()
             result.process_new_keyframe.duration_ms = elapsed_ms(t0);
         }
         result.keyframe_id = result.process_new_keyframe.keyframe_id;
-        result.frame_id    = result.process_new_keyframe.frame_id;
-        result.timestamp   = result.process_new_keyframe.timestamp;
+        result.frame_id = result.process_new_keyframe.frame_id;
+        result.timestamp = result.process_new_keyframe.timestamp;
 
         // Check recent MapPoints
         {
@@ -201,21 +201,19 @@ bool LocalMapping::RunLoop()
         // Snapshot the gate conditions once so skip_reason reflects the state
         // that actually caused the gate to fail — not a re-evaluation that may
         // have changed by the time we reach the else branch.
-        const bool kf_waiting  = CheckNewKeyFrames();
-        const bool stop_req    = stopRequested();
+        const bool kf_waiting = CheckNewKeyFrames();
+        const bool stop_req = stopRequested();
 
         if (!kf_waiting && !stop_req && b_doLBA)
         {
             if (mpAtlas->KeyFramesInMap() > mMinKeyframesForLBA)
             {
                 const auto t0 = std::chrono::steady_clock::now();
-                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(),
-                                                 result.lba.num_fixed_kfs, result.lba.num_optimised_kfs,
-                                                 result.lba.num_map_points, result.lba.num_edges,
-                                                 result.lba.fixed_keyframe_ids, result.lba.optimised_keyframe_ids,
-                                                 result.lba.outlier_map_point_ids,
-                                                 result.lba.covisibility_edges,
-                                                 result.lba.spanning_tree_edges);
+                Optimizer::LocalBundleAdjustment(
+                    mpCurrentKeyFrame, &mbAbortBA, mpCurrentKeyFrame->GetMap(), result.lba.num_fixed_kfs,
+                    result.lba.num_optimised_kfs, result.lba.num_map_points, result.lba.num_edges,
+                    result.lba.fixed_keyframe_ids, result.lba.optimised_keyframe_ids, result.lba.lba_map_points,
+                    result.lba.outlier_map_point_ids, result.lba.covisibility_edges, result.lba.spanning_tree_edges);
                 result.lba.num_outlier_map_points = static_cast<int>(result.lba.outlier_map_point_ids.size());
                 result.lba.duration_ms = elapsed_ms(t0);
 
@@ -232,12 +230,10 @@ bool LocalMapping::RunLoop()
                 }
 
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                    << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
-                    << "] LBA performed with " << result.lba.num_fixed_kfs << " fixed KFs, "
-                    << result.lba.num_optimised_kfs << " optimized KFs, " << result.lba.num_map_points
-                    << " MapPoints, " << result.lba.num_edges << " edges, and "
+                    << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId << "] LBA performed with "
+                    << result.lba.num_fixed_kfs << " fixed KFs, " << result.lba.num_optimised_kfs << " optimized KFs, "
+                    << result.lba.num_map_points << " MapPoints, " << result.lba.num_edges << " edges, and "
                     << result.lba.num_outlier_map_points << " outlier MPs." << std::endl;
-
             }
             else
             {
@@ -262,8 +258,8 @@ bool LocalMapping::RunLoop()
         }
 
         // Assemble convenience deltas
-        result.added_map_points         = result.create_new_map_points.new_map_points;
-        result.culled_map_point_ids     = result.map_point_culling.culled_map_point_ids;
+        result.added_map_points = result.create_new_map_points.new_map_points;
+        result.culled_map_point_ids = result.map_point_culling.culled_map_point_ids;
         result.lba_outlier_map_point_ids = result.lba.outlier_map_point_ids;
 
         result.total_duration_ms = elapsed_ms(loop_start);
@@ -336,9 +332,9 @@ ProcessNewKeyFrameResult LocalMapping::ProcessNewKeyFrame()
 
     ProcessNewKeyFrameResult result;
     result.keyframe_id = mpCurrentKeyFrame->mnId;
-    result.frame_id    = mpCurrentKeyFrame->mnFrameId;
-    result.timestamp   = mpCurrentKeyFrame->mTimeStamp;
-    result.pose        = mpCurrentKeyFrame->GetPoseInverse();
+    result.frame_id = mpCurrentKeyFrame->mnFrameId;
+    result.timestamp = mpCurrentKeyFrame->mTimeStamp;
+    result.pose = mpCurrentKeyFrame->GetPoseInverse();
 
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
@@ -736,8 +732,8 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET) << "[" << mpCurrentKeyFrame->mnFrameId << "] Added "
-                                             << result.num_created << " map points" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_QUIET)
+        << "[" << mpCurrentKeyFrame->mnFrameId << "] Added " << result.num_created << " map points" << std::endl;
     return result;
 }
 
@@ -784,8 +780,7 @@ SearchInNeighborsResult LocalMapping::SearchInNeighbors()
             break;
         }
     }
-    result.num_second_level_neighbours =
-        static_cast<int>(vpTargetKFs.size()) - result.num_first_level_neighbours;
+    result.num_second_level_neighbours = static_cast<int>(vpTargetKFs.size()) - result.num_first_level_neighbours;
     result.num_target_kfs = static_cast<int>(vpTargetKFs.size());
 
     // Search matches by projection from current KF in target KFs

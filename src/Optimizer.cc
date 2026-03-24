@@ -40,8 +40,8 @@
 #include <list>
 #include <mutex>
 #include <string>
-#include <unordered_set>
 #include <tuple>
+#include <unordered_set>
 
 namespace ORB_SLAM3
 {
@@ -388,9 +388,9 @@ void Optimizer::ConfigureLocalBundleAdjustmentPriors(bool use_pose_priors, bool 
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF,
-                                      int& num_MPs, int& num_edges,
-                                      std::vector<unsigned long>& fixed_kf_ids,
+                                      int& num_MPs, int& num_edges, std::vector<unsigned long>& fixed_kf_ids,
                                       std::vector<unsigned long>& optimised_kf_ids,
+                                      std::vector<LBAMapPoint>& lba_map_points,
                                       std::vector<unsigned long>& outlier_mp_ids,
                                       std::vector<CovisibilityEdge>& covisibility_edges,
                                       std::vector<SpanningTreeEdge>& spanning_tree_edges)
@@ -517,17 +517,19 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     // Build a set of window IDs for the parent_in_lba_window flag.
     {
         std::unordered_set<unsigned long> windowIds;
-        for (unsigned long id : optimised_kf_ids) windowIds.insert(id);
-        for (unsigned long id : fixed_kf_ids)     windowIds.insert(id);
+        for (unsigned long id : optimised_kf_ids)
+            windowIds.insert(id);
+        for (unsigned long id : fixed_kf_ids)
+            windowIds.insert(id);
 
-        auto collectSpanningEdges = [&](const std::list<KeyFrame*>& kfs) {
+        auto collectSpanningEdges = [&](const std::list<KeyFrame*>& kfs)
+        {
             for (KeyFrame* pKFi : kfs)
             {
                 KeyFrame* pParent = pKFi->GetParent();
                 const unsigned long parent_id = pParent ? pParent->mnId : 0;
                 spanning_tree_edges.push_back(
-                    {pKFi->mnId, parent_id,
-                     pParent != nullptr && windowIds.count(parent_id) > 0});
+                    {pKFi->mnId, parent_id, pParent != nullptr && windowIds.count(parent_id) > 0});
             }
         };
         collectSpanningEdges(lLocalKeyFrames);
@@ -842,6 +844,17 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
 
         pMap->IncreaseChangeIndex();
     }  // map lock released before calling EraseObservation / SetBadFlag
+
+    lba_map_points.clear();
+    lba_map_points.reserve(lLocalMapPoints.size());
+    for (MapPoint* pMP : lLocalMapPoints)
+    {
+        if (!pMP || pMP->isBad())
+        {
+            continue;
+        }
+        lba_map_points.push_back({pMP->mnId, pMP->GetWorldPos()});
+    }
 
     // Post-optimisation outlier rejection: check reprojection error using the
     // updated poses and 3-D positions, then erase high-error observations.

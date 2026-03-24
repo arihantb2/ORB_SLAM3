@@ -39,9 +39,16 @@ namespace ORB_SLAM3
 /// The client accumulates these to build its own sparse map.
 struct NewMappingMapPoint
 {
-    unsigned long id = 0;                                    ///< MapPoint::mnId
-    Eigen::Vector3f pos_world = Eigen::Vector3f::Zero();    ///< World-frame position
-    unsigned long first_kf_id = 0;                          ///< mnId of the KeyFrame that created it
+    unsigned long id = 0;                                 ///< MapPoint::mnId
+    Eigen::Vector3f pos_world = Eigen::Vector3f::Zero();  ///< World-frame position
+    unsigned long first_kf_id = 0;                        ///< mnId of the KeyFrame that created it
+};
+
+/// Lightweight representation of a map point participating in Local BA.
+struct LBAMapPoint
+{
+    unsigned long id = 0;                                 ///< MapPoint::mnId
+    Eigen::Vector3f pos_world = Eigen::Vector3f::Zero();  ///< World-frame position
 };
 
 /// One covisibility edge in the LBA window.
@@ -248,6 +255,10 @@ struct LocalBundleAdjustmentResult
 
     /// Number of MapPoints included in the optimisation.
     int num_map_points = 0;
+
+    /// Full set of MapPoints included in this LBA window.
+    /// Empty when skipped == true.
+    std::vector<LBAMapPoint> lba_map_points;
 
     /// Number of reprojection edges in the optimisation graph.
     int num_edges = 0;
