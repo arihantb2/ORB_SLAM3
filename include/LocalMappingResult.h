@@ -56,6 +56,26 @@ struct CovisibilityEdge
     int weight = 0;
 };
 
+/// One spanning-tree edge for a KeyFrame inside the LBA window.
+///
+/// The spanning tree is rooted at the map-origin KF and maintained by
+/// KeyFrame::UpdateConnections() — it is always valid by the time LBA runs.
+/// Together with CovisibilityEdge this forms the essential-graph slice for
+/// the current iteration (this codebase has no loop-closure edges).
+struct SpanningTreeEdge
+{
+    /// mnId of the child KeyFrame (the KF whose parent is being recorded).
+    unsigned long child_kf_id = 0;
+
+    /// mnId of the parent KeyFrame in the spanning tree.
+    /// 0 when the child is the map-origin root (no parent).
+    unsigned long parent_kf_id = 0;
+
+    /// True when the parent is also inside the LBA window (optimised or fixed).
+    /// False means the tree edge exits the window upward toward older KFs.
+    bool parent_in_lba_window = false;
+};
+
 // ---------------------------------------------------------------------------
 // Per-stage result structs
 // ---------------------------------------------------------------------------
@@ -247,6 +267,13 @@ struct LocalBundleAdjustmentResult
     /// omitted since they don't interact in the graph.
     /// Empty when skipped == true.
     std::vector<CovisibilityEdge> covisibility_edges;
+
+    /// Spanning-tree edges for every KeyFrame in the LBA window
+    /// (one entry per KF in lLocalKeyFrames and lFixedCameras).
+    ///
+    /// Together with covisibility_edges this gives the full essential-graph
+    /// slice visible to this iteration.  Empty when skipped == true.
+    std::vector<SpanningTreeEdge> spanning_tree_edges;
 
     /// Wall-clock duration of this stage (milliseconds). Zero when skipped.
     double duration_ms = 0.0;

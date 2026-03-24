@@ -40,6 +40,7 @@
 #include <list>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <tuple>
 
 namespace ORB_SLAM3
@@ -391,7 +392,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                                       std::vector<unsigned long>& fixed_kf_ids,
                                       std::vector<unsigned long>& optimised_kf_ids,
                                       std::vector<unsigned long>& outlier_mp_ids,
-                                      std::vector<CovisibilityEdge>& covisibility_edges)
+                                      std::vector<CovisibilityEdge>& covisibility_edges,
+                                      std::vector<SpanningTreeEdge>& spanning_tree_edges)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     std::list<KeyFrame*> lLocalKeyFrames;
@@ -509,6 +511,27 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
                 covisibility_edges.push_back({id_a, id_b, w});
             }
         }
+    }
+
+    // Spanning-tree edges: one entry per KF in the LBA window.
+    // Build a set of window IDs for the parent_in_lba_window flag.
+    {
+        std::unordered_set<unsigned long> windowIds;
+        for (unsigned long id : optimised_kf_ids) windowIds.insert(id);
+        for (unsigned long id : fixed_kf_ids)     windowIds.insert(id);
+
+        auto collectSpanningEdges = [&](const std::list<KeyFrame*>& kfs) {
+            for (KeyFrame* pKFi : kfs)
+            {
+                KeyFrame* pParent = pKFi->GetParent();
+                const unsigned long parent_id = pParent ? pParent->mnId : 0;
+                spanning_tree_edges.push_back(
+                    {pKFi->mnId, parent_id,
+                     pParent != nullptr && windowIds.count(parent_id) > 0});
+            }
+        };
+        collectSpanningEdges(lLocalKeyFrames);
+        collectSpanningEdges(lFixedCameras);
     }
 
     gtsam::NonlinearFactorGraph graph;

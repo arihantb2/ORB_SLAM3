@@ -214,7 +214,8 @@ bool LocalMapping::RunLoop()
                                                  result.lba.num_map_points, result.lba.num_edges,
                                                  result.lba.fixed_keyframe_ids, result.lba.optimised_keyframe_ids,
                                                  result.lba.outlier_map_point_ids,
-                                                 result.lba.covisibility_edges);
+                                                 result.lba.covisibility_edges,
+                                                 result.lba.spanning_tree_edges);
                 result.lba.num_outlier_map_points = static_cast<int>(result.lba.outlier_map_point_ids.size());
                 result.lba.duration_ms = elapsed_ms(t0);
 

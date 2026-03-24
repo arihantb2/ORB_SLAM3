@@ -53,7 +53,8 @@ public:
                                       std::vector<unsigned long>& fixed_kf_ids,
                                       std::vector<unsigned long>& optimised_kf_ids,
                                       std::vector<unsigned long>& outlier_mp_ids,
-                                      std::vector<CovisibilityEdge>& covisibility_edges);
+                                      std::vector<CovisibilityEdge>& covisibility_edges,
+                                      std::vector<SpanningTreeEdge>& spanning_tree_edges);
 
     int static PoseOptimization(Frame* pFrame);
 
