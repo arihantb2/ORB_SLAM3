@@ -95,7 +95,8 @@ struct ProcessNewKeyFrameResult
     /// Sensor timestamp of the processed KeyFrame (seconds).
     double timestamp = 0.0;
 
-    /// World-to-camera pose (Tcw) at the time of insertion, before LBA refinement.
+    /// Camera-in-world pose (Twc / wTc) at the time of insertion, before LBA refinement.
+    /// Apply directly as the model matrix to render the camera frustum.
     Sophus::SE3f pose;
 
     /// Total map-point slots in the KeyFrame's observation vector.

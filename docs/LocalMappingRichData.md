@@ -77,17 +77,17 @@ frame into the Atlas.
 | `keyframe_id` | `unsigned long` | `KeyFrame::mnId` — unique numeric ID of the KF |
 | `frame_id` | `unsigned long` | `Frame::mnFrameId` — sequential tracking-frame index |
 | `timestamp` | `double` | Sensor timestamp in seconds |
-| `pose` | `Sophus::SE3f` | World-to-camera transform **Tcw** at insertion time, *before* any LBA refinement this iteration |
+| `pose` | `Sophus::SE3f` | Camera-in-world transform **Twc** (wTc) at insertion time, *before* any LBA refinement this iteration. Apply directly as the model matrix for rendering. |
 | `num_kf_map_point_slots` | `int` | Total feature slots in the KF's observation vector (equals number of keypoints detected) |
 | `num_associated_map_points` | `int` | How many slots hold a valid, non-bad map point after association |
 | `num_stereo_map_points_registered` | `int` | Stereo points created by Tracking and promoted to the "recently added" list this call |
 | `queue_size_after` | `int` | Remaining KFs waiting in the queue after this one was popped |
 | `duration_ms` | `double` | Wall-clock time for this stage |
 
-The camera-to-world pose for rendering (what Pangolin uses as `Twc`) is:
+The pose is already in world frame (`Twc`), so it can be used directly as the model matrix:
 
 ```cpp
-Eigen::Matrix4f Twc = r.process_new_keyframe.pose.inverse().matrix();
+Eigen::Matrix4f Twc = r.process_new_keyframe.pose.matrix();
 ```
 
 ---
@@ -282,20 +282,19 @@ points in red if desired.
 
 ### 2. KeyFrame frustums
 
-Maintain a client-side map of `{kf_id → Sophus::SE3f Tcw}`.
+Maintain a client-side map of `{kf_id → Sophus::SE3f Twc}`.
 
 ```cpp
 auto& pkf = r.process_new_keyframe;
-kf_poses[pkf.keyframe_id] = pkf.pose;
+kf_poses[pkf.keyframe_id] = pkf.pose;  // already Twc
 
 // Remove culled KFs
 for (auto id : r.keyframe_culling.culled_keyframe_ids)
     kf_poses.erase(id);
 ```
 
-To render each frustum, invert `Tcw` to get `Twc` and apply it as the
-model-view matrix. The viewer draws a standard camera frustum (pyramid with a
-rectangular front face) at that transform.
+Apply `pose.matrix()` directly as the model-view matrix. The viewer draws a
+standard camera frustum (pyramid with a rectangular front face) at that transform.
 
 **Coloring** (matches the viewer's LBA debug mode):
 
@@ -346,8 +345,8 @@ for (auto& e : r.lba.covisibility_edges)
     auto it_b = kf_poses.find(e.kf_id_b);
     if (it_a == kf_poses.end() || it_b == kf_poses.end()) continue;
 
-    Eigen::Vector3f ow_a = it_a->second.inverse().translation();
-    Eigen::Vector3f ow_b = it_b->second.inverse().translation();
+    Eigen::Vector3f ow_a = it_a->second.translation();  // Twc.t() is the camera origin
+    Eigen::Vector3f ow_b = it_b->second.translation();
     draw_line(ow_a, ow_b, color_green_alpha);
 }
 ```
@@ -370,8 +369,8 @@ for (auto& e : r.lba.spanning_tree_edges)
     auto it_parent = kf_poses.find(e.parent_kf_id);
     if (it_child == kf_poses.end() || it_parent == kf_poses.end()) continue;
 
-    Eigen::Vector3f ow_c = it_child->second.inverse().translation();
-    Eigen::Vector3f ow_p = it_parent->second.inverse().translation();
+    Eigen::Vector3f ow_c = it_child->second.translation();
+    Eigen::Vector3f ow_p = it_parent->second.translation();
     draw_line(ow_c, ow_p, color_green_alpha);
 }
 ```
@@ -395,7 +394,7 @@ The minimal client state needed to replicate the viewer:
 
 ```
 client_map_points: map<unsigned long, Eigen::Vector3f>
-kf_poses:         map<unsigned long, Sophus::SE3f>   (Tcw per KF)
+kf_poses:         map<unsigned long, Sophus::SE3f>   (Twc per KF)
 lba_opt_kfs:      set<unsigned long>
 lba_fixed_kfs:    set<unsigned long>
 covisibility:     vector<CovisibilityEdge>

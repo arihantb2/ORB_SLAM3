@@ -338,7 +338,7 @@ ProcessNewKeyFrameResult LocalMapping::ProcessNewKeyFrame()
     result.keyframe_id = mpCurrentKeyFrame->mnId;
     result.frame_id    = mpCurrentKeyFrame->mnFrameId;
     result.timestamp   = mpCurrentKeyFrame->mTimeStamp;
-    result.pose        = mpCurrentKeyFrame->GetPose();
+    result.pose        = mpCurrentKeyFrame->GetPoseInverse();
 
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
