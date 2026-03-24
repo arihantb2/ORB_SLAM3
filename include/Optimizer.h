@@ -48,7 +48,10 @@ public:
                                        const unsigned long nLoopKF = 0, const bool bRobust = true);
 
     void static LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF,
-                                      int& num_MPs, int& num_edges);
+                                      int& num_MPs, int& num_edges,
+                                      std::vector<unsigned long>& fixed_kf_ids,
+                                      std::vector<unsigned long>& optimised_kf_ids,
+                                      std::vector<unsigned long>& outlier_mp_ids);
 
     int static PoseOptimization(Frame* pFrame);
 

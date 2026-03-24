@@ -387,7 +387,10 @@ void Optimizer::ConfigureLocalBundleAdjustmentPriors(bool use_pose_priors, bool 
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap, int& num_fixedKF, int& num_OptKF,
-                                      int& num_MPs, int& num_edges)
+                                      int& num_MPs, int& num_edges,
+                                      std::vector<unsigned long>& fixed_kf_ids,
+                                      std::vector<unsigned long>& optimised_kf_ids,
+                                      std::vector<unsigned long>& outlier_mp_ids)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     std::list<KeyFrame*> lLocalKeyFrames;
@@ -463,6 +466,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     {
         return;
     }
+
+    for (KeyFrame* pKFi : lLocalKeyFrames)
+        optimised_kf_ids.push_back(pKFi->mnId);
+    for (KeyFrame* pKFi : lFixedCameras)
+        fixed_kf_ids.push_back(pKFi->mnId);
 
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
@@ -747,31 +755,94 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     {
         result = opt.optimize();
     }
-    (void)monoEdges;
-    (void)stereoEdges;
-
-    std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
-
-    for (KeyFrame* pKFi : lLocalKeyFrames)
     {
-        gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
-        if (result.exists(k))
+        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
+
+        for (KeyFrame* pKFi : lLocalKeyFrames)
         {
-            gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(k);
-            pKFi->SetPose(gtsamToSophusPose(Tcw));
+            gtsam::Key k = poseKey(static_cast<uint32_t>(pKFi->mnId));
+            if (result.exists(k))
+            {
+                gtsam::Pose3 Tcw = result.at<gtsam::Pose3>(k);
+                pKFi->SetPose(gtsamToSophusPose(Tcw));
+            }
+        }
+
+        for (MapPoint* pMP : lLocalMapPoints)
+        {
+            gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
+            if (result.exists(pk))
+            {
+                pMP->SetWorldPos(result.at<gtsam::Point3>(pk).cast<float>());
+                pMP->UpdateNormalAndDepth();
+            }
+        }
+
+        pMap->IncreaseChangeIndex();
+    }  // map lock released before calling EraseObservation / SetBadFlag
+
+    // Post-optimisation outlier rejection: check reprojection error using the
+    // updated poses and 3-D positions, then erase high-error observations.
+    // Done outside the map lock because EraseObservation / SetBadFlag acquire
+    // their own per-object locks and may modify the map internally.
+    for (const auto& [pKFi, pMP, leftIndex] : monoEdges)
+    {
+        if (pMP->isBad())
+            continue;
+        const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
+        if (x3Dc(2) <= 0.0f)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
+            continue;
+        }
+        const cv::KeyPoint& kp = pKFi->mvKeysUn[leftIndex];
+        const float sigma2 = pKFi->mvLevelSigma2[kp.octave];
+        const cv::Point2f uv = pKFi->mpCamera->project(cv::Point3f(x3Dc(0), x3Dc(1), x3Dc(2)));
+        const float errX = uv.x - kp.pt.x;
+        const float errY = uv.y - kp.pt.y;
+        if ((errX * errX + errY * errY) > 5.991f * sigma2)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
         }
     }
 
-    for (MapPoint* pMP : lLocalMapPoints)
+    for (const auto& [pKFi, pMP, leftIndex] : stereoEdges)
     {
-        gtsam::Key pk = pointKey(static_cast<uint32_t>(pMP->mnId + maxKFid + 1));
-        if (result.exists(pk))
+        if (pMP->isBad())
+            continue;
+        const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
+        if (x3Dc(2) <= 0.0f)
         {
-            pMP->SetWorldPos(result.at<gtsam::Point3>(pk).cast<float>());
-            pMP->UpdateNormalAndDepth();
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
+            continue;
+        }
+        const float invz = 1.0f / x3Dc(2);
+        const float u = pKFi->fx * x3Dc(0) * invz + pKFi->cx;
+        const float v = pKFi->fy * x3Dc(1) * invz + pKFi->cy;
+        const float u_r = u - pKFi->mbf * invz;
+        const cv::KeyPoint& kp = pKFi->mvKeysUn[leftIndex];
+        const float kp_ur = pKFi->mvuRight[leftIndex];
+        const float sigma2 = pKFi->mvLevelSigma2[kp.octave];
+        const float errX = u - kp.pt.x;
+        const float errY = v - kp.pt.y;
+        const float errXr = u_r - kp_ur;
+        if ((errX * errX + errY * errY + errXr * errXr) > 7.815f * sigma2)
+        {
+            const unsigned long mp_id = pMP->mnId;
+            pMP->EraseObservation(pKFi);
+            if (pMP->isBad())
+                outlier_mp_ids.push_back(mp_id);
         }
     }
-    pMap->IncreaseChangeIndex();
 }
 
 }  // namespace ORB_SLAM3

@@ -391,4 +391,9 @@ float System::GetImageScale()
     return mpTracker->GetImageScale();
 }
 
+void System::SetLocalMappingCallback(LocalMappingCallback cb)
+{
+    mpLocalMapper->SetCallback(std::move(cb));
+}
+
 }  // namespace ORB_SLAM3

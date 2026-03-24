@@ -19,9 +19,13 @@
 #ifndef LOCALMAPPING_H
 #define LOCALMAPPING_H
 
+#include "LocalMappingResult.h"
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <atomic>
 #include <fstream>
+#include <functional>
 #include <list>
 #include <mutex>
 
@@ -80,6 +84,11 @@ public:
     double GetCurrKFTime();
     KeyFrame* GetCurrKF();
 
+    /// Register a callback invoked from the LocalMapping thread at the end of
+    /// every iteration that processes a KeyFrame. Pass nullptr to clear.
+    /// Thread-safe: may be called from any thread.
+    void SetCallback(LocalMappingCallback cb);
+
     double mFirstTs;
     int mnMatchesInliers;
 
@@ -124,12 +133,12 @@ protected:
 
     void SetNewKeyFrame();
     bool CheckNewKeyFrames();
-    void ProcessNewKeyFrame();
-    void CreateNewMapPoints();
+    ProcessNewKeyFrameResult ProcessNewKeyFrame();
+    CreateNewMapPointsResult CreateNewMapPoints();
 
-    void MapPointCulling();
-    void SearchInNeighbors();
-    void KeyFrameCulling();
+    MapPointCullingResult MapPointCulling();
+    SearchInNeighborsResult SearchInNeighbors();
+    KeyFrameCullingResult KeyFrameCulling();
 
     System* mpSystem;
 
@@ -171,6 +180,10 @@ protected:
     std::mutex mMutexAccept;
 
     bool bInitializing;
+
+    LocalMappingCallback mCallback;
+    std::mutex mMutexCallback;
+    std::atomic<uint64_t> mIterationCounter{0};
 
     //DEBUG
     std::ofstream f_lm;
