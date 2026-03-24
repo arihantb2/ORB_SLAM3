@@ -370,16 +370,23 @@ struct LocalMappingResult
     // Convenience map-point delta summary
     // -----------------------------------------------------------------------
 
-    /// Union of all newly created map points this iteration
-    /// (from CreateNewMapPoints; duplicates CreateNewMapPointsResult::new_map_points
-    /// at the top level for ergonomic access).
+    /// All newly created map points this iteration (from CreateNewMapPoints).
+    /// Duplicates CreateNewMapPointsResult::new_map_points at the top level
+    /// for ergonomic access.
     std::vector<NewMappingMapPoint> added_map_points;
 
-    /// Union of all map-point IDs removed this iteration.
-    /// Combines culled IDs from MapPointCulling and (if applicable) any points
-    /// invalidated by KeyFrameCulling.  The client should drop these IDs from
-    /// its own map.
-    std::vector<unsigned long> removed_map_point_ids;
+    /// Map-point IDs removed by MapPointCulling this iteration (SetBadFlag
+    /// was called).  Mirrors MapPointCullingResult::culled_map_point_ids.
+    /// Kept separate from lba_outlier_map_point_ids so the client can
+    /// distinguish the two removal causes.
+    std::vector<unsigned long> culled_map_point_ids;
+
+    /// Map-point IDs rejected as outliers by the LBA post-optimisation
+    /// reprojection-error pass this iteration.
+    /// Mirrors LocalBundleAdjustmentResult::outlier_map_point_ids.
+    /// Empty until the outlier-rejection pass is added to
+    /// Optimizer::LocalBundleAdjustment (see §10).
+    std::vector<unsigned long> lba_outlier_map_point_ids;
 
     // -----------------------------------------------------------------------
     // Timing summary
@@ -512,18 +519,11 @@ bool LocalMapping::RunLoop()
         }
 
         // --- Assemble convenience deltas ---
-        result.added_map_points = result.create_new_map_points.new_map_points;
-
-        // Merge all sources of removed map-point IDs into the top-level list:
-        //   1. Culled by MapPointCulling (bad flag set)
-        //   2. Marked as outliers by the LBA post-optimisation rejection pass
+        result.added_map_points         = result.create_new_map_points.new_map_points;
+        result.culled_map_point_ids     = result.map_point_culling.culled_map_point_ids;
+        result.lba_outlier_map_point_ids = result.lba.outlier_map_point_ids;
         // (KeyFrameCulling does not directly invalidate MapPoints, but callers
         //  should be aware those KF observations are gone.)
-        result.removed_map_point_ids = result.map_point_culling.culled_map_point_ids;
-        result.removed_map_point_ids.insert(
-            result.removed_map_point_ids.end(),
-            result.lba.outlier_map_point_ids.begin(),
-            result.lba.outlier_map_point_ids.end());
 
         result.total_duration_ms = elapsed_ms(loop_start);
 
@@ -668,9 +668,10 @@ slam.SetLocalMappingCallback([](const ORB_SLAM3::LocalMappingResult& r) {
     printf("  KFCulling:   %.1f ms  (%d culled)\n",
            r.keyframe_culling.duration_ms,
            r.keyframe_culling.num_kfs_culled);
-    printf("  Map delta:   +%d MPs  -%d MPs\n",
+    printf("  Map delta:   +%d MPs  culled=-%d  lba_outliers=-%d\n",
            (int)r.added_map_points.size(),
-           (int)r.removed_map_point_ids.size());
+           (int)r.culled_map_point_ids.size(),
+           (int)r.lba_outlier_map_point_ids.size());
 });
 
 while (hasFrames())
