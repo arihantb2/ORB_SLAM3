@@ -243,16 +243,48 @@ struct LocalBundleAdjustmentResult
     std::string skip_reason;
 
     /// Number of KeyFrames held fixed during LBA (anchors / fixed nodes).
+    /// Equals fixed_keyframe_ids.size().
     int num_fixed_kfs = 0;
 
+    /// mnId of every KeyFrame that was held fixed (anchor nodes) in the
+    /// optimisation graph.  Fixed KFs are the covisible neighbours of the
+    /// local window whose own neighbours are not in the window, plus the
+    /// map-origin KF when it is the only anchor available.  Their poses are
+    /// NOT modified by LBA.
+    std::vector<unsigned long> fixed_keyframe_ids;
+
     /// Number of KeyFrames whose poses were optimised.
+    /// Equals optimised_keyframe_ids.size().
     int num_optimised_kfs = 0;
+
+    /// mnId of every KeyFrame whose pose was a free variable in the
+    /// optimisation (lLocalKeyFrames inside Optimizer::LocalBundleAdjustment).
+    /// The current KeyFrame is always the first entry when LBA runs.
+    std::vector<unsigned long> optimised_keyframe_ids;
 
     /// Number of MapPoints included in the optimisation.
     int num_map_points = 0;
 
-    /// Number of reprojection edges in the g2o graph.
+    /// Number of reprojection edges in the optimisation graph.
     int num_edges = 0;
+
+    /// MapPoint IDs that were found to have excessive reprojection error after
+    /// optimisation and were marked bad (SetBadFlag / EraseObservation called).
+    /// The client should remove these IDs from its own map.
+    ///
+    /// Implementation note: the current GTSAM-based LBA applies Huber
+    /// robustification inline as a loss function and does NOT yet perform an
+    /// explicit post-optimisation outlier-rejection pass (the monoEdges /
+    /// stereoEdges vectors inside Optimizer::LocalBundleAdjustment are
+    /// collected but currently unused).  Adding that pass and wiring its
+    /// output to this field is a prerequisite for this field to be non-empty.
+    /// Until then the field will always be empty and num_outlier_map_points
+    /// will always be 0.  See §8 (Refactoring scope) for the required
+    /// Optimizer signature change.
+    std::vector<unsigned long> outlier_map_point_ids;
+
+    /// Convenience count; equals outlier_map_point_ids.size().
+    int num_outlier_map_points = 0;
 
     /// Wall-clock duration of this stage (milliseconds).  Zero when skipped.
     double duration_ms = 0.0;
@@ -480,10 +512,18 @@ bool LocalMapping::RunLoop()
         }
 
         // --- Assemble convenience deltas ---
-        result.added_map_points    = result.create_new_map_points.new_map_points;
-        result.removed_map_point_ids = result.map_point_culling.culled_map_point_ids;
+        result.added_map_points = result.create_new_map_points.new_map_points;
+
+        // Merge all sources of removed map-point IDs into the top-level list:
+        //   1. Culled by MapPointCulling (bad flag set)
+        //   2. Marked as outliers by the LBA post-optimisation rejection pass
         // (KeyFrameCulling does not directly invalidate MapPoints, but callers
         //  should be aware those KF observations are gone.)
+        result.removed_map_point_ids = result.map_point_culling.culled_map_point_ids;
+        result.removed_map_point_ids.insert(
+            result.removed_map_point_ids.end(),
+            result.lba.outlier_map_point_ids.begin(),
+            result.lba.outlier_map_point_ids.end());
 
         result.total_duration_ms = elapsed_ms(loop_start);
 
@@ -579,7 +619,9 @@ sub-stages but not the callback execution itself).
 |------|--------|
 | `include/LocalMappingResult.h` | **New file** — all result structs and callback typedef. |
 | `include/LocalMapping.h` | Add `#include "LocalMappingResult.h"`, `SetCallback()`, `mCallback`, `mMutexCallback`, `mIterationCounter`. Change private method signatures to return sub-result structs. |
-| `src/LocalMapping.cc` | Instrument `RunLoop()` with timing and result assembly. Refactor `ProcessNewKeyFrame`, `MapPointCulling`, `CreateNewMapPoints`, `SearchInNeighbors`, `KeyFrameCulling` to return their respective structs. Extract LBA block into `MaybeRunLBA()` returning `LocalBundleAdjustmentResult`. |
+| `src/LocalMapping.cc` | Instrument `RunLoop()` with timing and result assembly. Refactor `ProcessNewKeyFrame`, `MapPointCulling`, `CreateNewMapPoints`, `SearchInNeighbors`, `KeyFrameCulling` to return their respective structs. Extract LBA block into `MaybeRunLBA()` returning `LocalBundleAdjustmentResult`. Merge `lba.outlier_map_point_ids` into `removed_map_point_ids`. |
+| `include/Optimizer.h` | Extend `LocalBundleAdjustment` signature with two new output parameters: `std::vector<unsigned long>& fixed_kf_ids`, `std::vector<unsigned long>& optimised_kf_ids`, and `std::vector<unsigned long>& outlier_mp_ids`.  Add the post-optimisation outlier-rejection pass (check reprojection error on `monoEdges` / `stereoEdges`, call `EraseObservation` + `SetBadFlag` on outliers, populate `outlier_mp_ids`). |
+| `src/Optimizer.cc` | Implement the above: fill the three new output vectors inside `LocalBundleAdjustment`.  The `monoEdges` / `stereoEdges` lists are already collected; add the chi2 threshold check loop after `opt.optimize()` and remove the `(void)` suppression casts. |
 | `include/System.h` | Add `#include "LocalMappingResult.h"`, `SetLocalMappingCallback()`. |
 | `src/System.cc` | Implement `SetLocalMappingCallback()`. |
 
@@ -611,11 +653,16 @@ slam.SetLocalMappingCallback([](const ORB_SLAM3::LocalMappingResult& r) {
                r.search_in_neighbors.duration_ms,
                r.search_in_neighbors.num_target_kfs);
     if (!r.lba.skipped)
-        printf("  LBA:         %.1f ms  (%d opt KFs, %d MPs, %d edges)\n",
+    {
+        printf("  LBA:         %.1f ms  (%d fixed KFs, %d opt KFs, %d MPs, %d edges, %d outlier MPs)\n",
                r.lba.duration_ms,
+               r.lba.num_fixed_kfs,
                r.lba.num_optimised_kfs,
                r.lba.num_map_points,
-               r.lba.num_edges);
+               r.lba.num_edges,
+               r.lba.num_outlier_map_points);
+        // fixed_keyframe_ids / optimised_keyframe_ids available for detailed logging
+    }
     else
         printf("  LBA:         skipped (%s)\n", r.lba.skip_reason.c_str());
     printf("  KFCulling:   %.1f ms  (%d culled)\n",
@@ -637,6 +684,16 @@ while (hasFrames())
 
 ## 10. Open questions / future work
 
+* **LBA outlier rejection prerequisite** — `outlier_map_point_ids` in
+  `LocalBundleAdjustmentResult` will always be empty until a post-optimisation
+  chi2 rejection pass is added to `Optimizer::LocalBundleAdjustment`.  The
+  infrastructure is almost in place: `monoEdges` and `stereoEdges` are already
+  collected inside the function but are currently unused (suppressed with
+  `(void)` casts).  The implementation task is to iterate those edge lists
+  after `opt.optimize()`, check each reprojection error against the same 5.991
+  (mono) / 7.815 (stereo) chi2 thresholds used elsewhere, and call
+  `EraseObservation` + `SetBadFlag` on points whose errors exceed the
+  threshold.
 * **LBA-refined poses** — after LBA, all local KeyFrame poses change.  A
   future extension could include a `vector<{kf_id, new_pose}>` in
   `LocalBundleAdjustmentResult` so the client can update its own trajectory
