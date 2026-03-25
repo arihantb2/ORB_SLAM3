@@ -33,14 +33,12 @@
 namespace ORB_SLAM3
 {
 
-class Viewer;
 class Atlas;
 class LocalMapping;
 class System;
 class Settings;
 class KeyFrame;
 class Map;
-class MapDrawer;
 class MapPoint;
 class FeatureExtractor;
 class GeometricCamera;
@@ -254,7 +252,7 @@ class Tracking
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Tracking(System* pSys, IBowVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
+    Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas,
              const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
 
     ~Tracking();
@@ -266,7 +264,6 @@ public:
                                       const std::optional<Sophus::SE3f>& posePrior = std::nullopt);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
-    void SetViewer(Viewer* pViewer);
 
     bool isLastFrameKeyframe();
 
@@ -414,10 +411,6 @@ protected:
 
     // System
     System* mpSystem;
-
-    // Drawers
-    Viewer* mpViewer;
-    MapDrawer* mpMapDrawer;
 
     // Atlas
     Atlas* mpAtlas;

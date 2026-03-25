@@ -20,15 +20,12 @@
 #include "Verbose.h"
 
 #include <openssl/md5.h>
-#include <pangolin/pangolin.h>
 #include <chrono>
 #include <thread>
 #include "Atlas.h"
 #include "LocalMapping.h"
-#include "MapDrawer.h"
 #include "Settings.h"
 #include "Tracking.h"
-#include "Viewer.h"
 #include "bow/BowVocabularyFactory.h"
 
 namespace ORB_SLAM3
@@ -40,9 +37,8 @@ std::unique_ptr<std::ofstream> Verbose::log_file_;
 std::atomic<bool> Verbose::console_enabled{false};
 
 System::System(const std::string& strVocFile, const std::string& strConfigFile, const eSensor sensor,
-               const CameraCalibrationInput& calib, const bool bUseViewer, const std::string& strLogFile,
-               const bool bVerboseConsole)
-    : mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
+               const CameraCalibrationInput& calib, const std::string& strLogFile, const bool bVerboseConsole)
+    : mSensor(sensor), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     Verbose::SetLogFile(strLogFile);
     Verbose::SetConsole(bVerboseConsole);
@@ -132,12 +128,8 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
 
     const bool monocular = mSensor == MONOCULAR;
 
-    //Create Drawers. These are used by the Viewer
-    mpMapDrawer = new MapDrawer(mpAtlas, settings_);
-
     //Initialize the Tracking thread
-    mpTracker =
-        new Tracking(this, mpVocabulary.get(), mpMapDrawer, mpAtlas, strConfigFile, mSensor, settings_, newMaps);
+    mpTracker = new Tracking(this, mpVocabulary.get(), mpAtlas, strConfigFile, mSensor, settings_, newMaps);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, settings_);
@@ -147,14 +139,6 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     mpTracker->SetLocalMapper(mpLocalMapper);
 
     mpLocalMapper->SetTracker(mpTracker);
-
-    //Initialize the Viewer thread and launch
-    if (bUseViewer)
-    {
-        mpViewer = new Viewer(this, mpMapDrawer, mpTracker, settings_);
-        mptViewer = new std::thread(&Viewer::Run, mpViewer);
-        mpTracker->SetViewer(mpViewer);
-    }
 }
 
 TrackingResult System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
@@ -289,21 +273,11 @@ void System::Shutdown()
     Verbose::Print(Verbose::VERBOSITY_NORMAL) << "Shutdown" << std::endl;
 
     mpLocalMapper->RequestFinish();
-    if (mpViewer)
-    {
-        mpViewer->RequestFinish();
-    }
 
     const auto current_id = std::this_thread::get_id();
     const bool local_thread = mptLocalMapping && mptLocalMapping->get_id() == current_id;
-    const bool viewer_thread = mptViewer && mptViewer->get_id() == current_id;
 
     while (mpLocalMapper && !local_thread && !mpLocalMapper->isFinished())
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    while (mpViewer && !viewer_thread && !mpViewer->isFinished())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
@@ -311,11 +285,6 @@ void System::Shutdown()
     if (mptLocalMapping && mptLocalMapping->joinable() && mptLocalMapping->get_id() != current_id)
     {
         mptLocalMapping->join();
-    }
-
-    if (mptViewer && mptViewer->joinable() && mptViewer->get_id() != current_id)
-    {
-        mptViewer->join();
     }
 }
 
