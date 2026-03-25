@@ -35,9 +35,9 @@ Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
 
 # Motion model tracking (stereo projection search thresholds)
 Tracking.MotionModel.NNRatio: 0.9
-Tracking.MotionModel.ProjectionSearchThStereo: 7
+Tracking.MotionModel.ProjectionSearchThStereo: 30
 Tracking.MotionModel.MinInitialMatches: 20
-Tracking.MotionModel.RetryProjectionSearchThStereo: 14
+Tracking.MotionModel.RetryProjectionSearchThStereo: 60
 Tracking.MotionModel.MinRetryMatches: 20
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 

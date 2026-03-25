@@ -26,7 +26,7 @@ FeatureExtractor.ORB.iniThFAST: 15
 # Keypoint ranking metric after FAST detection.
 # "HARRIS" (default) — re-ranks by Harris corner response; more stable keypoints
 # "FAST"             — ranks by raw FAST response; slightly faster, less stable
-FeatureExtractor.ORB.scoreType: "HARRIS"
+FeatureExtractor.ORB.scoreType: "FAST"
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters (stereo)
@@ -39,9 +39,9 @@ Tracking.ReferenceKeyframe.MinBoWMatches: 15
 Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
 
 Tracking.MotionModel.NNRatio: 0.9
-Tracking.MotionModel.ProjectionSearchThStereo: 7
+Tracking.MotionModel.ProjectionSearchThStereo: 30
 Tracking.MotionModel.MinInitialMatches: 20
-Tracking.MotionModel.RetryProjectionSearchThStereo: 14
+Tracking.MotionModel.RetryProjectionSearchThStereo: 60
 Tracking.MotionModel.MinRetryMatches: 20
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
