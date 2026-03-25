@@ -63,7 +63,6 @@ Map::~Map()
     //TODO: erase all keyframes from memory
     mspKeyFrames.clear();
 
-
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
 }

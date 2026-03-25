@@ -68,8 +68,7 @@ public:
     // Initialize the SLAM system. It launches the Local Mapping thread.
     // Calibration is injected; camera parameters are not read from any file.
     System(const std::string& strVocFile, const std::string& strAlgorithmConfigFile, const eSensor sensor,
-           const CameraCalibrationInput& calib, const std::string& strLogFile = "",
-           const bool bVerboseConsole = false);
+           const CameraCalibrationInput& calib, const std::string& strLogFile = "", const bool bVerboseConsole = false);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
