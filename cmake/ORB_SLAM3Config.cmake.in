@@ -9,22 +9,4 @@ find_dependency(DBoW2)
 find_dependency(fbow)
 find_dependency(GTSAM)
 
-# Ensure ROS 2 install prefix is in CMAKE_PREFIX_PATH for Pangolin lookup
-# Pangolin is installed via ros-jazzy-pangolin package at /opt/ros/jazzy
-# Check common ROS 2 install locations and add to search path
-set(_pangolin_search_paths
-    "/opt/ros/jazzy"
-    "/opt/ros/humble"
-    "/opt/ros/iron"
-    "/opt/ros/foxy"
-)
-foreach(_path IN LISTS _pangolin_search_paths)
-    if(EXISTS "${_path}/lib/x86_64-linux-gnu/cmake/Pangolin")
-        list(APPEND CMAKE_PREFIX_PATH "${_path}")
-        break()
-    endif()
-endforeach()
-
-find_dependency(Pangolin)
-
 include("${CMAKE_CURRENT_LIST_DIR}/ORB_SLAM3Targets.cmake")

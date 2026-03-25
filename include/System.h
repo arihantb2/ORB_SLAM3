@@ -36,8 +36,6 @@
 namespace ORB_SLAM3
 {
 
-class Viewer;
-class MapDrawer;
 class Atlas;
 class Tracking;
 class LocalMapping;
@@ -67,10 +65,10 @@ public:
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    // Initialize the SLAM system. It launches the Local Mapping and Viewer threads.
+    // Initialize the SLAM system. It launches the Local Mapping thread.
     // Calibration is injected; camera parameters are not read from any file.
     System(const std::string& strVocFile, const std::string& strAlgorithmConfigFile, const eSensor sensor,
-           const CameraCalibrationInput& calib, const bool bUseViewer = true, const std::string& strLogFile = "",
+           const CameraCalibrationInput& calib, const std::string& strLogFile = "",
            const bool bVerboseConsole = false);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
@@ -140,15 +138,8 @@ private:
     // Local Mapper. It manages the local map and performs local bundle adjustment.
     LocalMapping* mpLocalMapper;
 
-    // The viewer draws the map and the current camera pose. It uses Pangolin.
-    Viewer* mpViewer;
-
-    MapDrawer* mpMapDrawer;
-
-    // System threads: Local Mapping, Loop Closing, Viewer.
-    // The Tracking thread "lives" in the main execution thread that creates the System object.
+    // System threads: Local Mapping. Tracking runs on the thread that creates the System object.
     std::thread* mptLocalMapping;
-    std::thread* mptViewer;
 
     // Reset flag
     std::mutex mMutexReset;

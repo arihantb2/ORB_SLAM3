@@ -21,7 +21,7 @@ A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) pa
 ## Prerequisites
 
 - C++17, CMake ≥ 3.10
-- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, Pangolin, DBoW2, fbow
+- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, DBoW2, fbow, GTSAM
 - `Vocabulary/ORBvoc.txt` (or its `.tar.gz` — CMake extracts it automatically)
 
 ---
@@ -63,8 +63,7 @@ ORB-SLAM3 does not load camera parameters from file. Calibration is **injected**
 // CreateMetashapeCamera / CreatePinholeCamera, fills calib.
 ORB_SLAM3::CameraCalibrationInput calib = /* ... */;
 
-ORB_SLAM3::System slam("Vocabulary/ORBvoc.txt", "config/stereo.yaml",
-                       ORB_SLAM3::System::STEREO, calib, /*bUseViewer=*/true);
+ORB_SLAM3::System slam("Vocabulary/ORBvoc.txt", "config/stereo.yaml", ORB_SLAM3::System::STEREO, calib);
 
 Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
 // or: slam.TrackMonocular(img, timestamp);
@@ -72,7 +71,7 @@ Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
 slam.Shutdown();
 ```
 
-**Config files:** `config/mono.yaml` and `config/stereo.yaml` are **algorithm-only** (tracking, ORB, local mapping, viewer). Camera calibration lives in `config/camera_calib_mono.yaml` and `config/camera_calib_stereo.yaml` and is loaded by the wrapper. Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
+**Config files:** Algorithm YAML files are **algorithm-only** (tracking, features, local mapping). Camera calibration is injected via `CameraCalibrationInput`. Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
 
 ---
 

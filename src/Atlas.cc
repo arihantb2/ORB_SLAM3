@@ -17,7 +17,6 @@
 */
 
 #include "Atlas.h"
-#include "Viewer.h"
 
 #include <mutex>
 #include <set>
@@ -31,7 +30,7 @@ Atlas::Atlas()
     mpCurrentMap = static_cast<Map*>(NULL);
 }
 
-Atlas::Atlas(int initKFid) : mnLastInitKFidMap(initKFid), mHasViewer(false)
+Atlas::Atlas(int initKFid) : mnLastInitKFidMap(initKFid)
 {
     mpCurrentMap = static_cast<Map*>(NULL);
     CreateNewMap();
@@ -71,12 +70,6 @@ unsigned long int Atlas::GetLastInitKFid()
 {
     std::unique_lock<std::mutex> lock(mMutexAtlas);
     return mnLastInitKFidMap;
-}
-
-void Atlas::SetViewer(Viewer* pViewer)
-{
-    mpViewer = pViewer;
-    mHasViewer = true;
 }
 
 void Atlas::AddKeyFrame(KeyFrame* pKF)

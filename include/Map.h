@@ -19,7 +19,6 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include <pangolin/pangolin.h>
 #include <list>
 #include <map>
 #include <mutex>
@@ -70,7 +69,6 @@ public:
     void SetCurrentMap();
     void SetStoredMap();
 
-    bool HasThumbnail();
     bool IsInUse();
 
     void SetBad();
@@ -103,10 +101,6 @@ public:
 
     bool mbFail;
 
-    // Size of the thumbnail (always in power of 2)
-    static const int THUMB_WIDTH = 512;
-    static const int THUMB_HEIGHT = 512;
-
     static long unsigned int nNextId;
 
     // DEBUG: show KFs which are used in LBA
@@ -134,11 +128,7 @@ protected:
     // Index related to a big change in the map (loop closure, global BA)
     int mnBigChangeIdx;
 
-    // View of the map in aerial sight (for the AtlasViewer)
-    GLubyte* mThumbnail;
-
     bool mIsInUse;
-    bool mHasTumbnail;
     bool mbBad = false;
 
     // Mutex

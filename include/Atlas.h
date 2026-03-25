@@ -31,7 +31,6 @@
 
 namespace ORB_SLAM3
 {
-class Viewer;
 class Map;
 class MapPoint;
 class KeyFrame;
@@ -51,8 +50,6 @@ public:
     void CreateNewMap();
 
     unsigned long int GetLastInitKFid();
-
-    void SetViewer(Viewer* pViewer);
 
     // Method for change components in the current map
     void AddKeyFrame(KeyFrame* pKF);
@@ -92,9 +89,6 @@ protected:
     std::vector<GeometricCamera*> mvpCameras;
 
     unsigned long int mnLastInitKFidMap;
-
-    Viewer* mpViewer;
-    bool mHasViewer;
 
     // Mutex
     std::mutex mMutexAtlas;

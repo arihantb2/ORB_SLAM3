@@ -19,15 +19,15 @@ pointers into library internals, just numeric IDs, poses, and world-space
 positions.
 
 This document describes every field in the struct and shows how a client can
-use the data to maintain a real-time sparse map and replicate the visualization
-seen in the built-in ORB-SLAM3 Pangolin viewer.
+use the data to maintain a real-time sparse map and replicate map visualization
+externally (the in-library Pangolin map viewer has been removed from this fork).
 
 ---
 
-## The built-in viewer and what drives it
+## Map visualization elements (reference for external viewers)
 
-The Pangolin viewer (`MapDrawer`) draws four kinds of visual elements on every
-frame:
+The former Pangolin-based map view drew four kinds of visual elements on every
+frame; the same information is available from `LocalMappingResult` and map data:
 
 | Visual element | Color | Source (inside the library) |
 |---|---|---|
@@ -252,7 +252,7 @@ essential-graph slice for the active LBA window on every iteration.
 
 ---
 
-## Replicating the Pangolin viewer
+## Replicating the classic map view externally
 
 The following sections show how to reproduce each visual element from the
 built-in viewer using only `LocalMappingResult` data.

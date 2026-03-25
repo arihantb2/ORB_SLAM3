@@ -35,12 +35,10 @@ Map::Map()
       mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
       mbFail(false),
       mIsInUse(false),
-      mHasTumbnail(false),
       mbBad(false),
       mnMapChangeNotified(0)
 {
     mnId = nNextId++;
-    mThumbnail = static_cast<GLubyte*>(NULL);
 }
 
 Map::Map(int initKFid)
@@ -48,7 +46,6 @@ Map::Map(int initKFid)
       mnMaxKFid(initKFid),
       /*mnLastLoopKFid(initKFid),*/ mnBigChangeIdx(0),
       mIsInUse(false),
-      mHasTumbnail(false),
       mbBad(false),
       mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
       mnMapChange(0),
@@ -56,7 +53,6 @@ Map::Map(int initKFid)
       mnMapChangeNotified(0)
 {
     mnId = nNextId++;
-    mThumbnail = static_cast<GLubyte*>(NULL);
 }
 
 Map::~Map()
@@ -67,11 +63,6 @@ Map::~Map()
     //TODO: erase all keyframes from memory
     mspKeyFrames.clear();
 
-    if (mThumbnail)
-    {
-        delete mThumbnail;
-    }
-    mThumbnail = static_cast<GLubyte*>(NULL);
 
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();

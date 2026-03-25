@@ -24,11 +24,9 @@
 #include "FeatureMatcher.h"
 #include "GeometricTools.h"
 #include "LocalMapping.h"
-#include "MapDrawer.h"
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
-#include "Viewer.h"
 #include "feature_extractor/GridBasedORBFeatureExtractor.h"
 #include "feature_extractor/SIFTFeatureExtractor.h"
 #include "feature_extractor/VanillaORBFeatureExtractor.h"
@@ -41,7 +39,7 @@
 namespace ORB_SLAM3
 {
 
-Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, MapDrawer* pMapDrawer, Atlas* pAtlas,
+Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas,
                    const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
@@ -49,8 +47,6 @@ Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, MapDrawer* pMapDrawer, At
       mpORBVocabulary(pVoc),
       mbReadyToInitializate(false),
       mpSystem(pSys),
-      mpViewer(NULL),
-      mpMapDrawer(pMapDrawer),
       mpAtlas(pAtlas),
       mnInitialFrameId(0),
       mbCreatedMap(false),
@@ -232,11 +228,6 @@ void Tracking::SetLocalMapper(LocalMapping* pLocalMapper)
     mpLocalMapper = pLocalMapper;
 }
 
-void Tracking::SetViewer(Viewer* pViewer)
-{
-    mpViewer = pViewer;
-}
-
 TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat& imageRight, const double& timestamp,
                                          const std::optional<Sophus::SE3f>& posePrior)
 {
@@ -386,7 +377,6 @@ void Tracking::UpdateAfterTracking(bool bOK)
     // Update drawer
     if (mCurrentFrame.isSet())
     {
-        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
     }
 
     if (!bOK)
@@ -885,7 +875,6 @@ void Tracking::StereoInitialization()
 
     mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.push_back(pKFini);
 
-    mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
 
     mState = OK;
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
@@ -1131,7 +1120,6 @@ void Tracking::CreateInitialMapMonocular()
 
     mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
 
-    mpMapDrawer->SetCurrentCameraPose(pKFcur->GetPose());
 
     mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.push_back(pKFini);
 
@@ -2173,15 +2161,6 @@ void Tracking::Reset(bool bLocMap)
 {
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "System Reseting" << std::endl;
 
-    if (mpViewer)
-    {
-        mpViewer->RequestStop();
-        while (!mpViewer->isStopped())
-        {
-            usleep(3000);
-        }
-    }
-
     // Reset Local Mapping
     if (!bLocMap)
     {
@@ -2209,24 +2188,10 @@ void Tracking::Reset(bool bLocMap)
     mpReferenceKF = static_cast<KeyFrame*>(NULL);
     mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
     mvIniMatches.clear();
-
-    if (mpViewer)
-    {
-        mpViewer->Release();
-    }
 }
 
 void Tracking::ResetActiveMap(bool bLocMap)
 {
-    if (mpViewer)
-    {
-        mpViewer->RequestStop();
-        while (!mpViewer->isStopped())
-        {
-            usleep(3000);
-        }
-    }
-
     if (!bLocMap)
     {
         mpLocalMapper->RequestReset();
@@ -2276,11 +2241,6 @@ void Tracking::ResetActiveMap(bool bLocMap)
     mvIniMatches.clear();
 
     mbVelocity = false;
-
-    if (mpViewer)
-    {
-        mpViewer->Release();
-    }
 }
 
 std::vector<MapPoint*> Tracking::GetLocalMapMPS()

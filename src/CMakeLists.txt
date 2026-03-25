@@ -18,10 +18,8 @@ add_library(${PROJECT_NAME} SHARED
     KeyFrame.cc
     Atlas.cc
     Map.cc
-    MapDrawer.cc
     Optimizer.cc
     Frame.cc
-    Viewer.cc
     GTSAMTypes.cc
     CameraModels/Pinhole.cpp
     CameraModels/Metashape.cpp
@@ -47,7 +45,6 @@ target_link_libraries(${PROJECT_NAME}
     feature_extractor
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}
-    ${Pangolin_LIBRARIES}
     gtsam
     ${PROJECT_NAME}_bow
     -lcrypto

@@ -211,8 +211,6 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
         readGridORB(fSettings);
         Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded GridORB settings" << std::endl;
     }
-    readViewer(fSettings);
-    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded viewer settings" << std::endl;
     readOtherParameters(fSettings);
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded misc parameters" << std::endl;
 
@@ -311,28 +309,6 @@ void Settings::readSIFT(cv::FileStorage& fSettings)
     if (!found)
     {
         siftSigma_ = 1.6;
-    }
-}
-
-void Settings::readViewer(cv::FileStorage& fSettings)
-{
-    bool found;
-
-    keyFrameSize_ = readParameter<float>(fSettings, "Viewer.KeyFrameSize", found);
-    keyFrameLineWidth_ = readParameter<float>(fSettings, "Viewer.KeyFrameLineWidth", found);
-    graphLineWidth_ = readParameter<float>(fSettings, "Viewer.GraphLineWidth", found);
-    pointSize_ = readParameter<float>(fSettings, "Viewer.PointSize", found);
-    cameraSize_ = readParameter<float>(fSettings, "Viewer.CameraSize", found);
-    cameraLineWidth_ = readParameter<float>(fSettings, "Viewer.CameraLineWidth", found);
-    viewPointX_ = readParameter<float>(fSettings, "Viewer.ViewpointX", found);
-    viewPointY_ = readParameter<float>(fSettings, "Viewer.ViewpointY", found);
-    viewPointZ_ = readParameter<float>(fSettings, "Viewer.ViewpointZ", found);
-    viewPointF_ = readParameter<float>(fSettings, "Viewer.ViewpointF", found);
-    imageViewerScale_ = readParameter<float>(fSettings, "Viewer.imageViewScale", found, false);
-
-    if (!found)
-    {
-        imageViewerScale_ = 1.0f;
     }
 }
 
