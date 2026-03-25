@@ -472,19 +472,25 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     }
 
     for (KeyFrame* pKFi : lLocalKeyFrames)
+    {
         optimised_kf_ids.push_back(pKFi->mnId);
+    }
     for (KeyFrame* pKFi : lFixedCameras)
+    {
         fixed_kf_ids.push_back(pKFi->mnId);
-
+    }
     // When the map-origin KF is inside lLocalKeyFrames it receives a tight
     // prior (sigma = 1e-9) that effectively anchors it.  Include its ID in
     // fixed_kf_ids so that num_fixed_kfs == fixed_kf_ids.size() always holds.
     // The ID also appears in optimised_kf_ids (it is a GTSAM variable).
     const unsigned long initKFid = pCurrentMap->GetInitKFid();
     for (KeyFrame* pKFi : lLocalKeyFrames)
+    {
         if (pKFi->mnId == initKFid)
+        {
             fixed_kf_ids.push_back(pKFi->mnId);
-
+        }
+    }
     // Covisibility edges between all KF pairs in the LBA window.
     // Optimised × optimised: iterate over unique pairs only (j > i).
     {
@@ -495,7 +501,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             {
                 const int w = vLocal[i]->GetWeight(vLocal[j]);
                 if (w > 0)
+                {
                     covisibility_edges.push_back({vLocal[i]->mnId, vLocal[j]->mnId, w});
+                }
             }
         }
     }
@@ -519,10 +527,13 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     {
         std::unordered_set<unsigned long> windowIds;
         for (unsigned long id : optimised_kf_ids)
+        {
             windowIds.insert(id);
+        }
         for (unsigned long id : fixed_kf_ids)
+        {
             windowIds.insert(id);
-
+        }
         auto collectSpanningEdges = [&](const std::list<KeyFrame*>& kfs)
         {
             for (KeyFrame* pKFi : kfs)
@@ -865,14 +876,18 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     for (const auto& [pKFi, pMP, leftIndex] : monoEdges)
     {
         if (pMP->isBad())
+        {
             continue;
+        }
         const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
         if (x3Dc(2) <= 0.0f)
         {
             const unsigned long mp_id = pMP->mnId;
             pMP->EraseObservation(pKFi);
             if (pMP->isBad())
+            {
                 outlier_mp_ids.push_back(mp_id);
+            }
             continue;
         }
         const cv::KeyPoint& kp = pKFi->mvKeysUn[leftIndex];
@@ -885,21 +900,27 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             const unsigned long mp_id = pMP->mnId;
             pMP->EraseObservation(pKFi);
             if (pMP->isBad())
+            {
                 outlier_mp_ids.push_back(mp_id);
+            }
         }
     }
 
     for (const auto& [pKFi, pMP, leftIndex] : stereoEdges)
     {
         if (pMP->isBad())
+        {
             continue;
+        }
         const Eigen::Vector3f x3Dc = pKFi->GetPose() * pMP->GetWorldPos();
         if (x3Dc(2) <= 0.0f)
         {
             const unsigned long mp_id = pMP->mnId;
             pMP->EraseObservation(pKFi);
             if (pMP->isBad())
+            {
                 outlier_mp_ids.push_back(mp_id);
+            }
             continue;
         }
         const float invz = 1.0f / x3Dc(2);
@@ -917,7 +938,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             const unsigned long mp_id = pMP->mnId;
             pMP->EraseObservation(pKFi);
             if (pMP->isBad())
+            {
                 outlier_mp_ids.push_back(mp_id);
+            }
         }
     }
 }
