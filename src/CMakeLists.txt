@@ -33,10 +33,8 @@ add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/Thirdparty/Sophus>
     $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/ORB_SLAM3>
-    $<INSTALL_INTERFACE:include/ORB_SLAM3/Thirdparty/Sophus>
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -44,6 +42,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
+    PUBLIC Sophus::Sophus
+    PRIVATE
     feature_extractor
     ${OpenCV_LIBS}
     ${EIGEN3_LIBS}

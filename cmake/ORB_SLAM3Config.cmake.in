@@ -3,7 +3,8 @@
 include(CMakeFindDependencyMacro)
 
 find_dependency(OpenCV 4.2)
-find_dependency(Eigen3 3.3.7 NO_MODULE)
+find_dependency(Eigen3 3.4.0 NO_MODULE)
+find_dependency(Sophus 1.22)
 find_dependency(DBoW2)
 find_dependency(fbow)
 find_dependency(GTSAM)
