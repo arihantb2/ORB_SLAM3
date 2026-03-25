@@ -31,7 +31,6 @@
 #include <chrono>
 #include <list>
 #include <mutex>
-#include <set>
 #include <string>
 #include <tuple>
 
@@ -252,9 +251,13 @@ bool LocalMapping::RunLoop()
         {
             result.lba.skipped = true;
             if (kf_waiting)
+            {
                 result.lba.skip_reason = "new_kf_arrived";
+            }
             else
+            {
                 result.lba.skip_reason = "stop_requested";
+            }
         }
 
         // Assemble convenience deltas
@@ -278,7 +281,9 @@ bool LocalMapping::RunLoop()
             cb = mCallback;
         }
         if (cb)
+        {
             cb(result);
+        }
     }
     else if (Stop())
     {
@@ -419,9 +424,13 @@ MapPointCullingResult LocalMapping::MapPointCulling()
             {
                 result.culled_map_point_ids.push_back(pMP->mnId);
                 if (lowFoundRatio)
+                {
                     result.num_culled_low_found_ratio++;
+                }
                 else
+                {
                     result.num_culled_too_few_observations++;
+                }
                 pMP->SetBadFlag();
             }
             else
