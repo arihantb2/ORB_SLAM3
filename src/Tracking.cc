@@ -39,8 +39,8 @@
 namespace ORB_SLAM3
 {
 
-Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas,
-                   const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps)
+Tracking::Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas, const std::string& strSettingPath,
+                   const int sensor, Settings* settings, const bool newMaps)
     : mState(NO_IMAGES_YET),
       mSensor(sensor),
       mbMapUpdated(false),
@@ -875,7 +875,6 @@ void Tracking::StereoInitialization()
 
     mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.push_back(pKFini);
 
-
     mState = OK;
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] STEREO_INIT ok: keypoints=" << mCurrentFrame.N
@@ -1119,7 +1118,6 @@ void Tracking::CreateInitialMapMonocular()
     mLastFrame = Frame(mCurrentFrame);
 
     mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
-
 
     mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.push_back(pKFini);
 

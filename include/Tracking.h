@@ -252,8 +252,8 @@ class Tracking
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas,
-             const std::string& strSettingPath, const int sensor, Settings* settings, const bool newMaps);
+    Tracking(System* pSys, IBowVocabulary* pVoc, Atlas* pAtlas, const std::string& strSettingPath, const int sensor,
+             Settings* settings, const bool newMaps);
 
     ~Tracking();
 
