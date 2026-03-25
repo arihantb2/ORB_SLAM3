@@ -35,14 +35,6 @@ Camera2.k4: 0.0
 Camera2.p1: -0.00024753909664465643
 Camera2.p2: -6.720504095135524e-05
 
-# T_AC_FC
-Stereo.T_c1_c2: !!opencv-matrix
-  rows: 4
-  cols: 4
-  dt: f
-  data: [0.99998270, -0.00400589, 0.00430818,  0.07497500,
-         0.00400566,  0.99999198, 0.00006307, -0.00012151,
-        -0.00430840, -0.00004582, 0.99999072, -0.00205872,
-         0.0,         0.0,        0.0,         1.0]
+# Stereo baseline/extrinsic T_c1_c2 is supplied at runtime from static_tf (orb_slam3_wrapper_main: platform-config + stereo-left-frame / stereo-right-frame).
 
 Stereo.ThDepth: 30.0

@@ -147,7 +147,8 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
             else
             {
                 const float kp_ur = pKF->mvuRight[leftIndex];
-                gtsam::StereoPoint2 obs(pKF->mvKeysUn[leftIndex].pt.x, pKF->mvKeysUn[leftIndex].pt.y, kp_ur);
+                // GTSAM StereoPoint2 is (uL, uR, v). We store measurements as (uL, v, uR), so pass uR=kp_ur as the 2nd argument.
+                gtsam::StereoPoint2 obs(pKF->mvKeysUn[leftIndex].pt.x, kp_ur, pKF->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise =
                     bRobust ? makeHuberNoise(3, 7.815, invSigma2) : makeIsotropicNoise(3, invSigma2);
                 boost::shared_ptr<gtsam::Cal3_S2Stereo> cal =
@@ -780,7 +781,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
             else
             {
                 const float kp_ur = pKFi->mvuRight[leftIndex];
-                gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, pKFi->mvKeysUn[leftIndex].pt.y, kp_ur);
+                // GTSAM StereoPoint2 is (uL, uR, v). We store measurements as (uL, v, uR), so pass uR=kp_ur as the 2nd argument.
+                gtsam::StereoPoint2 obs(pKFi->mvKeysUn[leftIndex].pt.x, kp_ur, pKFi->mvKeysUn[leftIndex].pt.y);
                 gtsam::SharedNoiseModel noise = makeHuberNoise(3, 7.815, invSigma2);
                 graph.add(boost::make_shared<PinholeStereoTcwFactor>(
                     poseK, pk, Eigen::Vector3d(obs.uL(), obs.v(), obs.uR()), pKFi->mbf, noise, pKFi->mpCamera));

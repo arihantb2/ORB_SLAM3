@@ -10,6 +10,11 @@ File.version: "1.0"
 #   "SIFT"     — cv::SIFT + quadtree, float descriptors (see stereo_sift.yaml)
 FeatureExtractor.type: "GridORB"
 
+# Vocabulary type. Options:
+#   "dbow2"    — custom DBoW2 vocabulary (default, best accuracy)
+#   "fbow"     — custom FBoW vocabulary (see stereo_fbow.yaml)
+Vocabulary.type: "fbow"
+
 # Camera frames per second
 Camera.fps: 2
 
