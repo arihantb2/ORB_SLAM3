@@ -9,8 +9,6 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-message("Build type: " ${CMAKE_BUILD_TYPE})
-
 # Match GTSAM's build to avoid Eigen ABI / double-free (see src/tests/CMakeLists.txt).
 # Build GTSAM with: -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF
 option(ORB_SLAM3_USE_MARCH_NATIVE "Use -march=native for ORB_SLAM3 (set OFF if GTSAM was built without it)" OFF)
@@ -74,12 +72,12 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 find_package(OpenCV 4.2 REQUIRED)
-find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
+find_package(Eigen3 3.4.0 REQUIRED NO_MODULE)
+find_package(Sophus 1.22 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(DBoW2 REQUIRED)
 find_package(fbow REQUIRED)
 find_package(GTSAM REQUIRED)
-message(STATUS "Found GTSAM version: ${GTSAM_VERSION}")
 
 # Build the main library
 add_subdirectory(src)
@@ -103,19 +101,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/CameraModels/
     COMPONENT library
     FILES_MATCHING PATTERN "*.h"
     PATTERN "Thirdparty" EXCLUDE)
-
-# Install Thirdparty headers (Sophus only)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty
-    COMPONENT library
-    FILES_MATCHING REGEX ".*\\.h(pp)?"
-    PATTERN "Sophus" EXCLUDE)
-
-# Install Sophus headers to correct location
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus/sophus/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ORB_SLAM3/Thirdparty/Sophus/sophus
-    COMPONENT library
-    FILES_MATCHING PATTERN "*.hpp")
 
 install(FILES ${PROJECT_SOURCE_DIR}/package.xml
     DESTINATION ${CMAKE_INSTALL_DATADIR}/orb_slam3)

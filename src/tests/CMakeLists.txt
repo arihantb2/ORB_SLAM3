@@ -16,6 +16,7 @@ target_link_libraries(orb_slam3_gtsam_factor_tests
     ORB_SLAM3
     gtsam
     GTest::gtest_main
+    ${OpenCV_LIBS}
 )
 
 add_test(NAME orb_slam3_gtsam_factor_tests COMMAND orb_slam3_gtsam_factor_tests)
