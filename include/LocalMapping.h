@@ -103,15 +103,13 @@ public:
     int mMinKeyframesForLBA = 2;
 
     // MapPointCulling
-    int mMPCullingMinObsMono = 2;
-    int mMPCullingMinObsStereo = 3;
+    int mMPCullingMinObs = 2;  // 3 for stereo
     int mMPCullingMinKFAgeForObsCheck = 2;
     int mMPCullingMaxKFAgeInRecent = 3;
     float mMPCullingMinFoundRatio = 0.25f;
 
     // CreateNewMapPoints
-    int mCreateNewMapPointsCovisibilityMono = 30;
-    int mCreateNewMapPointsCovisibilityStereo = 10;
+    int mCreateNewMapPointsCovisibility = 30;  // 10 for stereo
     float mCreateNewMapPointsMatchRatio = 0.6f;
     float mCreateNewMapPointsMinBaselineDepthRatio = 0.01f;
     float mCreateNewMapPointsMaxCosParallax = 0.9998f;

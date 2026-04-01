@@ -100,9 +100,6 @@ void Tracking::loadFromSettings(Settings* settings)
         mDistCoef = cv::Mat::zeros(4, 1, CV_32F);
     }
 
-    //TODO: missing image scaling and rectification
-    mImageScale = 1.0f;
-
     mK = mpCamera->toK();
     mK_ = mpCamera->toK_();
 
@@ -199,11 +196,9 @@ void Tracking::loadFromSettings(Settings* settings)
 
     // Motion model tracking thresholds
     mMotionModelNNRatio = settings->motionModelNNRatio();
-    mMotionModelProjectionSearchThStereo = settings->motionModelProjectionSearchThStereo();
-    mMotionModelProjectionSearchThMono = settings->motionModelProjectionSearchThMono();
+    mMotionModelProjectionSearchTh = settings->motionModelProjectionSearchTh();
     mMotionModelMinInitialMatches = settings->motionModelMinInitialMatches();
-    mMotionModelRetryProjectionSearchThStereo = settings->motionModelRetryProjectionSearchThStereo();
-    mMotionModelRetryProjectionSearchThMono = settings->motionModelRetryProjectionSearchThMono();
+    mMotionModelRetryProjectionSearchTh = settings->motionModelRetryProjectionSearchTh();
     mMotionModelMinRetryMatches = settings->motionModelMinRetryMatches();
     mMotionModelMinOptimizedMapMatches = settings->motionModelMinOptimizedMapMatches();
 
@@ -372,14 +367,9 @@ bool Tracking::Initialize()
     return true;
 }
 
-void Tracking::UpdateAfterTracking(bool bOK)
+void Tracking::UpdateAfterTracking(bool tracking_success)
 {
-    // Update drawer
-    if (mCurrentFrame.isSet())
-    {
-    }
-
-    if (!bOK)
+    if (!tracking_success)
     {
         return;
     }
@@ -443,82 +433,6 @@ void Tracking::UpdateAfterTracking(bool bOK)
             }
         }
     }
-
-    // Delete temporal MapPoints
-    for (std::list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend = mlpTemporalPoints.end(); lit != lend;
-         lit++)
-    {
-        MapPoint* pMP = *lit;
-        delete pMP;
-    }
-    mlpTemporalPoints.clear();
-
-    bool bNeedKF = NeedNewKeyFrame();
-
-    // Check if we need to insert a new keyframe
-    if (bNeedKF && bOK)
-    {
-        CreateNewKeyFrame();
-    }
-
-    // We allow points with high innovation (considererd outliers by the Huber Function)
-    // pass to the new keyframe, so that bundle adjustment will finally decide
-    // if they are outliers or not. We don't want next frame to estimate its position
-    // with those points so we discard them in the frame. Only has effect if lastframe is tracked
-    for (int i = 0; i < mCurrentFrame.N; i++)
-    {
-        if (mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-        {
-            mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
-        }
-    }
-}
-
-void Tracking::TrackFrame(TrackingResult& tracking_result)
-{
-    Map* pCurrentMap = mpAtlas->GetCurrentMap();
-    auto trackReferenceKF = [&]() -> RefKeyFrameTrackingResult
-    {
-        if (mUseBoWReferenceKeyframeTracking)
-        {
-            mCurrentFrame.ComputeBoW();
-            if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
-            {
-                return TrackReferenceKeyFrameNoBoW();
-            }
-        }
-        return mUseBoWReferenceKeyframeTracking ? TrackReferenceKeyFrameWithBoW() : TrackReferenceKeyFrameNoBoW();
-    };
-    if (!mbVelocity)
-    {
-        tracking_result.ref_key_frame_result = trackReferenceKF();
-        tracking_result.ref_keyframe_tracking_primary = true;
-        if (!tracking_result.ref_key_frame_result.success)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed." << std::endl;
-        }
-    }
-    else
-    {
-        tracking_result.motion_model_result = TrackWithMotionModel();
-        tracking_result.motion_model_tracking_primary = true;
-        if (!tracking_result.motion_model_result.success)
-        {
-            Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL failed." << std::endl;
-            tracking_result.ref_key_frame_result = trackReferenceKF();
-            tracking_result.ref_keyframe_tracking_fallback = true;
-            if (!tracking_result.ref_key_frame_result.success)
-            {
-                Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                    << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed (fallback)." << std::endl;
-            }
-        }
-    }
-
-    tracking_result.success =
-        tracking_result.ref_key_frame_result.success || tracking_result.motion_model_result.success;
 }
 
 void Tracking::ComputeVelocityFromPriors()
@@ -603,21 +517,10 @@ TrackingResult Tracking::Track()
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if (!pCurrentMap)
     {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "ERROR: There is not an active map in the atlas" << std::endl;
-    }
-
-    if (mState != NO_IMAGES_YET)
-    {
-        if (mLastFrame.mTimeStamp > mCurrentFrame.mTimeStamp)
-        {
-            CreateMapInAtlas();
-            return {};
-        }
-        else if (mCurrentFrame.mTimeStamp > mLastFrame.mTimeStamp + 1.0)
-        {
-            mpSystem->ResetActiveMap();
-            return {};
-        }
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "ERROR: There is not an active map in the atlas. Creating a new map..." << std::endl;
+        CreateMapInAtlas();
+        pCurrentMap = mpAtlas->GetCurrentMap();
     }
 
     PrepareFrameForTracking();
@@ -626,7 +529,6 @@ TrackingResult Tracking::Track()
     std::unique_lock<std::mutex> lock(pCurrentMap->mMutexMapUpdate);
 
     UpdateMapChangeState(pCurrentMap);
-
     ComputeVelocityFromPriors();
 
     TrackingResult tracking_result;
@@ -652,81 +554,138 @@ TrackingResult Tracking::Track()
     {
         Initialize();
     }
-    else
+    else if (mState == OK)
     {
         // System is initialized. Track Frame.
-        if (mState == OK)
-        {
-            // Local Mapping might have changed some MapPoints tracked in last frame
-            CheckReplacedInLastFrame();
-            TrackFrame(tracking_result);
+        // Local Mapping might have changed some MapPoints tracked in last frame
+        CheckReplacedInLastFrame();
 
-            if (!tracking_result.success)
+        Map* pCurrentMap = mpAtlas->GetCurrentMap();
+        auto trackReferenceKF = [&]() -> RefKeyFrameTrackingResult
+        {
+            if (mUseBoWReferenceKeyframeTracking)
             {
-                mState = LOST;
-                mTimeStampLost = mCurrentFrame.mTimeStamp;
-                Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                    << "[" << mCurrentFrame.mnId << "] TRACK_LOST. Pose estimation failed" << std::endl;
+                mCurrentFrame.ComputeBoW();
+                if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
+                {
+                    return TrackReferenceKeyFrameNoBoW();
+                }
             }
-            else
+            return mUseBoWReferenceKeyframeTracking ? TrackReferenceKeyFrameWithBoW() : TrackReferenceKeyFrameNoBoW();
+        };
+        if (!mbVelocity)
+        {
+            tracking_result.ref_key_frame_result = trackReferenceKF();
+            tracking_result.ref_keyframe_tracking_primary = true;
+            if (!tracking_result.ref_key_frame_result.success)
             {
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                    << "[" << mCurrentFrame.mnId << "] TRACK_OK. Pose estimation succeeded" << std::endl;
+                    << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed." << std::endl;
             }
         }
-        else if (mState == LOST)
+        else
         {
-            mpSystem->ResetActiveMap();
-            if (mpLastKeyFrame)
+            tracking_result.motion_model_result = TrackWithMotionModel();
+            tracking_result.motion_model_tracking_primary = true;
+            if (!tracking_result.motion_model_result.success)
             {
-                mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+                Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                    << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL failed." << std::endl;
+                tracking_result.ref_key_frame_result = trackReferenceKF();
+                tracking_result.ref_keyframe_tracking_fallback = true;
+                if (!tracking_result.ref_key_frame_result.success)
+                {
+                    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                        << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed (fallback)." << std::endl;
+                }
             }
-            return {};
         }
 
-        if (!mCurrentFrame.mpReferenceKF)
+        auto frame_tracking_success =
+            tracking_result.ref_key_frame_result.success || tracking_result.motion_model_result.success;
+
+        if (!frame_tracking_success)
         {
-            mCurrentFrame.mpReferenceKF = mpReferenceKF;
+            mState = LOST;
+            mTimeStampLost = mCurrentFrame.mTimeStamp;
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                << "[" << mCurrentFrame.mnId << "] TRACK_LOST. Pose estimation failed" << std::endl;
         }
-        // If we have an initial estimation of the camera pose and matching. Track the local map.
-        if (tracking_result.success)
+        else
         {
-            auto local_map_result = TrackLocalMap();
-            if (!local_map_result.success)
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                << "[" << mCurrentFrame.mnId << "] TRACK_OK. Pose estimation succeeded" << std::endl;
+        }
+
+        if (frame_tracking_success)
+        {
+            // If we have an initial estimation of the camera pose and matching. Track the local map.
+            tracking_result.local_map_result = TrackLocalMap();
+            tracking_result.success = tracking_result.local_map_result.success;
+
+            if (!tracking_result.local_map_result.success)
             {
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP failed." << std::endl;
             }
             else
             {
-                mState = OK;
                 Verbose::Print(Verbose::VERBOSITY_DEBUG)
                     << "[" << mCurrentFrame.mnId << "] TRACK_LOCAL_MAP ok: inliers=" << mnMatchesInliers << std::endl;
             }
-
-            tracking_result.local_map_result = local_map_result;
-            tracking_result.success = tracking_result.success && local_map_result.success;
+        }
+        else
+        {
+            tracking_result.success = false;
         }
 
-        if (!tracking_result.success and mState == OK)
+        if (!tracking_result.success)
         {
-            if (mSensor == System::STEREO || mSensor == System::MONOCULAR)
-            {
-                Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                    << "[" << mCurrentFrame.mnId
-                    << "] Tracking LOST (frames_since_last_kf=" << (mCurrentFrame.mnId - mnLastKeyFrameId) << ")."
-                    << std::endl;
-            }
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                << "[" << mCurrentFrame.mnId
+                << "] Tracking LOST (frames_since_last_kf=" << (mCurrentFrame.mnId - mnLastKeyFrameId) << ")."
+                << std::endl;
+
             mState = LOST;
             mTimeStampLost = mCurrentFrame.mTimeStamp;
+        }
+        else
+        {
+            mState = OK;
+        }
+
+        // Update tracking result pose
+        tracking_result.pose = mCurrentFrame.GetPose().inverse();
+
+        // Set reference keyframe for current frame
+        if (!mCurrentFrame.mpReferenceKF)
+        {
+            mCurrentFrame.mpReferenceKF = mpReferenceKF;
         }
 
         UpdateAfterTracking(tracking_result.success);
 
-        // Populate all_tracked_map_points: every inlier map point visible in this frame
-        // after the complete tracking pipeline.
+        if (tracking_result.success && NeedNewKeyFrame())
+        {
+            CreateNewKeyFrame();
+        }
+
+        // We allow points with high innovation (considererd outliers by the Huber Function)
+        // pass to the new keyframe, so that bundle adjustment will finally decide
+        // if they are outliers or not. We don't want next frame to estimate its position
+        // with those points so we discard them in the frame. Only has effect if lastframe is tracked
+        for (int i = 0; i < mCurrentFrame.N; i++)
+        {
+            if (mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+            {
+                mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
+            }
+        }
+
         if (mCurrentFrame.isSet())
         {
+            // Populate all_tracked_map_points: every inlier map point visible in this frame
+            // after the complete tracking pipeline.
             const Sophus::SE3f Tcw = mCurrentFrame.GetPose();
             for (int i = 0; i < mCurrentFrame.N; i++)
             {
@@ -746,11 +705,11 @@ TrackingResult Tracking::Track()
             }
         }
 
-        // Populate new_map_point_candidates: stereo keypoints with valid depth that
-        // are NOT currently tracked as map points. LocalMapping will create new
-        // MapPoints from these when this frame becomes a KeyFrame.
         if (mSensor == System::STEREO && mCurrentFrame.isSet())
         {
+            // Populate new_map_point_candidates: stereo keypoints with valid depth that
+            // are NOT currently tracked as map points. LocalMapping will create new
+            // MapPoints from these when this frame becomes a KeyFrame.
             const Sophus::SE3f Tcw = mCurrentFrame.GetPose();
             for (int i = 0; i < mCurrentFrame.N; i++)
             {
@@ -781,44 +740,30 @@ TrackingResult Tracking::Track()
             }
         }
 
-        // Reset if the camera get lost
-        if (mState == LOST)
+        // Reset if tracking failed
+        if (!tracking_result.success)
         {
             mpSystem->ResetActiveMap();
-            return tracking_result;
+            return tracking_result;  // early return if tracking failed
         }
 
-        if (!mCurrentFrame.mpReferenceKF)
-        {
-            mCurrentFrame.mpReferenceKF = mpReferenceKF;
-        }
         mLastFrame = Frame(mCurrentFrame);
-
-        tracking_result.pose = mCurrentFrame.GetPose().inverse();
     }
-
-    if (mState == OK)
+    else if (mState == LOST)
     {
-        // Store frame pose information to retrieve the complete camera trajectory afterwards.
-        if (mCurrentFrame.isSet())
+        mpSystem->ResetActiveMap();
+        if (mpLastKeyFrame)
         {
-            Sophus::SE3f Tcr_ = mCurrentFrame.GetPose() * mCurrentFrame.mpReferenceKF->GetPoseInverse();
-            mlRelativeFramePoses.push_back(Tcr_);
-            mlpReferences.push_back(mCurrentFrame.mpReferenceKF);
-            mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
-            mlbLost.push_back(mState == LOST);
-        }
-        else
-        {
-            // This can happen if tracking is lost
-            mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
-            mlpReferences.push_back(mlpReferences.back());
-            mlFrameTimes.push_back(mlFrameTimes.back());
-            mlbLost.push_back(mState == LOST);
+            mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
         }
     }
+    else
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] Tracking state is not valid: " << mState << std::endl;
 
-    mvKeysLastFrame = mCurrentFrame.mvKeys;
+        throw std::runtime_error("Tracking state is not valid: " + std::to_string(mState));
+    }
 
     return tracking_result;
 }
@@ -872,10 +817,10 @@ void Tracking::StereoInitialization()
     mCurrentFrame.mpReferenceKF = pKFini;
 
     mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
-
     mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.push_back(pKFini);
 
     mState = OK;
+
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] STEREO_INIT ok: keypoints=" << mCurrentFrame.N
         << " map_points=" << mpAtlas->MapPointsInMap() << "." << std::endl;
@@ -907,17 +852,16 @@ void Tracking::MonocularInitialization()
             return;
         }
     }
+    else if (mCurrentFrame.mvKeys.size() <= mMonocularInitMinKeypoints)
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough detected features ["
+            << mCurrentFrame.mvKeys.size() << "] to initialize. Dropping this frame." << std::endl;
+        return;
+
+    }
     else
     {
-        if ((int)mCurrentFrame.mvKeys.size() <= mMonocularInitMinKeypoints)
-        {
-            mbReadyToInitializate = false;
-            Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough detected features ["
-                << mCurrentFrame.mvKeys.size() << "] to initialize." << std::endl;
-            return;
-        }
-
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mInitialFrame[" << mInitialFrame.mnId
             << "].hasPosePrior: " << std::boolalpha << mInitialFrame.hasPosePrior() << std::endl;
@@ -1029,16 +973,13 @@ void Tracking::CreateInitialMapMonocular()
     pKFini->UpdateConnections();
     pKFcur->UpdateConnections();
 
-    std::set<MapPoint*> sMPs;
-    sMPs = pKFini->GetMapPoints();
-
     // Bundle Adjustment
     Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(), 20);
 
     float scalingFactor;
     Sophus::SE3f Tc2w = pKFcur->GetPose();
 
-    if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity)
+    if (mInitialFrame.hasPosePrior() && mCurrentFrame.hasPosePrior() && mbVelocity && Tc2w.translation().norm() > 0.0f)
     {
         scalingFactor = mVelocity.translation().norm() / Tc2w.translation().norm();
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
@@ -1190,9 +1131,6 @@ void Tracking::UpdateLastFrame()
         return;
     }
 
-    Sophus::SE3f Tlr = mlRelativeFramePoses.back();
-    mLastFrame.SetPose(Tlr * pRef->GetPose());
-
     if (mnLastKeyFrameId == mLastFrame.mnId || mSensor == System::MONOCULAR)
     {
         return;
@@ -1234,7 +1172,6 @@ void Tracking::UpdateLastFrame()
             MapPoint* pNewMP = new MapPoint(x3D, mpAtlas->GetCurrentMap(), &mLastFrame, i);
             mLastFrame.mvpMapPoints[i] = pNewMP;
 
-            mlpTemporalPoints.push_back(pNewMP);
             nPoints++;
         }
         else
@@ -1459,27 +1396,14 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
 
     fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
-    // Project points seen in previous frame
-    int th;
-    if (mSensor == System::STEREO)
-    {
-        th = mMotionModelProjectionSearchThStereo;
-    }
-    else
-    {
-        th = mMotionModelProjectionSearchThMono;
-    }
-
-    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
+    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, mMotionModelProjectionSearchTh,
+                                              mSensor == System::MONOCULAR);
 
     result.num_matches = nmatches;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
 
-    // If few matches, uses a wider window search
-    int thRetry = (mSensor == System::STEREO) ? mMotionModelRetryProjectionSearchThStereo
-                                              : mMotionModelRetryProjectionSearchThMono;
     if (nmatches < mMotionModelMinInitialMatches)
     {
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
@@ -1487,7 +1411,8 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
             << "] < MinInitialMatches=" << mMotionModelMinInitialMatches << "." << std::endl;
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
-        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, thRetry, mSensor == System::MONOCULAR);
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, mMotionModelRetryProjectionSearchTh,
+                                              mSensor == System::MONOCULAR);
 
         result.retry = true;
         result.num_matches_retry = nmatches;
@@ -1642,7 +1567,7 @@ LocalMapTrackingResult Tracking::TrackLocalMap()
     // Inlier count is passed to LocalMapping for keyframe/point culling decisions.
     mpLocalMapper->mnMatchesInliers = mnMatchesInliers;
 
-    if ((mnMatchesInliers > mLocalMapGenericMinInliers))
+    if (mnMatchesInliers > mLocalMapGenericMinInliers)
     {
         result.success = true;
         return result;
@@ -1655,11 +1580,9 @@ LocalMapTrackingResult Tracking::TrackLocalMap()
             << " < VisualMinInliers=" << mLocalMapVisualMinInliers << "." << std::endl;
         return result;
     }
-    else
-    {
-        result.success = true;
-        return result;
-    }
+
+    result.success = true;
+    return result;
 }
 
 int Tracking::DiscardOutliersAndCountInliers(Frame& frame, int& nmatches, bool clearTrackInViewFlag)
@@ -2177,10 +2100,6 @@ void Tracking::Reset(bool bLocMap)
     mbReadyToInitializate = false;
     mbSetInit = false;
 
-    mlRelativeFramePoses.clear();
-    mlpReferences.clear();
-    mlFrameTimes.clear();
-    mlbLost.clear();
     mCurrentFrame = Frame();
     mLastFrame = Frame();
     mpReferenceKF = static_cast<KeyFrame*>(NULL);
@@ -2202,33 +2121,6 @@ void Tracking::ResetActiveMap(bool bLocMap)
     mState = NO_IMAGES_YET;
 
     mbReadyToInitializate = false;
-
-    std::list<bool> lbLost;
-    unsigned int index = mnFirstFrameId;
-    Map* pMapForIndex = mpAtlas->GetCurrentMap();
-    if (pMapForIndex && pMapForIndex->GetAllKeyFrames().size() > 0)
-    {
-        index = pMapForIndex->GetLowerKFID();
-    }
-
-    int num_lost = 0;
-
-    for (std::list<bool>::iterator ilbL = mlbLost.begin(); ilbL != mlbLost.end(); ilbL++)
-    {
-        if (index < mnInitialFrameId)
-        {
-            lbLost.push_back(*ilbL);
-        }
-        else
-        {
-            lbLost.push_back(true);
-            num_lost += 1;
-        }
-
-        index++;
-    }
-
-    mlbLost = lbLost;
 
     mnInitialFrameId = mCurrentFrame.mnId;
 
@@ -2254,10 +2146,5 @@ bool Tracking::isLastFrameKeyframe()
 int Tracking::GetMatchesInliers()
 {
     return mnMatchesInliers;
-}
-
-float Tracking::GetImageScale()
-{
-    return mImageScale;
 }
 }  // namespace ORB_SLAM3

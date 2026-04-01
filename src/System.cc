@@ -355,11 +355,6 @@ void System::ChangeDataset()
     }
 }
 
-float System::GetImageScale()
-{
-    return mpTracker->GetImageScale();
-}
-
 void System::SetLocalMappingCallback(LocalMappingCallback cb)
 {
     mpLocalMapper->SetCallback(std::move(cb));

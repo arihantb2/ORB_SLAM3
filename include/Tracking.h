@@ -231,7 +231,7 @@ struct TrackingResult
     std::vector<NewMapPointCandidate> new_map_point_candidates;
 
     // (5) Input images as received by the tracking layer — already grayscale, rectified
-    //     (stereo pinhole) or undistorted (monocular), and rescaled to mImageScale.
+    //     (stereo pinhole) or undistorted (monocular).
     //     Together with the keypoint and map-point data above, these make TrackingResult
     //     fully self-contained for offline visualisation.
     //
@@ -272,8 +272,6 @@ public:
     void CreateMapInAtlas();
 
     int GetMatchesInliers();
-
-    float GetImageScale();
 
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
@@ -318,22 +316,13 @@ public:
     // In SIFT mode, BoW-based reference-keyframe tracking is disabled.
     bool mUseBoWReferenceKeyframeTracking = true;
     float mMotionModelNNRatio = 0.9f;
-    int mMotionModelProjectionSearchThStereo = 7;
-    int mMotionModelProjectionSearchThMono = 30;
+    int mMotionModelProjectionSearchTh = 30;
     int mMotionModelMinInitialMatches = 20;
-    int mMotionModelRetryProjectionSearchThStereo = 14;
-    int mMotionModelRetryProjectionSearchThMono = 60;
+    int mMotionModelRetryProjectionSearchTh = 60;
     int mMotionModelMinRetryMatches = 20;
     int mMotionModelMinOptimizedMapMatches = 10;
     int mLocalMapGenericMinInliers = 10;
     int mLocalMapVisualMinInliers = 30;
-
-    // Lists used to recover the full camera trajectory at the end of the execution.
-    // Basically we store the reference keyframe for each frame and its relative transformation
-    std::list<Sophus::SE3f> mlRelativeFramePoses;
-    std::list<KeyFrame*> mlpReferences;
-    std::list<double> mlFrameTimes;
-    std::list<bool> mlbLost;
 
 protected:
     // Main tracking function. It is independent of the input sensor.
@@ -404,11 +393,6 @@ protected:
     // Store the last frame image
     cv::Mat mImGrayLast;
 
-    // Store temperal matching feature index
-    bool mbFrame2Frame;
-    std::vector<int> mvTemporalMatches;
-    std::vector<cv::KeyPoint> mvKeysLastFrame;
-
     // System
     System* mpSystem;
 
@@ -420,7 +404,6 @@ protected:
     Eigen::Matrix3f mK_;
     cv::Mat mDistCoef;
     float mbf;
-    float mImageScale;
 
     // New KeyFrame rules (according to fps)
     int mMinFrames;
@@ -467,8 +450,6 @@ protected:
 
     // Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
-
-    std::list<MapPoint*> mlpTemporalPoints;
 
     GeometricCamera* mpCamera;
 

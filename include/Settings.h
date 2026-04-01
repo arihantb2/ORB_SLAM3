@@ -117,13 +117,11 @@ public:
     float thFarPoints() { return thFarPoints_; }
     float localMappingOptimizeEveryTSeconds() { return localMappingOptimizeEveryTSeconds_; }
     int localMappingMinKeyframesForLBA() { return localMappingMinKeyframesForLBA_; }
-    int localMappingMPCullingMinObsMono() { return localMappingMPCullingMinObsMono_; }
-    int localMappingMPCullingMinObsStereo() { return localMappingMPCullingMinObsStereo_; }
+    int localMappingMPCullingMinObs() { return localMappingMPCullingMinObs_; }
     int localMappingMPCullingMinKFAgeForObsCheck() { return localMappingMPCullingMinKFAgeForObsCheck_; }
     int localMappingMPCullingMaxKFAgeInRecent() { return localMappingMPCullingMaxKFAgeInRecent_; }
     float localMappingMPCullingMinFoundRatio() { return localMappingMPCullingMinFoundRatio_; }
-    int localMappingCreateNewMapPointsCovisibilityMono() { return localMappingCreateNewMapPointsCovisibilityMono_; }
-    int localMappingCreateNewMapPointsCovisibilityStereo() { return localMappingCreateNewMapPointsCovisibilityStereo_; }
+    int localMappingCreateNewMapPointsCovisibility() { return localMappingCreateNewMapPointsCovisibility_; }
     float localMappingCreateNewMapPointsMatchRatio() { return localMappingCreateNewMapPointsMatchRatio_; }
     float localMappingCreateNewMapPointsMinBaselineDepthRatio()
     {
@@ -154,11 +152,9 @@ public:
     int referenceKeyframeMinBoWMatches() { return referenceKeyframeMinBoWMatches_; }
     int referenceKeyframeMinOptimizedMapMatches() { return referenceKeyframeMinOptimizedMapMatches_; }
     float motionModelNNRatio() { return motionModelNNRatio_; }
-    int motionModelProjectionSearchThStereo() { return motionModelProjectionSearchThStereo_; }
-    int motionModelProjectionSearchThMono() { return motionModelProjectionSearchThMono_; }
+    int motionModelProjectionSearchTh() { return motionModelProjectionSearchTh_; }
     int motionModelMinInitialMatches() { return motionModelMinInitialMatches_; }
-    int motionModelRetryProjectionSearchThStereo() { return motionModelRetryProjectionSearchThStereo_; }
-    int motionModelRetryProjectionSearchThMono() { return motionModelRetryProjectionSearchThMono_; }
+    int motionModelRetryProjectionSearchTh() { return motionModelRetryProjectionSearchTh_; }
     int motionModelMinRetryMatches() { return motionModelMinRetryMatches_; }
     int motionModelMinOptimizedMapMatches() { return motionModelMinOptimizedMapMatches_; }
     int localMapGenericMinInliers() { return localMapGenericMinInliers_; }
@@ -275,13 +271,11 @@ private:
     float thFarPoints_;
     float localMappingOptimizeEveryTSeconds_;
     int localMappingMinKeyframesForLBA_;
-    int localMappingMPCullingMinObsMono_;
-    int localMappingMPCullingMinObsStereo_;
+    int localMappingMPCullingMinObs_;
     int localMappingMPCullingMinKFAgeForObsCheck_;
     int localMappingMPCullingMaxKFAgeInRecent_;
     float localMappingMPCullingMinFoundRatio_;
-    int localMappingCreateNewMapPointsCovisibilityMono_;
-    int localMappingCreateNewMapPointsCovisibilityStereo_;
+    int localMappingCreateNewMapPointsCovisibility_;
     float localMappingCreateNewMapPointsMatchRatio_;
     float localMappingCreateNewMapPointsMinBaselineDepthRatio_;
     float localMappingCreateNewMapPointsMaxCosParallax_;
@@ -303,11 +297,9 @@ private:
     int referenceKeyframeMinBoWMatches_;
     int referenceKeyframeMinOptimizedMapMatches_;
     float motionModelNNRatio_;
-    int motionModelProjectionSearchThStereo_;
-    int motionModelProjectionSearchThMono_;
+    int motionModelProjectionSearchTh_;
     int motionModelMinInitialMatches_;
-    int motionModelRetryProjectionSearchThStereo_;
-    int motionModelRetryProjectionSearchThMono_;
+    int motionModelRetryProjectionSearchTh_;
     int motionModelMinRetryMatches_;
     int motionModelMinOptimizedMapMatches_;
     int localMapGenericMinInliers_;

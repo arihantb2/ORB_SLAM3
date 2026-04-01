@@ -322,10 +322,8 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
         readParameter<float>(fSettings, "LocalMapping.OptimizeEveryTSeconds", found, 5.0f, false);
     localMappingMinKeyframesForLBA_ = readParameter<int>(fSettings, "LocalMapping.MinKeyframesForLBA", found, 2, false);
 
-    localMappingMPCullingMinObsMono_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsMono", found, 2, false);
-    localMappingMPCullingMinObsStereo_ =
-        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservationsStereo", found, 3, false);
+    localMappingMPCullingMinObs_ =
+        readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinObservations", found, 2, false);
     localMappingMPCullingMinKFAgeForObsCheck_ =
         readParameter<int>(fSettings, "LocalMapping.MapPointCulling.MinKFAgeForObsCheck", found, 2, false);
     localMappingMPCullingMaxKFAgeInRecent_ =
@@ -333,10 +331,8 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     localMappingMPCullingMinFoundRatio_ =
         readParameter<float>(fSettings, "LocalMapping.MapPointCulling.MinFoundRatio", found, 0.25f, false);
 
-    localMappingCreateNewMapPointsCovisibilityMono_ =
-        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono", found, 30, false);
-    localMappingCreateNewMapPointsCovisibilityStereo_ =
-        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo", found, 10, false);
+    localMappingCreateNewMapPointsCovisibility_ =
+        readParameter<int>(fSettings, "LocalMapping.CreateNewMapPoints.CovisibilityNeighbors", found, 30, false);
     localMappingCreateNewMapPointsMatchRatio_ =
         readParameter<float>(fSettings, "LocalMapping.CreateNewMapPoints.MatchRatio", found, 0.6f, false);
     localMappingCreateNewMapPointsMinBaselineDepthRatio_ =
@@ -397,16 +393,12 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
         readParameter<int>(fSettings, "Tracking.ReferenceKeyframe.MinOptimizedMapMatches", found, 10, false);
 
     motionModelNNRatio_ = readParameter<float>(fSettings, "Tracking.MotionModel.NNRatio", found, 0.9f, false);
-    motionModelProjectionSearchThStereo_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThStereo", found, 7, false);
-    motionModelProjectionSearchThMono_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchThMono", found, 30, false);
+    motionModelProjectionSearchTh_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.ProjectionSearchTh", found, 7, false);
     motionModelMinInitialMatches_ =
         readParameter<int>(fSettings, "Tracking.MotionModel.MinInitialMatches", found, 20, false);
-    motionModelRetryProjectionSearchThStereo_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThStereo", found, 14, false);
-    motionModelRetryProjectionSearchThMono_ =
-        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchThMono", found, 60, false);
+    motionModelRetryProjectionSearchTh_ =
+        readParameter<int>(fSettings, "Tracking.MotionModel.RetryProjectionSearchTh", found, 15, false);
     motionModelMinRetryMatches_ =
         readParameter<int>(fSettings, "Tracking.MotionModel.MinRetryMatches", found, 20, false);
     motionModelMinOptimizedMapMatches_ =

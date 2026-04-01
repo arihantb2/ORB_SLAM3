@@ -81,13 +81,11 @@ void LocalMapping::loadFromSettings(Settings* settings)
 
     mOptimizeEveryTSeconds = settings->localMappingOptimizeEveryTSeconds();
     mMinKeyframesForLBA = settings->localMappingMinKeyframesForLBA();
-    mMPCullingMinObsMono = settings->localMappingMPCullingMinObsMono();
-    mMPCullingMinObsStereo = settings->localMappingMPCullingMinObsStereo();
+    mMPCullingMinObs = settings->localMappingMPCullingMinObs();
     mMPCullingMinKFAgeForObsCheck = settings->localMappingMPCullingMinKFAgeForObsCheck();
     mMPCullingMaxKFAgeInRecent = settings->localMappingMPCullingMaxKFAgeInRecent();
     mMPCullingMinFoundRatio = settings->localMappingMPCullingMinFoundRatio();
-    mCreateNewMapPointsCovisibilityMono = settings->localMappingCreateNewMapPointsCovisibilityMono();
-    mCreateNewMapPointsCovisibilityStereo = settings->localMappingCreateNewMapPointsCovisibilityStereo();
+    mCreateNewMapPointsCovisibility = settings->localMappingCreateNewMapPointsCovisibility();
     mCreateNewMapPointsMatchRatio = settings->localMappingCreateNewMapPointsMatchRatio();
     mCreateNewMapPointsMinBaselineDepthRatio = settings->localMappingCreateNewMapPointsMinBaselineDepthRatio();
     mCreateNewMapPointsMaxCosParallax = settings->localMappingCreateNewMapPointsMaxCosParallax();
@@ -398,7 +396,7 @@ MapPointCullingResult LocalMapping::MapPointCulling()
     std::list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
 
-    const int cnThObs = mbMonocular ? mMPCullingMinObsMono : mMPCullingMinObsStereo;
+    const int cnThObs = mMPCullingMinObs;
 
     while (lit != mlpRecentAddedMapPoints.end())
     {
@@ -453,7 +451,7 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
     CreateNewMapPointsResult result;
 
     // Retrieve neighbor keyframes in covisibility graph
-    const int nn = mbMonocular ? mCreateNewMapPointsCovisibilityMono : mCreateNewMapPointsCovisibilityStereo;
+    const int nn = mCreateNewMapPointsCovisibility;
     std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
     result.num_neighbour_kfs = static_cast<int>(vpNeighKFs.size());
 
@@ -741,7 +739,7 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_QUIET)
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "[" << mpCurrentKeyFrame->mnFrameId << "] Added " << result.num_created << " map points" << std::endl;
     return result;
 }
