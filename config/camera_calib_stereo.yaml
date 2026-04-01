@@ -35,6 +35,4 @@ Camera2.k4: 0.0
 Camera2.p1: -0.00024753909664465643
 Camera2.p2: -6.720504095135524e-05
 
-# Stereo baseline/extrinsic T_c1_c2 is supplied at runtime from static_tf (orb_slam3_wrapper_main: platform-config + stereo-left-frame / stereo-right-frame).
-
 Stereo.ThDepth: 30.0

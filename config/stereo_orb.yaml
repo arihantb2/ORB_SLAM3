@@ -1,11 +1,17 @@
 %YAML:1.0
 
-# Algorithm config for stereo VanillaORB-based ORB-SLAM3.
-# Camera calibration is loaded separately (camera_calib_stereo.yaml).
-
 File.version: "1.0"
 
+# Feature extractor selection. Options:
+#   "GridORB"  — custom FAST dual-threshold + quadtree distribution (default, best accuracy)
+#   "ORB"      — cv::ORB per pyramid level + quadtree (see stereo_orb.yaml)
+#   "SIFT"     — cv::SIFT + quadtree, float descriptors (see stereo_sift.yaml)
 FeatureExtractor.type: "ORB"
+
+# Vocabulary type. Options:
+#   "dbow2"    — custom DBoW2 vocabulary (default, best accuracy)
+#   "fbow"     — custom FBoW vocabulary (see stereo_fbow.yaml)
+Vocabulary.type: "fbow"
 
 # Camera frames per second
 Camera.fps: 2
@@ -29,63 +35,124 @@ FeatureExtractor.ORB.iniThFAST: 15
 FeatureExtractor.ORB.scoreType: "FAST"
 
 #--------------------------------------------------------------------------------------------
-# Tracking Parameters (stereo)
+# Stereo Initialization Parameters
 #--------------------------------------------------------------------------------------------
 
+# Stereo initialization: minimum keypoints in frame to attempt init.
+# [StereoInitialization()] — if frame has fewer keypoints than this, initialization
+# is skipped entirely. Lower → init in textureless scenes, but risks poor initial map.
 Tracking.StereoInit.MinKeypoints: 500
 
+#--------------------------------------------------------------------------------------------
+# Tracking Parameters (stereo-specific; optional, defaults used if omitted)
+#--------------------------------------------------------------------------------------------
+
+# Reference keyframe tracking (BoW match + pose optimization)
+# [TrackReferenceKeyFrame*()] — descriptor match strictness (ratio test). Lower = more
+# selective matches, fewer false positives, but fewer total matches.
 Tracking.ReferenceKeyframe.NNRatio: 0.7
+# [TrackReferenceKeyFrame*()] — raw BoW match count needed before attempting pose
+# optimization. Gate to avoid wasting time on bad frames.
 Tracking.ReferenceKeyframe.MinBoWMatches: 15
+# [TrackReferenceKeyFrame*()] — inlier count after pose optimization. If below this,
+# reference KF tracking declares failure and falls through to relocalization.
 Tracking.ReferenceKeyframe.MinOptimizedMapMatches: 10
 
+# Motion model tracking
+# [TrackWithMotionModel()] — ratio test for motion model matching. Typically looser than
+# reference KF since the motion prior is good, so more permissive matching is safe.
 Tracking.MotionModel.NNRatio: 0.9
-Tracking.MotionModel.ProjectionSearchThStereo: 30
+# [TrackWithMotionModel()] — pixel radius for SearchByProjection on first pass. Tighter =
+# fewer false matches; looser = more robust to fast motion or prediction error.
+Tracking.MotionModel.ProjectionSearchTh: 15
+# [TrackWithMotionModel()] — if first-pass projection finds fewer than this, a retry with
+# larger radius (RetryProjectionSearchTh) is triggered automatically.
 Tracking.MotionModel.MinInitialMatches: 20
-Tracking.MotionModel.RetryProjectionSearchThStereo: 60
+# [TrackWithMotionModel()] — expanded search radius on retry. Recovers from fast motion
+# without immediately failing tracking.
+Tracking.MotionModel.RetryProjectionSearchTh: 30
+# [TrackWithMotionModel()] — matches needed after the wider retry. If still below this,
+# motion model tracking fails entirely and falls back to reference KF tracking.
 Tracking.MotionModel.MinRetryMatches: 20
+# [TrackWithMotionModel()] — inlier count after pose optimization on motion model matches.
+# Final gate before declaring motion model tracking successful.
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
+# Local map tracking success thresholds (visual path only)
+# [TrackLocalMap()] — two-tier success check:
+# GenericMinInliers: lower bound — if inliers exceed this AND other conditions hold,
+# tracking can succeed (e.g. with IMU assistance).
 Tracking.LocalMap.GenericMinInliers: 10
+# [TrackLocalMap()] — strict bound for pure visual tracking. If inliers fall below this,
+# the frame is marked as tracking lost regardless of other signals. Primary loss gate.
 Tracking.LocalMap.VisualMinInliers: 30
 
+# New keyframe decision thresholds (stereo)
+# [NeedNewKeyFrame()] — condition c1b: fires when close-range stereo depth is being
+# underutilized. Triggers KF insertion when:
+#   nTrackedClose < MinTrackedClosePoints AND nNonTrackedClose > MinNonTrackedClosePoints
+# i.e. "we're not tracking enough close points, but there are close points we could be
+# tracking — insert a KF to seed them."
 Tracking.NewKF.MinTrackedClosePoints: 100
 Tracking.NewKF.MinNonTrackedClosePoints: 70
+# [NeedNewKeyFrame()] — ratio of current inliers vs reference KF inliers.
+# RefRatioStereoFewKFs: used when map has <2 KFs — low threshold aggressively inserts
+# KFs early to build up the map quickly.
 Tracking.NewKF.RefRatioStereoFewKFs: 0.4
-Tracking.NewKF.RefRatioStereo: 0.75
+# [NeedNewKeyFrame()] — used once map is established (≥2 KFs). KF inserted when current
+# inliers drop below this fraction of the reference KF's inliers. Lower = fewer KFs
+# (faster BA), higher = denser map (better localization).
+Tracking.NewKF.RefRatioStereo: 0.9
+# [NeedNewKeyFrame()] — condition c1c: weak tracking fallback. If inliers fall below this
+# fraction of reference, forces KF insertion regardless of other conditions.
 Tracking.NewKF.WeakTrackingRatio: 0.25
+# [NeedNewKeyFrame()] — condition c2: absolute floor. Even if c1a/b/c fire, no KF is
+# inserted unless we have at least this many inliers. Prevents inserting KFs when
+# tracking is too weak to produce useful observations.
 Tracking.NewKF.MinInliers: 15
-Tracking.NewKF.MaxKFsInQueue: 3
+# [NeedNewKeyFrame()] — backpressure from local mapper. If the mapper's KF queue already
+# has this many pending KFs, new insertions are suppressed. Prevents tracking from
+# flooding the mapper during slow optimization.
+Tracking.NewKF.MaxKFsInQueue: 10000
 
+# Min KFs in map before LOST triggers a map reset (high value = never reset, reuse map)
 Tracking.LostResetMinKFs: 999999
 
 #--------------------------------------------------------------------------------------------
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
-
-LocalMapping.OptimizeEveryTSeconds: 5.0
+# Minimum interval (seconds) between local bundle adjustments (non-inertial)
+LocalMapping.OptimizeEveryTSeconds: 0.0
+# Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 
+# Local bundle adjustment priors (0 = disabled, 1 = enabled)
+# PosePriors: use external pose priors on keyframes as absolute constraints.
+# ScalePriors: constrain inter-keyframe scale using relative pose priors.
+# OdometryPriors: add between-pose factors between consecutive keyframes.
 Optimizer.LocalBundleAdjustment.PosePriors: 0
-Optimizer.LocalBundleAdjustment.ScalePriors: 0
+Optimizer.LocalBundleAdjustment.ScalePriors: 1
 Optimizer.LocalBundleAdjustment.OdometryPriors: 0
 
-LocalMapping.MapPointCulling.MinObservationsMono: 2
-LocalMapping.MapPointCulling.MinObservationsStereo: 3
+# MapPoint culling: remove bad/redundant recent map points
+LocalMapping.MapPointCulling.MinObservations: 3
 LocalMapping.MapPointCulling.MinKFAgeForObsCheck: 2
 LocalMapping.MapPointCulling.MaxKFAgeInRecent: 3
 LocalMapping.MapPointCulling.MinFoundRatio: 0.25
 
-LocalMapping.CreateNewMapPoints.CovisibilityNeighborsMono: 30
-LocalMapping.CreateNewMapPoints.CovisibilityNeighborsStereo: 10
+# CreateNewMapPoints: triangulation from covisible keyframes
+LocalMapping.CreateNewMapPoints.CovisibilityNeighbors: 10
 LocalMapping.CreateNewMapPoints.MatchRatio: 0.6
 LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio: 0.01
 LocalMapping.CreateNewMapPoints.MaxCosParallax: 0.9998
 LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor: 1.5
 
+# SearchInNeighbors: fuse duplicates and propagate map points
 LocalMapping.SearchInNeighbors.NumNeighborKFs: 30
 LocalMapping.SearchInNeighbors.NumSecondNeighbors: 20
 LocalMapping.SearchInNeighbors.MaxTemporalNeighbors: 20
 
+# KeyFrame culling: remove redundant keyframes
 LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
 LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3
 LocalMapping.KeyFrameCulling.MaxKeyframesToCheck: 100
