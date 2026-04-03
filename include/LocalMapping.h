@@ -24,6 +24,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <atomic>
+#include <condition_variable>
 #include <fstream>
 #include <functional>
 #include <list>
@@ -57,6 +58,12 @@ public:
     void InsertKeyFrame(KeyFrame* pKF);
     void EmptyQueue();
 
+    // Synchronous mode: when enabled, InsertKeyFrame() blocks until the full
+    // LocalMapping iteration for the inserted frame completes before returning.
+    // No separate LocalMapping thread is used; the caller's thread drives mapping.
+    void SetSynchronousMode(bool bSync) { mbSynchronousMode = bSync; }
+    bool IsSynchronousMode() const { return mbSynchronousMode; }
+
     // Thread Synch
     void RequestStop();
     void RequestReset();
@@ -89,6 +96,11 @@ public:
     /// Thread-safe: may be called from any thread.
     void SetCallback(LocalMappingCallback cb);
 
+    /// In synchronous mode, block the caller until LocalMapping has finished
+    /// processing the last inserted KeyFrame (culling, descriptors, covisibility).
+    /// Returns immediately in async mode or if LocalMapping is shutting down.
+    void WaitForMappingComplete();
+
     double mFirstTs;
     int mnMatchesInliers;
 
@@ -96,8 +108,8 @@ public:
     bool mbFarPoints;
     float mThFarPoints;
 
-    // LBA throttling (non-inertial): min interval between optimizations
-    double mOptimizeEveryTSeconds = 5.0;
+    // LBA throttling: min interval between optimizations
+    double mOptimizeEveryTSeconds = 0.0;
 
     // RunLoop
     int mMinKeyframesForLBA = 2;
@@ -141,6 +153,18 @@ protected:
     System* mpSystem;
 
     bool mbMonocular;
+    bool mbSynchronousMode = false;
+
+    // Synchronous-mode coordination.
+    // mCVNewKF    — wakes the LocalMapping thread when a KF is enqueued
+    //               (guarded by mMutexNewKFs, which already protects the queue).
+    // mCVSyncIterDone / mMutexSyncIterDone / mbSyncIterDone
+    //             — wakes the Tracking thread when LocalMapping finishes the
+    //               iteration triggered by the last InsertKeyFrame call.
+    std::condition_variable mCVNewKF;
+    std::mutex mMutexSyncIterDone;
+    std::condition_variable mCVSyncIterDone;
+    bool mbSyncIterDone = true;
 
     void ResetIfRequested();
     bool mbResetRequested;

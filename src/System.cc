@@ -37,7 +37,8 @@ std::unique_ptr<std::ofstream> Verbose::log_file_;
 std::atomic<bool> Verbose::console_enabled{false};
 
 System::System(const std::string& strVocFile, const std::string& strConfigFile, const eSensor sensor,
-               const CameraCalibrationInput& calib, const std::string& strLogFile, const bool bVerboseConsole)
+               const CameraCalibrationInput& calib, const std::string& strLogFile, const bool bVerboseConsole,
+               const bool bSynchronousLocalMapping)
     : mSensor(sensor), mbReset(false), mbResetActiveMap(false), mbShutDown(false)
 {
     Verbose::SetLogFile(strLogFile);
@@ -133,6 +134,10 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(this, mpAtlas, monocular, settings_);
+    if (bSynchronousLocalMapping)
+    {
+        mpLocalMapper->SetSynchronousMode(true);
+    }
     mptLocalMapping = new std::thread(&ORB_SLAM3::LocalMapping::Run, mpLocalMapper);
 
     //Set pointers between threads

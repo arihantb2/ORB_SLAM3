@@ -289,7 +289,14 @@ void KeyFrame::UpdateBestCovisibles()
     {
         vPairs.push_back(std::make_pair(mit->second, mit->first));
     }
-    sort(vPairs.begin(), vPairs.end());
+    // Use mnId as secondary sort key so equal-weight neighbours have a deterministic
+    // order regardless of pointer address (ASLR).
+    std::sort(vPairs.begin(), vPairs.end(),
+              [](const std::pair<int, KeyFrame*>& a, const std::pair<int, KeyFrame*>& b) {
+                  if (a.first != b.first)
+                      return a.first < b.first;     // weight ASC (list is front-prepended below)
+                  return a.second->mnId < b.second->mnId;  // mnId ASC tie-break
+              });
     std::list<KeyFrame*> lKFs;
     std::list<int> lWs;
     for (size_t i = 0, iend = vPairs.size(); i < iend; i++)

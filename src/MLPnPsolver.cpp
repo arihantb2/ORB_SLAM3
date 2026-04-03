@@ -122,7 +122,22 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore, std::vector<bool>& vbI
 
     std::vector<size_t> vAvailableIndices;
 
-    static thread_local std::mt19937 gen(0u);
+    // Seed from 3D point coordinates so the same correspondences always produce
+    // the same RANSAC sequence, regardless of prior call history on this thread.
+    uint32_t seed = 0;
+    for (const auto& pt : mvP3Dw)
+    {
+        seed ^= static_cast<uint32_t>(pt[0] * 1000 + 1) * 2654435761u;
+        seed ^= static_cast<uint32_t>(pt[1] * 1000 + 1) * 40503u;
+        seed ^= static_cast<uint32_t>(pt[2] * 1000 + 1) * 134775813u;
+    }
+    // Mix in bearing vectors for additional uniqueness across frames.
+    for (const auto& bv : mvBearingVecs)
+    {
+        seed ^= static_cast<uint32_t>(bv[0] * 1000 + 1) * 1234567891u;
+        seed ^= static_cast<uint32_t>(bv[1] * 1000 + 1) * 2246822519u;
+    }
+    std::mt19937 gen(seed);
 
     int nCurrentIterations = 0;
     while (mnIterations < mRansacMaxIts || nCurrentIterations < nIterations)

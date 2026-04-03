@@ -27,7 +27,7 @@ Camera.RGB: 1
 FeatureExtractor.ORB.nFeatures: 2000
 FeatureExtractor.ORB.scaleFactor: 1.2
 FeatureExtractor.ORB.nLevels: 8
-FeatureExtractor.ORB.iniThFAST: 15
+FeatureExtractor.ORB.iniThFAST: 25
 
 # Keypoint ranking metric after FAST detection.
 # "HARRIS" (default) — re-ranks by Harris corner response; more stable keypoints
@@ -42,6 +42,10 @@ FeatureExtractor.ORB.scoreType: "FAST"
 # [StereoInitialization()] — if frame has fewer keypoints than this, initialization
 # is skipped entirely. Lower → init in textureless scenes, but risks poor initial map.
 Tracking.StereoInit.MinKeypoints: 500
+# Stereo initialization: minimum map points to bootstrap the map.
+# [StereoInitialization()] — if frame has fewer map points than this, initialization
+# is skipped entirely. Lower → init in textureless scenes, but risks poor initial map.
+Tracking.StereoInit.MinMapPoints: 100
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters (stereo-specific; optional, defaults used if omitted)

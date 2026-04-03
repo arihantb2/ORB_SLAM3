@@ -49,10 +49,10 @@ FeatureExtractor.ORB.scoreType: "FAST"
 # Monocular Initialization Parameters
 #--------------------------------------------------------------------------------------------
 
-MonocularInit.SearchWindowSize: 300
-MonocularInit.MinKeypoints: 100
-MonocularInit.NNRatio: 0.9
-MonocularInit.MinMatches: 100
+Tracking.MonocularInit.SearchWindowSize: 300
+Tracking.MonocularInit.MinKeypoints: 100
+Tracking.MonocularInit.NNRatio: 0.9
+Tracking.MonocularInit.MinMatches: 100
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters (monocular; optional, defaults used if omitted)
@@ -86,7 +86,7 @@ Tracking.LostResetMinKFs: 999999
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
 # Minimum interval (seconds) between local bundle adjustments (non-inertial)
-LocalMapping.OptimizeEveryTSeconds: 5.0
+LocalMapping.OptimizeEveryTSeconds: 0.0
 # Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 

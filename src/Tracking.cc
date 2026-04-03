@@ -186,6 +186,7 @@ void Tracking::loadFromSettings(Settings* settings)
 
     // Stereo initialization thresholds
     mStereoInitMinKeypoints = settings->stereoInitMinKeypoints();
+    mStereoInitMinMapPoints = settings->stereoInitMinMapPoints();
 
     // Reference keyframe tracking thresholds
     mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
@@ -514,6 +515,11 @@ void Tracking::ComputeVelocityFromPriors()
 
 TrackingResult Tracking::Track()
 {
+    // In synchronous mode, wait for LocalMapping to finish processing the last inserted
+    // KeyFrame before touching any map state.  Feature detection (Frame constructor) runs
+    // before this call, so it overlaps freely with LocalMapping's iteration.
+    mpLocalMapper->WaitForMappingComplete();
+
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
     if (!pCurrentMap)
     {
@@ -786,6 +792,7 @@ void Tracking::StereoInitialization()
     // Insert KeyFrame in the map
     mpAtlas->AddKeyFrame(pKFini);
 
+    std::vector<std::pair<int, MapPoint*>> new_map_points;
     // Create MapPoints and asscoiate to KeyFrame
     for (int i = 0; i < mCurrentFrame.N; i++)
     {
@@ -795,14 +802,29 @@ void Tracking::StereoInitialization()
             Eigen::Vector3f x3D;
             mCurrentFrame.UnprojectStereo(i, x3D);
             MapPoint* pNewMP = new MapPoint(x3D, pKFini, mpAtlas->GetCurrentMap());
-            pNewMP->AddObservation(pKFini, i);
-            pKFini->AddMapPoint(pNewMP, i);
-            pNewMP->ComputeDistinctiveDescriptors();
-            pNewMP->UpdateNormalAndDepth();
-            mpAtlas->AddMapPoint(pNewMP);
-
-            mCurrentFrame.mvpMapPoints[i] = pNewMP;
+            new_map_points.push_back({i, pNewMP});
         }
+    }
+
+    if (new_map_points.size() < mStereoInitMinMapPoints)
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] STEREO_INIT failed: map_points=" << new_map_points.size()
+            << " < MinMapPoints=" << mStereoInitMinMapPoints << "." << std::endl;
+        return;
+    }
+
+    for (size_t i = 0; i < new_map_points.size(); i++)
+    {
+        int idx = new_map_points[i].first;
+        MapPoint* pMP = new_map_points[i].second;
+        pMP->AddObservation(pKFini, idx);
+        pKFini->AddMapPoint(pMP, idx);
+        pMP->ComputeDistinctiveDescriptors();
+        pMP->UpdateNormalAndDepth();
+        mpAtlas->AddMapPoint(pMP);
+
+        mCurrentFrame.mvpMapPoints[idx] = pMP;
     }
 
     mpLocalMapper->InsertKeyFrame(pKFini);
@@ -858,7 +880,6 @@ void Tracking::MonocularInitialization()
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Not enough detected features ["
             << mCurrentFrame.mvKeys.size() << "] to initialize. Dropping this frame." << std::endl;
         return;
-
     }
     else
     {
@@ -1990,25 +2011,38 @@ void Tracking::UpdateLocalKeyFrames()
         }
     }
 
+    // Sort by (votes DESC, mnId ASC) so that pKFmax selection and mvpLocalKeyFrames
+    // ordering are deterministic regardless of pointer address (ASLR).
+    std::vector<std::pair<int, KeyFrame*>> vSortedKFs;
+    vSortedKFs.reserve(keyframeCounter.size());
+    for (const auto& kv : keyframeCounter)
+    {
+        vSortedKFs.emplace_back(kv.second, kv.first);
+    }
+    std::sort(vSortedKFs.begin(), vSortedKFs.end(),
+              [](const std::pair<int, KeyFrame*>& a, const std::pair<int, KeyFrame*>& b)
+              {
+                  if (a.first != b.first)
+                      return a.first > b.first;            // votes DESC
+                  return a.second->mnId < b.second->mnId;  // mnId ASC tie-break
+              });
+
     int max = 0;
     KeyFrame* pKFmax = static_cast<KeyFrame*>(NULL);
 
     mvpLocalKeyFrames.clear();
-    mvpLocalKeyFrames.reserve(3 * keyframeCounter.size());
+    mvpLocalKeyFrames.reserve(3 * vSortedKFs.size());
 
     // All keyframes that observe a map point are included in the local map. Also check which keyframe shares most points
-    for (std::map<KeyFrame*, int>::const_iterator it = keyframeCounter.begin(), itEnd = keyframeCounter.end();
-         it != itEnd; it++)
+    for (const auto& [votes, pKF] : vSortedKFs)
     {
-        KeyFrame* pKF = it->first;
-
         if (pKF->isBad())
         {
             continue;
         }
-        if (it->second > max)
+        if (votes > max)
         {
-            max = it->second;
+            max = votes;
             pKFmax = pKF;
         }
 
@@ -2044,10 +2078,14 @@ void Tracking::UpdateLocalKeyFrames()
             }
         }
 
+        // Sort children by mnId so the first non-bad child selected is deterministic
+        // regardless of pointer address (ASLR), since std::set<KeyFrame*> is pointer-ordered.
+        std::vector<KeyFrame*> vChilds;
         const std::set<KeyFrame*> spChilds = pKF->GetChilds();
-        for (std::set<KeyFrame*>::const_iterator sit = spChilds.begin(), send = spChilds.end(); sit != send; sit++)
+        vChilds.assign(spChilds.begin(), spChilds.end());
+        std::sort(vChilds.begin(), vChilds.end(), [](KeyFrame* a, KeyFrame* b) { return a->mnId < b->mnId; });
+        for (KeyFrame* pChildKF : vChilds)
         {
-            KeyFrame* pChildKF = *sit;
             if (!pChildKF->isBad())
             {
                 if (pChildKF->mnTrackReferenceForFrame != mCurrentFrame.mnId)

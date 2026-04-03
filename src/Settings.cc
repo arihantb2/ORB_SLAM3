@@ -200,7 +200,7 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     {
         readSIFT(fSettings);
         Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded SIFT settings" << std::endl;
-    }
+    }   
     else if (featureExtractorType_ == "ORB")
     {
         readORB(fSettings);
@@ -358,13 +358,13 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     localMappingKeyFrameCullingEarlyExitAfterAbort_ =
         readParameter<int>(fSettings, "LocalMapping.KeyFrameCulling.EarlyExitAfterAbort", found, 20, false);
 
-    monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "MonocularInit.SearchWindowSize", found, 100, false);
-    monocularInitMinKeypoints_ = readParameter<int>(fSettings, "MonocularInit.MinKeypoints", found, 100, false);
-    monocularInitNNRatio_ = readParameter<float>(fSettings, "MonocularInit.NNRatio", found, 0.9f, false);
-    monocularInitMinMatches_ = readParameter<int>(fSettings, "MonocularInit.MinMatches", found, 100, false);
+    monocularInitSearchWindowSize_ = readParameter<int>(fSettings, "Tracking.MonocularInit.SearchWindowSize", found, 100, false);
+    monocularInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.MonocularInit.MinKeypoints", found, 100, false);
+    monocularInitNNRatio_ = readParameter<float>(fSettings, "Tracking.MonocularInit.NNRatio", found, 0.9f, false);
+    monocularInitMinMatches_ = readParameter<int>(fSettings, "Tracking.MonocularInit.MinMatches", found, 100, false);
 
     stereoInitMinKeypoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinKeypoints", found, 500, false);
-
+    stereoInitMinMapPoints_ = readParameter<int>(fSettings, "Tracking.StereoInit.MinMapPoints", found, 100, false);
     // Local bundle adjustment prior toggles for Optimizer.
     // Exposed as integer flags (0/1) in the YAML config.
     bool use_pose_priors = false;

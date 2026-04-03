@@ -147,13 +147,17 @@ int Map::GetLastBigChangeIdx()
 std::vector<KeyFrame*> Map::GetAllKeyFrames()
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    return std::vector<KeyFrame*>(mspKeyFrames.begin(), mspKeyFrames.end());
+    std::vector<KeyFrame*> v(mspKeyFrames.begin(), mspKeyFrames.end());
+    std::sort(v.begin(), v.end(), KeyFrame::lId);
+    return v;
 }
 
 std::vector<MapPoint*> Map::GetAllMapPoints()
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    return std::vector<MapPoint*>(mspMapPoints.begin(), mspMapPoints.end());
+    std::vector<MapPoint*> v(mspMapPoints.begin(), mspMapPoints.end());
+    std::sort(v.begin(), v.end(), [](MapPoint* a, MapPoint* b) { return a->mnId < b->mnId; });
+    return v;
 }
 
 long unsigned int Map::MapPointsInMap()

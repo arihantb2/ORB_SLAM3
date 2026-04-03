@@ -421,14 +421,19 @@ void MapPoint::ComputeDistinctiveDescriptors()
     }
     vDescriptors.reserve(observations.size());
 
-    for (std::map<KeyFrame*, std::tuple<int, int>>::iterator mit = observations.begin(), mend = observations.end();
-         mit != mend; mit++)
-    {
-        KeyFrame* pKF = mit->first;
+    // Sort by KF mnId so the collected descriptor set — and therefore the
+    // median selection — is deterministic regardless of pointer address (ASLR).
+    std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> vSortedObs(observations.begin(), observations.end());
+    std::sort(vSortedObs.begin(), vSortedObs.end(),
+              [](const std::pair<KeyFrame*, std::tuple<int, int>>& a,
+                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) {
+                  return a.first->mnId < b.first->mnId;
+              });
 
+    for (const auto& [pKF, indexes] : vSortedObs)
+    {
         if (!pKF->isBad())
         {
-            std::tuple<int, int> indexes = mit->second;
             int leftIndex = std::get<0>(indexes), rightIndex = std::get<1>(indexes);
 
             if (leftIndex != -1)

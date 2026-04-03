@@ -148,6 +148,7 @@ public:
     int monocularInitMinMatches() { return monocularInitMinMatches_; }
 
     int stereoInitMinKeypoints() { return stereoInitMinKeypoints_; }
+    int stereoInitMinMapPoints() { return stereoInitMinMapPoints_; }
     float referenceKeyframeNNRatio() { return referenceKeyframeNNRatio_; }
     int referenceKeyframeMinBoWMatches() { return referenceKeyframeMinBoWMatches_; }
     int referenceKeyframeMinOptimizedMapMatches() { return referenceKeyframeMinOptimizedMapMatches_; }
@@ -293,6 +294,7 @@ private:
     int monocularInitMinMatches_;
 
     int stereoInitMinKeypoints_;
+    int stereoInitMinMapPoints_;
     float referenceKeyframeNNRatio_;
     int referenceKeyframeMinBoWMatches_;
     int referenceKeyframeMinOptimizedMapMatches_;

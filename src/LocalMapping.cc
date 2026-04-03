@@ -116,7 +116,18 @@ void LocalMapping::Run()
 
     while (!RunLoop())
     {
-        usleep(3000);
+        if (mbSynchronousMode)
+        {
+            // Wait efficiently for a new KF or a finish request rather than busy-sleeping.
+            // mMutexNewKFs already guards mlNewKeyFrames, so use it as the CV mutex.
+            std::unique_lock<std::mutex> lock(mMutexNewKFs);
+            mCVNewKF.wait_for(lock, std::chrono::milliseconds(100),
+                              [this] { return !mlNewKeyFrames.empty(); });
+        }
+        else
+        {
+            usleep(3000);
+        }
     }
 
     SetFinish();
@@ -299,14 +310,48 @@ bool LocalMapping::RunLoop()
     // Tracking will see that Local Mapping is free
     SetAcceptKeyFrames(true);
 
+    // In synchronous mode, signal the Tracking thread that the iteration is done
+    // (queue is empty and all map-point state — culling, descriptors, covisibility — is settled).
+    if (mbSynchronousMode && !CheckNewKeyFrames())
+    {
+        {
+            std::unique_lock<std::mutex> lock(mMutexSyncIterDone);
+            mbSyncIterDone = true;
+        }
+        mCVSyncIterDone.notify_all();
+    }
+
     return CheckFinish();
 }
 
 void LocalMapping::InsertKeyFrame(KeyFrame* pKF)
 {
-    std::unique_lock<std::mutex> lock(mMutexNewKFs);
-    mlNewKeyFrames.push_back(pKF);
-    mbAbortBA = true;
+    {
+        std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        mlNewKeyFrames.push_back(pKF);
+        mbAbortBA = true;
+    }
+    if (mbSynchronousMode)
+    {
+        // Mark that this iteration is not yet done, then wake the LocalMapping thread.
+        // The Tracking thread will call WaitForMappingComplete() at the top of Track()
+        // before touching map state, allowing feature detection to overlap with LocalMapping.
+        {
+            std::unique_lock<std::mutex> lock(mMutexSyncIterDone);
+            mbSyncIterDone = false;
+        }
+        mCVNewKF.notify_one();
+    }
+}
+
+void LocalMapping::WaitForMappingComplete()
+{
+    if (!mbSynchronousMode)
+    {
+        return;
+    }
+    std::unique_lock<std::mutex> lock(mMutexSyncIterDone);
+    mCVSyncIterDone.wait(lock, [this] { return mbSyncIterDone || CheckFinish(); });
 }
 
 bool LocalMapping::CheckNewKeyFrames()

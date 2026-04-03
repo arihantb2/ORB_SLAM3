@@ -42,11 +42,17 @@ FeatureExtractor.SIFT.edgeThreshold: 10.0
 FeatureExtractor.SIFT.sigma: 1.6
 
 #--------------------------------------------------------------------------------------------
-# Tracking Parameters (stereo-specific; optional, defaults used if omitted)
+# Stereo Initialization Parameters
 #--------------------------------------------------------------------------------------------
 
-# Stereo initialization: minimum keypoints in frame to attempt init
+# Stereo initialization: minimum keypoints in frame to attempt init.
 Tracking.StereoInit.MinKeypoints: 500
+# Stereo initialization: minimum map points to bootstrap the map.
+Tracking.StereoInit.MinMapPoints: 100
+
+#--------------------------------------------------------------------------------------------
+# Tracking Parameters (stereo-specific; optional, defaults used if omitted)
+#--------------------------------------------------------------------------------------------
 
 # Reference keyframe tracking (BoW match + pose optimization)
 Tracking.ReferenceKeyframe.NNRatio: 0.7
@@ -81,7 +87,7 @@ Tracking.LostResetMinKFs: 999999
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
 # Minimum interval (seconds) between local bundle adjustments (non-inertial)
-LocalMapping.OptimizeEveryTSeconds: 5.0
+LocalMapping.OptimizeEveryTSeconds: 0.0
 # Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 

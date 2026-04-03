@@ -59,16 +59,16 @@ FeatureExtractor.SIFT.sigma: 1.6
 #--------------------------------------------------------------------------------------------
 
 # Larger search window appropriate for SIFT's richer scale-space coverage
-MonocularInit.SearchWindowSize: 300
+Tracking.MonocularInit.SearchWindowSize: 300
 
 # SIFT keypoints are more spatially distinct; fewer needed for init
-MonocularInit.MinKeypoints: 80
+Tracking.MonocularInit.MinKeypoints: 80
 
 # Strict NNRatio for L2 float descriptors (0.7–0.8 is standard for SIFT)
-MonocularInit.NNRatio: 0.75
+Tracking.MonocularInit.NNRatio: 0.75
 
 # Minimum matches to proceed with initialization
-MonocularInit.MinMatches: 80
+Tracking.MonocularInit.MinMatches: 80
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters (monocular; optional, defaults used if omitted)
@@ -102,7 +102,7 @@ Tracking.LostResetMinKFs: 999999
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
 # Minimum interval (seconds) between local bundle adjustments (non-inertial)
-LocalMapping.OptimizeEveryTSeconds: 5.0
+LocalMapping.OptimizeEveryTSeconds: 0.0
 # Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 

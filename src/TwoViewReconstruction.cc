@@ -79,7 +79,17 @@ bool TwoViewReconstruction::Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
     // Generate sets of 8 points for each RANSAC iteration
     mvSets = std::vector<std::vector<size_t>>(mMaxIterations, std::vector<size_t>(8, 0));
 
-    static thread_local std::mt19937 gen(0u);
+    // Seed from input match coordinates so the same matches always produce the same RANSAC sets,
+    // regardless of how many prior calls have been made on this thread.
+    uint32_t seed = 0;
+    for (const auto& m : mvMatches12)
+    {
+        seed ^= static_cast<uint32_t>(mvKeys1[m.first].pt.x * 100 + 1) * 2654435761u;
+        seed ^= static_cast<uint32_t>(mvKeys1[m.first].pt.y * 100 + 1) * 40503u;
+        seed ^= static_cast<uint32_t>(mvKeys2[m.second].pt.x * 100 + 1) * 134775813u;
+        seed ^= static_cast<uint32_t>(mvKeys2[m.second].pt.y * 100 + 1) * 1234567891u;
+    }
+    std::mt19937 gen(seed);
 
     for (int it = 0; it < mMaxIterations; it++)
     {

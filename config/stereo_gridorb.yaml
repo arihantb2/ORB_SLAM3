@@ -35,8 +35,8 @@ FeatureExtractor.GridORB.nLevels: 8
 # FAST thresholds — image is divided into a grid; at each cell FAST corners are extracted
 # imposing a minimum response. iniThFAST is tried first; if no corners are detected,
 # minThFAST is used as fallback. Lower values help in low-contrast images.
-FeatureExtractor.GridORB.iniThFAST: 15
-FeatureExtractor.GridORB.minThFAST: 5
+FeatureExtractor.GridORB.iniThFAST: 25
+FeatureExtractor.GridORB.minThFAST: 12
 
 
 #--------------------------------------------------------------------------------------------
@@ -47,6 +47,10 @@ FeatureExtractor.GridORB.minThFAST: 5
 # [StereoInitialization()] — if frame has fewer keypoints than this, initialization
 # is skipped entirely. Lower → init in textureless scenes, but risks poor initial map.
 Tracking.StereoInit.MinKeypoints: 500
+# Stereo initialization: minimum map points to bootstrap the map.
+# [StereoInitialization()] — if frame has fewer map points than this, initialization
+# is skipped entirely. Lower → init in textureless scenes, but risks poor initial map.
+Tracking.StereoInit.MinMapPoints: 100
 
 #--------------------------------------------------------------------------------------------
 # Tracking Parameters (stereo-specific; optional, defaults used if omitted)

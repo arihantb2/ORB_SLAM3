@@ -310,6 +310,7 @@ public:
     int mMonocularInitSearchWindowSize = 100;
     int mMonocularInitMinMatches = 100;
     int mStereoInitMinKeypoints = 500;
+    int mStereoInitMinMapPoints = 100;
     float mReferenceKeyframeNNRatio = 0.7f;
     int mReferenceKeyframeMinBoWMatches = 15;
     int mReferenceKeyframeMinOptimizedMapMatches = 10;
