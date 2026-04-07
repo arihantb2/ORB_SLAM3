@@ -426,9 +426,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> vSortedObs(observations.begin(), observations.end());
     std::sort(vSortedObs.begin(), vSortedObs.end(),
               [](const std::pair<KeyFrame*, std::tuple<int, int>>& a,
-                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) {
-                  return a.first->mnId < b.first->mnId;
-              });
+                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) { return a.first->mnId < b.first->mnId; });
 
     for (const auto& [pKF, indexes] : vSortedObs)
     {
@@ -449,6 +447,9 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     if (vDescriptors.empty())
     {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "COMPUTE_DISTINCTIVE_DESCRIPTORS: MapPoint " << mnId
+            << " has no valid observations to compute descriptor. This should not happen.";
         return;
     }
     // Compute distances between them

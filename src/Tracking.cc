@@ -1264,7 +1264,6 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed: nmatches=" << nmatches
             << " < MinBoWMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "TRACK_REF_KF: Less than 15 matches!!\n";
         return result;
     }
 
