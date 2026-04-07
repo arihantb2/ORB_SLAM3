@@ -27,12 +27,12 @@ namespace ORB_SLAM3
 
 Atlas::Atlas()
 {
-    mpCurrentMap = static_cast<Map*>(NULL);
+    mpCurrentMap = nullptr;
 }
 
 Atlas::Atlas(int initKFid) : mnLastInitKFidMap(initKFid)
 {
-    mpCurrentMap = static_cast<Map*>(NULL);
+    mpCurrentMap = nullptr;
     CreateNewMap();
 }
 
@@ -41,7 +41,7 @@ Atlas::~Atlas()
     if (mpCurrentMap)
     {
         delete mpCurrentMap;
-        mpCurrentMap = static_cast<Map*>(NULL);
+        mpCurrentMap = nullptr;
     }
 }
 
@@ -56,7 +56,7 @@ void Atlas::CreateNewMap()
             mnLastInitKFidMap = mpCurrentMap->GetMaxKFid() + 1;  // The init KF is the next of current maximum
         }
         delete mpCurrentMap;
-        mpCurrentMap = static_cast<Map*>(NULL);
+        mpCurrentMap = nullptr;
     }
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
@@ -190,7 +190,7 @@ void Atlas::clearAtlas()
     if (mpCurrentMap)
     {
         delete mpCurrentMap;
-        mpCurrentMap = static_cast<Map*>(NULL);
+        mpCurrentMap = nullptr;
     }
     mnLastInitKFidMap = 0;
 }
