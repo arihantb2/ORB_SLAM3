@@ -759,7 +759,7 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
                 continue;
             }
             // Triangulation is succesfull
-            MapPoint* pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpAtlas->GetCurrentMap());
+            MapPoint* pMP = mpAtlas->GetCurrentMap()->CreateMapPoint(x3D, mpCurrentKeyFrame);
             if (bPointStereo)
             {
                 countStereo++;
@@ -783,8 +783,8 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
         }
     }
 
-    Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mpCurrentKeyFrame->mnFrameId << "] Added " << result.num_created << " map points" << std::endl;
+    Verbose::Print(Verbose::VERBOSITY_DEBUG) << "[" << mpCurrentKeyFrame->mnFrameId << ":" << mpCurrentKeyFrame->mnId
+                                             << "] Added " << result.num_created << " map points" << std::endl;
     return result;
 }
 

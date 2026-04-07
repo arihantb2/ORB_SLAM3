@@ -15,6 +15,7 @@ add_library(${PROJECT_NAME} SHARED
     FeatureMatcher.cc
     Converter.cc
     MapPoint.cc
+    MapPointPool.cc
     KeyFrame.cc
     Atlas.cc
     Map.cc

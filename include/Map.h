@@ -29,6 +29,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include <opencv2/core/core.hpp>
+
+#include "MapPointPool.h"
+
 namespace ORB_SLAM3
 {
 
@@ -48,6 +52,12 @@ public:
     void AddKeyFrame(KeyFrame* pKF);
     void AddMapPoint(MapPoint* pMP);
     void EraseMapPoint(MapPoint* pMP);
+
+    // Factory methods: allocate a slot from the pool and construct a MapPoint.
+    // Use these instead of `new MapPoint(...)` for all map-owned points so that
+    // memory is managed by the pool and released when the point is retired.
+    MapPoint* CreateMapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF);
+    MapPoint* CreateMapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF);
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*>& vpMPs);
     void InformNewBigChange();
@@ -132,6 +142,9 @@ protected:
 
     std::atomic<bool> mIsInUse{false};
     std::atomic<bool> mbBad{false};
+
+    // Pool allocator for map-owned MapPoints.
+    MapPointPool mMapPointPool;
 
     // Mutex
     std::mutex mMutexMap;

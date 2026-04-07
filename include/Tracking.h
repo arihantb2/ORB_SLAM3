@@ -211,6 +211,9 @@ struct TrackingResult
 
     bool success = false;
 
+    bool has_motion_prior = false;
+    Eigen::Vector3f motion_prior;
+
     RefKeyFrameTrackingResult ref_key_frame_result;
     MotionModelTrackingResult motion_model_result;
     LocalMapTrackingResult local_map_result;
@@ -245,6 +248,8 @@ struct TrackingResult
     cv::Mat image_right;
 
     Sophus::SE3f pose;
+
+    double tracking_time_seconds = 0.0;
 };
 
 class Tracking
@@ -363,7 +368,7 @@ protected:
     void BuildDepthIndex(const Frame& frame, int N, std::vector<std::pair<float, int>>& vDepthIdx) const;
 
     // Compute velocity from priors
-    void ComputeVelocityFromPriors();
+    bool ComputeVelocityFromPriors();
 
     // Load settings
     void loadFromSettings(Settings* settings);

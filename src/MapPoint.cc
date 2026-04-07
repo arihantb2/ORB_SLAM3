@@ -440,6 +440,9 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     if (vDescriptors.empty())
     {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "COMPUTE_DISTINCTIVE_DESCRIPTORS: MapPoint " << mnId
+            << " has no valid observations to compute descriptor. This should not happen.";
         return;
     }
 
