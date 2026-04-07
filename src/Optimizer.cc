@@ -60,15 +60,13 @@ bool sortByVal(const std::pair<MapPoint*, int>& a, const std::pair<MapPoint*, in
 
 // Returns observations sorted by KeyFrame mnId so that graph edge construction order
 // is deterministic regardless of pointer address (ASLR).
-static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>>
-sortedObservations(const std::map<KeyFrame*, std::tuple<int, int>>& obs)
+static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> sortedObservations(
+    const std::map<KeyFrame*, std::tuple<int, int>>& obs)
 {
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> v(obs.begin(), obs.end());
     std::sort(v.begin(), v.end(),
               [](const std::pair<KeyFrame*, std::tuple<int, int>>& a,
-                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) {
-                  return a.first->mnId < b.first->mnId;
-              });
+                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) { return a.first->mnId < b.first->mnId; });
     return v;
 }
 

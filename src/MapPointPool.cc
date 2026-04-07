@@ -31,8 +31,7 @@ MapPointPool::MapPointPool()
 {
     // Verify that our free-slot bookkeeping fits inside a MapPoint-sized slot
     // (this is trivially true for any non-trivial class, but kept as documentation).
-    static_assert(sizeof(void*) <= sizeof(MapPoint),
-                  "Slot must be large enough to hold a pointer for bookkeeping");
+    static_assert(sizeof(void*) <= sizeof(MapPoint), "Slot must be large enough to hold a pointer for bookkeeping");
 }
 
 void MapPointPool::AllocateNewChunk()
@@ -50,9 +49,9 @@ void MapPointPool::AllocateNewChunk()
         throw std::bad_alloc();
 
     Chunk chunk;
-    chunk.memory   = mem;
-    chunk.next     = 0;
-    chunk.live     = 0;
+    chunk.memory = mem;
+    chunk.next = 0;
+    chunk.live = 0;
     chunk.occupied.assign(kMapPointChunkSize, false);
     mChunks.push_back(std::move(chunk));
 }
@@ -67,7 +66,7 @@ void MapPointPool::Release(MapPoint* pMP)
     // Read coordinates before the destructor runs (the destructor may clear
     // member variables, though in practice mnPoolChunkIdx/Slot are plain ints).
     const std::size_t chunk_idx = pMP->mnPoolChunkIdx;
-    const std::size_t slot_idx  = pMP->mnPoolSlotIdx;
+    const std::size_t slot_idx = pMP->mnPoolSlotIdx;
 
     // Destruct outside the pool lock: the destructor may acquire per-MapPoint
     // mutexes and map locks; holding mPoolMutex across that would risk deadlock.
@@ -115,7 +114,7 @@ void MapPointPool::DestroyAll()
         }
         std::free(chunk.memory);
         chunk.memory = nullptr;
-        chunk.live   = 0;
+        chunk.live = 0;
     }
     mChunks.clear();
 }

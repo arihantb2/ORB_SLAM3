@@ -115,8 +115,7 @@ MapPoint* Map::CreateMapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF)
     return mMapPointPool.Acquire(Pos, pRefKF, this);
 }
 
-MapPoint* Map::CreateMapPoint(const double invDepth, cv::Point2f uv_init,
-                              KeyFrame* pRefKF, KeyFrame* pHostKF)
+MapPoint* Map::CreateMapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF)
 {
     return mMapPointPool.Acquire(invDepth, uv_init, pRefKF, pHostKF, this);
 }

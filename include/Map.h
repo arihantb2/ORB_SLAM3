@@ -55,8 +55,7 @@ public:
     // Use these instead of `new MapPoint(...)` for all map-owned points so that
     // memory is managed by the pool and released when the point is retired.
     MapPoint* CreateMapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF);
-    MapPoint* CreateMapPoint(const double invDepth, cv::Point2f uv_init,
-                             KeyFrame* pRefKF, KeyFrame* pHostKF);
+    MapPoint* CreateMapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF);
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*>& vpMPs);
     void InformNewBigChange();

@@ -273,7 +273,8 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
         << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_STEREO: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
+        << "[" << mCurrentFrame.mnId << "] "
+        << "GRAB_IMAGE_STEREO: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
@@ -335,7 +336,8 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
         << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_MONOCULAR: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
+        << "[" << mCurrentFrame.mnId << "] "
+        << "GRAB_IMAGE_MONOCULAR: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"

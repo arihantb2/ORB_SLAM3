@@ -60,7 +60,7 @@ public:
     // across that call would create a deadlock cycle between the Tracking and
     // LocalMapping threads. The slot is safe: its index is incremented while the
     // lock is still held, so no other thread can claim the same slot.
-    template<typename... Args>
+    template <typename... Args>
     MapPoint* Acquire(Args&&... args);
 
     // Release: read chunk/slot indices from pMP, call its destructor, then
@@ -81,10 +81,10 @@ public:
 private:
     struct Chunk
     {
-        void*             memory{nullptr};  // aligned alloc; nullptr once freed
-        std::size_t       next{0};          // next slot index to allocate (0..kMapPointChunkSize)
-        std::size_t       live{0};          // live (not-yet-released) MapPoints in this chunk
-        std::vector<bool> occupied;         // per-slot liveness; set in Acquire, cleared in Release
+        void* memory{nullptr};       // aligned alloc; nullptr once freed
+        std::size_t next{0};         // next slot index to allocate (0..kMapPointChunkSize)
+        std::size_t live{0};         // live (not-yet-released) MapPoints in this chunk
+        std::vector<bool> occupied;  // per-slot liveness; set in Acquire, cleared in Release
     };
 
     // Appends a new chunk to mChunks. Must be called under mPoolMutex.
@@ -93,15 +93,15 @@ private:
     // Returns a pointer to slot slot_idx within chunk c.
     void* SlotPtr(const Chunk& c, std::size_t slot_idx) const;
 
-    const std::size_t  mSlotSize;   // sizeof(MapPoint) rounded up to kMapPointAlignment
+    const std::size_t mSlotSize;  // sizeof(MapPoint) rounded up to kMapPointAlignment
     mutable std::mutex mPoolMutex;
-    std::vector<Chunk> mChunks;     // grows monotonically; indices are never reused
+    std::vector<Chunk> mChunks;  // grows monotonically; indices are never reused
 };
 
 // ---------------------------------------------------------------------------
 // Template implementation (must live in the header)
 // ---------------------------------------------------------------------------
-template<typename... Args>
+template <typename... Args>
 MapPoint* MapPointPool::Acquire(Args&&... args)
 {
     std::size_t chunk_idx, slot_idx;
@@ -114,7 +114,7 @@ MapPoint* MapPointPool::Acquire(Args&&... args)
             AllocateNewChunk();
 
         chunk_idx = mChunks.size() - 1;
-        slot_idx  = mChunks.back().next++;
+        slot_idx = mChunks.back().next++;
         mChunks.back().live++;
         mChunks.back().occupied[slot_idx] = true;
         slot = SlotPtr(mChunks[chunk_idx], slot_idx);
@@ -122,11 +122,11 @@ MapPoint* MapPointPool::Acquire(Args&&... args)
     // Pool lock is now released. Construct the MapPoint in the reserved slot.
     // Placement new bypasses operator new entirely; our pre-aligned storage
     // satisfies all Eigen SIMD alignment requirements.
-    MapPoint* pMP = ::new(slot) MapPoint(std::forward<Args>(args)...);
+    MapPoint* pMP = ::new (slot) MapPoint(std::forward<Args>(args)...);
 
     // Record pool coordinates after construction (mnId is now assigned).
     pMP->mnPoolChunkIdx = chunk_idx;
-    pMP->mnPoolSlotIdx  = slot_idx;
+    pMP->mnPoolSlotIdx = slot_idx;
     return pMP;
 }
 
