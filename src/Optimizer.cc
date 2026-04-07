@@ -269,38 +269,35 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     gtsam::Values initial;
     initial.insert(poseK, Tcw);
 
+    for (int i = 0; i < N; i++)
     {
-        std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
-        for (int i = 0; i < N; i++)
+        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        if (!pMP)
         {
-            MapPoint* pMP = pFrame->mvpMapPoints[i];
-            if (!pMP)
-            {
-                continue;
-            }
-            Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
-            const double invSigma2 = static_cast<double>(pFrame->mvInvLevelSigma2[pFrame->mvKeysUn[i].octave]);
+            continue;
+        }
+        Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
+        const double invSigma2 = static_cast<double>(pFrame->mvInvLevelSigma2[pFrame->mvKeysUn[i].octave]);
 
-            if (pFrame->mvuRight[i] < 0)
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
-                Eigen::Vector2d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y);
-                auto noise = makeHuberNoise(2, 5.991, invSigma2);
-                vpFactorsMono.push_back(
-                    boost::make_shared<PinholeMonoPoseTcwFactor>(poseK, Xw, obs, noise, pFrame->mpCamera));
-                vnIndexMono.push_back(static_cast<size_t>(i));
-            }
-            else
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
-                Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
-                auto noise = makeHuberNoise(3, 7.815, invSigma2);
-                vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf,
-                                                                                         noise, pFrame->mpCamera));
-                vnIndexStereo.push_back(static_cast<size_t>(i));
-            }
+        if (pFrame->mvuRight[i] < 0)
+        {
+            nInitialCorrespondences++;
+            pFrame->mvbOutlier[i] = false;
+            Eigen::Vector2d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y);
+            auto noise = makeHuberNoise(2, 5.991, invSigma2);
+            vpFactorsMono.push_back(
+                boost::make_shared<PinholeMonoPoseTcwFactor>(poseK, Xw, obs, noise, pFrame->mpCamera));
+            vnIndexMono.push_back(static_cast<size_t>(i));
+        }
+        else
+        {
+            nInitialCorrespondences++;
+            pFrame->mvbOutlier[i] = false;
+            Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
+            auto noise = makeHuberNoise(3, 7.815, invSigma2);
+            vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf,
+                                                                                     noise, pFrame->mpCamera));
+            vnIndexStereo.push_back(static_cast<size_t>(i));
         }
     }
 
