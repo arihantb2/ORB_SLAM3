@@ -61,7 +61,7 @@ bool sortByVal(const std::pair<MapPoint*, int>& a, const std::pair<MapPoint*, in
 // Returns observations sorted by KeyFrame mnId so that graph edge construction order
 // is deterministic regardless of pointer address (ASLR).
 static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> sortedObservations(
-    const std::map<KeyFrame*, std::tuple<int, int>>& obs)
+    const std::unordered_map<KeyFrame*, std::tuple<int, int>>& obs)
 {
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> v(obs.begin(), obs.end());
     std::sort(v.begin(), v.end(),
@@ -127,7 +127,7 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
         initial.insert(pk, Xw);
         landmarkKeys.push_back(pk);
 
-        const std::map<KeyFrame*, std::tuple<int, int>> observations = pMP->GetObservations();
+        const auto observations = pMP->GetObservations();
         int nEdges = 0;
 
         for (const auto& [pKF, tup] : sortedObservations(observations))
@@ -267,38 +267,35 @@ int Optimizer::PoseOptimization(Frame* pFrame)
     gtsam::Values initial;
     initial.insert(poseK, Tcw);
 
+    for (int i = 0; i < N; i++)
     {
-        std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
-        for (int i = 0; i < N; i++)
+        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        if (!pMP)
         {
-            MapPoint* pMP = pFrame->mvpMapPoints[i];
-            if (!pMP)
-            {
-                continue;
-            }
-            Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
-            const double invSigma2 = static_cast<double>(pFrame->mvInvLevelSigma2[pFrame->mvKeysUn[i].octave]);
+            continue;
+        }
+        Eigen::Vector3d Xw = pMP->GetWorldPos().cast<double>();
+        const double invSigma2 = static_cast<double>(pFrame->mvInvLevelSigma2[pFrame->mvKeysUn[i].octave]);
 
-            if (pFrame->mvuRight[i] < 0)
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
-                Eigen::Vector2d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y);
-                auto noise = makeHuberNoise(2, 5.991, invSigma2);
-                vpFactorsMono.push_back(
-                    boost::make_shared<PinholeMonoPoseTcwFactor>(poseK, Xw, obs, noise, pFrame->mpCamera));
-                vnIndexMono.push_back(static_cast<size_t>(i));
-            }
-            else
-            {
-                nInitialCorrespondences++;
-                pFrame->mvbOutlier[i] = false;
-                Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
-                auto noise = makeHuberNoise(3, 7.815, invSigma2);
-                vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf,
-                                                                                         noise, pFrame->mpCamera));
-                vnIndexStereo.push_back(static_cast<size_t>(i));
-            }
+        if (pFrame->mvuRight[i] < 0)
+        {
+            nInitialCorrespondences++;
+            pFrame->mvbOutlier[i] = false;
+            Eigen::Vector2d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y);
+            auto noise = makeHuberNoise(2, 5.991, invSigma2);
+            vpFactorsMono.push_back(
+                boost::make_shared<PinholeMonoPoseTcwFactor>(poseK, Xw, obs, noise, pFrame->mpCamera));
+            vnIndexMono.push_back(static_cast<size_t>(i));
+        }
+        else
+        {
+            nInitialCorrespondences++;
+            pFrame->mvbOutlier[i] = false;
+            Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
+            auto noise = makeHuberNoise(3, 7.815, invSigma2);
+            vpFactorsStereo.push_back(
+                boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf, noise, pFrame->mpCamera));
+            vnIndexStereo.push_back(static_cast<size_t>(i));
         }
     }
 
@@ -459,7 +456,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     std::list<KeyFrame*> lFixedCameras;
     for (std::list<MapPoint*>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++)
     {
-        const std::map<KeyFrame*, std::tuple<int, int>> observations = (*lit)->GetObservations();
+        const auto observations = (*lit)->GetObservations();
         for (const auto& [pKFi, tup] : sortedObservations(observations))
         {
             if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId)

@@ -7,6 +7,8 @@ Camera.type: "Metashape"
 Camera.width: 2816
 Camera.height: 2848
 
+Camera.ScalingFactor: 0.25
+
 # Camera 1 (Left - AC)
 Camera1.f: 3119.0801214017383
 Camera1.cx: 29.774822693556079

@@ -513,10 +513,9 @@ void KeyFrame::UpdateConnections(bool upParent)
         {
             continue;
         }
-        std::map<KeyFrame*, std::tuple<int, int>> observations = pMP->GetObservations();
+        auto observations = pMP->GetObservations();
 
-        for (std::map<KeyFrame*, std::tuple<int, int>>::iterator mit = observations.begin(), mend = observations.end();
-             mit != mend; mit++)
+        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; mit++)
         {
             if (mit->first->mnId == mnId || mit->first->isBad() || mit->first->GetMap() != mpMap)
             {

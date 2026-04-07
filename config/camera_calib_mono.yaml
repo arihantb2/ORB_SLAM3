@@ -21,5 +21,4 @@ Camera1.p2: 9.1345770830969774e-05
 Camera.width: 2816
 Camera.height: 2848
 
-Camera.newWidth: 2816
-Camera.newHeight: 2848
+Camera.ScalingFactor: 0.25

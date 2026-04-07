@@ -19,12 +19,14 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include <atomic>
 #include <list>
 #include <map>
 #include <mutex>
 #include <set>
 #include <sophus/se3.hpp>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <opencv2/core/core.hpp>
@@ -59,36 +61,36 @@ public:
     void EraseKeyFrame(KeyFrame* pKF);
     void SetReferenceMapPoints(const std::vector<MapPoint*>& vpMPs);
     void InformNewBigChange();
-    int GetLastBigChangeIdx();
+    [[nodiscard]] int GetLastBigChangeIdx();
 
-    std::vector<KeyFrame*> GetAllKeyFrames();
-    std::vector<MapPoint*> GetAllMapPoints();
-    std::vector<MapPoint*> GetReferenceMapPoints();
+    [[nodiscard]] std::vector<KeyFrame*> GetAllKeyFrames();
+    [[nodiscard]] std::vector<MapPoint*> GetAllMapPoints();
+    [[nodiscard]] std::vector<MapPoint*> GetReferenceMapPoints();
 
-    long unsigned int MapPointsInMap();
-    long unsigned KeyFramesInMap();
+    [[nodiscard]] long unsigned int MapPointsInMap();
+    [[nodiscard]] long unsigned KeyFramesInMap();
 
-    long unsigned int GetId();
+    [[nodiscard]] long unsigned int GetId();
 
-    long unsigned int GetInitKFid();
+    [[nodiscard]] long unsigned int GetInitKFid();
     void SetInitKFid(long unsigned int initKFif);
-    long unsigned int GetMaxKFid();
+    [[nodiscard]] long unsigned int GetMaxKFid();
 
-    KeyFrame* GetOriginKF();
+    [[nodiscard]] KeyFrame* GetOriginKF();
 
     void SetCurrentMap();
     void SetStoredMap();
 
-    bool IsInUse();
+    [[nodiscard]] bool IsInUse();
 
     void SetBad();
-    bool IsBad();
+    [[nodiscard]] bool IsBad();
 
     void clear();
 
-    int GetMapChangeIndex();
+    [[nodiscard]] int GetMapChangeIndex();
     void IncreaseChangeIndex();
-    int GetLastMapChange();
+    [[nodiscard]] int GetLastMapChange();
     void SetLastMapChange(int currentChangeId);
 
     void ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool bScaledVel = false);
@@ -97,7 +99,7 @@ public:
     bool CheckEssentialGraph();
     void ChangeId(long unsigned int nId);
 
-    unsigned int GetLowerKFID();
+    [[nodiscard]] unsigned int GetLowerKFID();
 
     void printReprojectionError(std::list<KeyFrame*>& lpLocalWindowKFs, KeyFrame* mpCurrentKF, std::string& name,
                                 std::string& name_folder);
@@ -109,7 +111,7 @@ public:
     // This avoid that two points are created simultaneously in separate threads (id conflict)
     std::mutex mMutexPointCreation;
 
-    bool mbFail;
+    std::atomic<bool> mbFail{false};
 
     static long unsigned int nNextId;
 
@@ -120,8 +122,8 @@ public:
 protected:
     long unsigned int mnId;
 
-    std::set<MapPoint*> mspMapPoints;
-    std::set<KeyFrame*> mspKeyFrames;
+    std::unordered_set<MapPoint*> mspMapPoints;
+    std::unordered_set<KeyFrame*> mspKeyFrames;
 
     KeyFrame* mpKFinitial;
     KeyFrame* mpKFlowerID;
@@ -138,8 +140,8 @@ protected:
     // Index related to a big change in the map (loop closure, global BA)
     int mnBigChangeIdx;
 
-    bool mIsInUse;
-    bool mbBad = false;
+    std::atomic<bool> mIsInUse{false};
+    std::atomic<bool> mbBad{false};
 
     // Pool allocator for map-owned MapPoints.
     MapPointPool mMapPointPool;
