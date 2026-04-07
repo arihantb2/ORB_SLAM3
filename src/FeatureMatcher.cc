@@ -1865,7 +1865,7 @@ int FeatureMatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFra
                 if (dMP.empty())
                 {
                     Verbose::Print(Verbose::VERBOSITY_DEBUG)
-                        << "[" << CurrentFrame.mnId << "]" << "SEARCH_BY_PROJECTION: MapPoint " << pMP->mnId
+                        << "[" << CurrentFrame.mnId << "] SEARCH_BY_PROJECTION: MapPoint " << pMP->mnId
                         << " has no valid observations to compute descriptor. This should not happen";
 
                     continue;
@@ -2000,7 +2000,7 @@ int FeatureMatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFra
     }
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << CurrentFrame.mnId << "] " << "SEARCH_BY_PROJECTION: nmatches=" << nmatches << std::endl;
+        << "[" << CurrentFrame.mnId << "] SEARCH_BY_PROJECTION: nmatches=" << nmatches << std::endl;
 
     //Apply rotation consistency
     if (mbCheckOrientation)

@@ -256,13 +256,24 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
         mCurrentFrame.setPosePrior(posePrior.value());
     }
 
+    const auto t1 = std::chrono::steady_clock::now();
     TrackingResult result = Track();
+    const auto t2 = std::chrono::steady_clock::now();
+    const auto tracking_time_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    result.tracking_time_seconds = float(tracking_time_microseconds) / 1.0e6;
 
     // Attach the rectified images so the result is self-contained.
     // .clone() is mandatory: imageLeft/imageRight are const refs to temporaries
     // in System.cc that go out of scope immediately after this function returns.
     result.image_left = imageLeft.clone();
     result.image_right = imageRight.clone();
+
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_STEREO: Pose: " << result.pose.translation().transpose()
+        << std::endl;
+
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_STEREO: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
@@ -308,11 +319,23 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
     }
 
     lastID = mCurrentFrame.mnId;
+
+    const auto t1 = std::chrono::steady_clock::now();
     TrackingResult result = Track();
+    const auto t2 = std::chrono::steady_clock::now();
+    const auto tracking_time_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    result.tracking_time_seconds = float(tracking_time_microseconds) / 1.0e6;
 
     // Attach the (undistorted) image so the result is self-contained.
     // image_right is left default-constructed (empty) for monocular.
     result.image_left = image.clone();
+
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_MONOCULAR: Pose: " << result.pose.translation().transpose()
+        << std::endl;
+
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << "[" << mCurrentFrame.mnId << "] " << "GRAB_IMAGE_MONOCULAR: Tracking Time: " << result.tracking_time_seconds * 1000.0 << " ms" << std::endl;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
@@ -436,7 +459,7 @@ void Tracking::UpdateAfterTracking(bool tracking_success)
     }
 }
 
-void Tracking::ComputeVelocityFromPriors()
+bool Tracking::ComputeVelocityFromPriors()
 {
     auto compute_velocity = [](const Sophus::SE3f& T_wcCurr, const Sophus::SE3f& T_wcLast) -> Sophus::SE3f
     {
@@ -446,28 +469,9 @@ void Tracking::ComputeVelocityFromPriors()
         return T_cCurrcLast;
     };
 
-    Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] COMPUTE_VELOCITY_FROM_PRIORS: mCurrentFrame.hasPosePrior: " << std::boolalpha
-        << mCurrentFrame.hasPosePrior() << std::endl;
-
-    if (mState == NOT_INITIALIZED)
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId
-            << "] COMPUTE_VELOCITY_FROM_PRIORS: mInitialFrame.hasPosePrior: " << std::boolalpha
-            << mInitialFrame.hasPosePrior() << std::endl;
-    }
-    else
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId
-            << "] COMPUTE_VELOCITY_FROM_PRIORS: mLastFrame.hasPosePrior: " << std::boolalpha
-            << mLastFrame.hasPosePrior() << std::endl;
-    }
-
     if (!mCurrentFrame.hasPosePrior())
     {
-        return;
+        return false;
     }
 
     if (mState == OK && mLastFrame.hasPosePrior())
@@ -511,6 +515,8 @@ void Tracking::ComputeVelocityFromPriors()
             << "[" << mCurrentFrame.mnId << "] " << "COMPUTE_VELOCITY_FROM_PRIORS: Motion ||p||_c" << mInitialFrame.mnId
             << "Priorc" << mCurrentFrame.mnId << "Prior: " << p_cInitialPriorcCurrPrior_w.norm() << " m" << std::endl;
     }
+
+    return true;
 }
 
 TrackingResult Tracking::Track()
@@ -535,9 +541,14 @@ TrackingResult Tracking::Track()
     std::unique_lock<std::mutex> lock(pCurrentMap->mMutexMapUpdate);
 
     UpdateMapChangeState(pCurrentMap);
-    ComputeVelocityFromPriors();
 
     TrackingResult tracking_result;
+
+    if (ComputeVelocityFromPriors())
+    {
+        tracking_result.has_motion_prior = true;
+        tracking_result.motion_prior = mVelocity.inverse().translation();
+    }
 
     // Populate keypoint_data from mCurrentFrame immediately after frame construction.
     // mvuRight is initialised to -1 for every keypoint in mono (Frame constructor),
@@ -558,7 +569,11 @@ TrackingResult Tracking::Track()
 
     if (mState == NOT_INITIALIZED)
     {
-        Initialize();
+        if (Initialize())
+        {
+            tracking_result.success = true;
+            tracking_result.pose = mCurrentFrame.GetPose().inverse();
+        }
     }
     else if (mState == OK)
     {
@@ -884,12 +899,6 @@ void Tracking::MonocularInitialization()
     else
     {
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mInitialFrame[" << mInitialFrame.mnId
-            << "].hasPosePrior: " << std::boolalpha << mInitialFrame.hasPosePrior() << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mCurrentFrame[" << mCurrentFrame.mnId
-            << "].hasPosePrior: " << std::boolalpha << mCurrentFrame.hasPosePrior() << std::endl;
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: mbVelocity: " << std::boolalpha << mbVelocity
             << std::endl;
 
@@ -944,6 +953,12 @@ void Tracking::MonocularInitialization()
                 << std::endl;
 
             CreateInitialMapMonocular();
+        }
+        else
+        {
+            Verbose::Print(Verbose::VERBOSITY_DEBUG)
+                << "[" << mCurrentFrame.mnId << "] MONOCULAR_INITIALIZATION: Reconstruction with two views failed."
+                << std::endl;
         }
     }
 }

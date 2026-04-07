@@ -75,8 +75,6 @@ void Map::AddKeyFrame(KeyFrame* pKF)
     std::unique_lock<std::mutex> lock(mMutexMap);
     if (mspKeyFrames.empty())
     {
-        Verbose::Print(Verbose::VERBOSITY_NORMAL)
-            << "First KF:" << pKF->mnId << "; Map init KF:" << mnInitKFid << std::endl;
         mnInitKFid = pKF->mnId;
         mpKFinitial = pKF;
         mpKFlowerID = pKF;
