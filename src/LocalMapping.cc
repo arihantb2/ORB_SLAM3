@@ -121,8 +121,7 @@ void LocalMapping::Run()
             // Wait efficiently for a new KF or a finish request rather than busy-sleeping.
             // mMutexNewKFs already guards mlNewKeyFrames, so use it as the CV mutex.
             std::unique_lock<std::mutex> lock(mMutexNewKFs);
-            mCVNewKF.wait_for(lock, std::chrono::milliseconds(100),
-                              [this] { return !mlNewKeyFrames.empty(); });
+            mCVNewKF.wait_for(lock, std::chrono::milliseconds(100), [this] { return !mlNewKeyFrames.empty(); });
         }
         else
         {

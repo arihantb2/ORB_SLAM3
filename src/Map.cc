@@ -29,12 +29,7 @@ namespace ORB_SLAM3
 
 long unsigned int Map::nNextId = 0;
 
-Map::Map()
-    : mnMaxKFid(0),
-      mnBigChangeIdx(0),
-      mnMapChange(0),
-      mpFirstRegionKF(nullptr),
-      mnMapChangeNotified(0)
+Map::Map() : mnMaxKFid(0), mnBigChangeIdx(0), mnMapChange(0), mpFirstRegionKF(nullptr), mnMapChangeNotified(0)
 {
     mnId = nNextId++;
 }
@@ -108,8 +103,7 @@ void Map::EraseKeyFrame(KeyFrame* pKF)
     {
         if (pKF->mnId == mpKFlowerID->mnId)
         {
-            mpKFlowerID = *std::min_element(mspKeyFrames.begin(), mspKeyFrames.end(),
-                                             KeyFrame::lId);
+            mpKFlowerID = *std::min_element(mspKeyFrames.begin(), mspKeyFrames.end(), KeyFrame::lId);
         }
     }
     else

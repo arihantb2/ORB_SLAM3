@@ -252,9 +252,8 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
                 // Pick the observation with the lowest KF mnId as the new reference for
                 // deterministic behaviour regardless of container or pointer ordering.
                 mpRefKF = std::min_element(mObservations.begin(), mObservations.end(),
-                    [](const auto& a, const auto& b) {
-                        return a.first->mnId < b.first->mnId;
-                    })->first;
+                                           [](const auto& a, const auto& b) { return a.first->mnId < b.first->mnId; })
+                              ->first;
             }
             // If only 2 observations or less, discard point
             if (nObs <= 2)
@@ -420,9 +419,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> vSortedObs(observations.begin(), observations.end());
     std::sort(vSortedObs.begin(), vSortedObs.end(),
               [](const std::pair<KeyFrame*, std::tuple<int, int>>& a,
-                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) {
-                  return a.first->mnId < b.first->mnId;
-              });
+                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) { return a.first->mnId < b.first->mnId; });
 
     for (const auto& [pKF, indexes] : vSortedObs)
     {
@@ -645,7 +642,9 @@ void MapPoint::PrintObservations()
     for (const auto& [pKFi, indexes] : mObservations)
     {
         int leftIndex = std::get<0>(indexes), rightIndex = std::get<1>(indexes);
-        (void)pKFi; (void)leftIndex; (void)rightIndex;
+        (void)pKFi;
+        (void)leftIndex;
+        (void)rightIndex;
     }
 }
 

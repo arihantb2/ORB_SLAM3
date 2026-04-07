@@ -60,15 +60,13 @@ bool sortByVal(const std::pair<MapPoint*, int>& a, const std::pair<MapPoint*, in
 
 // Returns observations sorted by KeyFrame mnId so that graph edge construction order
 // is deterministic regardless of pointer address (ASLR).
-static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>>
-sortedObservations(const std::unordered_map<KeyFrame*, std::tuple<int, int>>& obs)
+static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> sortedObservations(
+    const std::unordered_map<KeyFrame*, std::tuple<int, int>>& obs)
 {
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> v(obs.begin(), obs.end());
     std::sort(v.begin(), v.end(),
               [](const std::pair<KeyFrame*, std::tuple<int, int>>& a,
-                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) {
-                  return a.first->mnId < b.first->mnId;
-              });
+                 const std::pair<KeyFrame*, std::tuple<int, int>>& b) { return a.first->mnId < b.first->mnId; });
     return v;
 }
 
@@ -295,8 +293,8 @@ int Optimizer::PoseOptimization(Frame* pFrame)
             pFrame->mvbOutlier[i] = false;
             Eigen::Vector3d obs(pFrame->mvKeysUn[i].pt.x, pFrame->mvKeysUn[i].pt.y, pFrame->mvuRight[i]);
             auto noise = makeHuberNoise(3, 7.815, invSigma2);
-            vpFactorsStereo.push_back(boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf,
-                                                                                     noise, pFrame->mpCamera));
+            vpFactorsStereo.push_back(
+                boost::make_shared<PinholeStereoPoseTcwFactor>(poseK, Xw, obs, pFrame->mbf, noise, pFrame->mpCamera));
             vnIndexStereo.push_back(static_cast<size_t>(i));
         }
     }
