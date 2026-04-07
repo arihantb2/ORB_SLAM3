@@ -21,6 +21,7 @@
 #include "KeyFrame.h"
 #include "MapPoint.h"
 
+#include <algorithm>
 #include <mutex>
 
 namespace ORB_SLAM3
@@ -32,10 +33,7 @@ Map::Map()
     : mnMaxKFid(0),
       mnBigChangeIdx(0),
       mnMapChange(0),
-      mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
-      mbFail(false),
-      mIsInUse(false),
-      mbBad(false),
+      mpFirstRegionKF(nullptr),
       mnMapChangeNotified(0)
 {
     mnId = nNextId++;
@@ -44,12 +42,9 @@ Map::Map()
 Map::Map(int initKFid)
     : mnInitKFid(initKFid),
       mnMaxKFid(initKFid),
-      /*mnLastLoopKFid(initKFid),*/ mnBigChangeIdx(0),
-      mIsInUse(false),
-      mbBad(false),
-      mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
+      mnBigChangeIdx(0),
+      mpFirstRegionKF(nullptr),
       mnMapChange(0),
-      mbFail(false),
       mnMapChangeNotified(0)
 {
     mnId = nNextId++;
@@ -57,10 +52,12 @@ Map::Map(int initKFid)
 
 Map::~Map()
 {
-    //TODO: erase all points from memory
+    for (MapPoint* pMP : mspMapPoints)
+        delete pMP;
     mspMapPoints.clear();
 
-    //TODO: erase all keyframes from memory
+    for (KeyFrame* pKF : mspKeyFrames)
+        delete pKF;
     mspKeyFrames.clear();
 
     mvpReferenceMapPoints.clear();
@@ -69,7 +66,7 @@ Map::~Map()
 
 void Map::AddKeyFrame(KeyFrame* pKF)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     if (mspKeyFrames.empty())
     {
         Verbose::Print(Verbose::VERBOSITY_NORMAL)
@@ -91,62 +88,58 @@ void Map::AddKeyFrame(KeyFrame* pKF)
 
 void Map::AddMapPoint(MapPoint* pMP)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mspMapPoints.insert(pMP);
 }
 
 void Map::EraseMapPoint(MapPoint* pMP)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mspMapPoints.erase(pMP);
-
-    // TODO: This only erase the pointer.
-    // Delete the MapPoint
+    // Object lifetime: pMP may still be referenced by callers after SetBadFlag().
+    // Deletion is deferred to Map::~Map() which deletes all remaining objects.
 }
 
 void Map::EraseKeyFrame(KeyFrame* pKF)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mspKeyFrames.erase(pKF);
-    if (mspKeyFrames.size() > 0)
+    if (!mspKeyFrames.empty())
     {
         if (pKF->mnId == mpKFlowerID->mnId)
         {
-            std::vector<KeyFrame*> vpKFs = std::vector<KeyFrame*>(mspKeyFrames.begin(), mspKeyFrames.end());
-            sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
-            mpKFlowerID = vpKFs[0];
+            mpKFlowerID = *std::min_element(mspKeyFrames.begin(), mspKeyFrames.end(),
+                                             KeyFrame::lId);
         }
     }
     else
     {
-        mpKFlowerID = 0;
+        mpKFlowerID = nullptr;
     }
-
-    // TODO: This only erase the pointer.
-    // Delete the MapPoint
+    // Object lifetime: deferred to Map::~Map().
 }
 
 void Map::SetReferenceMapPoints(const std::vector<MapPoint*>& vpMPs)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mvpReferenceMapPoints = vpMPs;
 }
 
 void Map::InformNewBigChange()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mnBigChangeIdx++;
 }
 
 int Map::GetLastBigChangeIdx()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mnBigChangeIdx;
 }
 
 std::vector<KeyFrame*> Map::GetAllKeyFrames()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     std::vector<KeyFrame*> v(mspKeyFrames.begin(), mspKeyFrames.end());
     std::sort(v.begin(), v.end(), KeyFrame::lId);
     return v;
@@ -154,7 +147,7 @@ std::vector<KeyFrame*> Map::GetAllKeyFrames()
 
 std::vector<MapPoint*> Map::GetAllMapPoints()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     std::vector<MapPoint*> v(mspMapPoints.begin(), mspMapPoints.end());
     std::sort(v.begin(), v.end(), [](MapPoint* a, MapPoint* b) { return a->mnId < b->mnId; });
     return v;
@@ -162,19 +155,19 @@ std::vector<MapPoint*> Map::GetAllMapPoints()
 
 long unsigned int Map::MapPointsInMap()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mspMapPoints.size();
 }
 
 long unsigned int Map::KeyFramesInMap()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mspKeyFrames.size();
 }
 
 std::vector<MapPoint*> Map::GetReferenceMapPoints()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mvpReferenceMapPoints;
 }
 
@@ -182,26 +175,28 @@ long unsigned int Map::GetId()
 {
     return mnId;
 }
+
 long unsigned int Map::GetInitKFid()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mnInitKFid;
 }
 
 void Map::SetInitKFid(long unsigned int initKFif)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mnInitKFid = initKFif;
 }
 
 long unsigned int Map::GetMaxKFid()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mnMaxKFid;
 }
 
 KeyFrame* Map::GetOriginKF()
 {
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mpKFinitial;
 }
 
@@ -217,15 +212,9 @@ void Map::SetStoredMap()
 
 void Map::clear()
 {
-    //    for(std::set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
-    //        delete *sit;
-
-    for (std::set<KeyFrame*>::iterator sit = mspKeyFrames.begin(), send = mspKeyFrames.end(); sit != send; sit++)
-    {
-        KeyFrame* pKF = *sit;
-        pKF->UpdateMap(static_cast<Map*>(NULL));
-        //        delete *sit;
-    }
+    std::lock_guard<std::mutex> lock(mMutexMap);
+    for (KeyFrame* pKF : mspKeyFrames)
+        pKF->UpdateMap(nullptr);
 
     mspMapPoints.clear();
     mspKeyFrames.clear();
@@ -251,15 +240,14 @@ bool Map::IsBad()
 
 void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool bScaledVel)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
 
     Sophus::SE3f Tyw = T;
     Eigen::Matrix3f Ryw = Tyw.rotationMatrix();
     Eigen::Vector3f tyw = Tyw.translation();
 
-    for (std::set<KeyFrame*>::iterator sit = mspKeyFrames.begin(); sit != mspKeyFrames.end(); sit++)
+    for (KeyFrame* pKF : mspKeyFrames)
     {
-        KeyFrame* pKF = *sit;
         Sophus::SE3f Twc = pKF->GetPoseInverse();
         Twc.translation() *= s;
         Sophus::SE3f Tyc = Tyw * Twc;
@@ -275,9 +263,8 @@ void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool b
             pKF->SetVelocity(Ryw * Vw * s);
         }
     }
-    for (std::set<MapPoint*>::iterator sit = mspMapPoints.begin(); sit != mspMapPoints.end(); sit++)
+    for (MapPoint* pMP : mspMapPoints)
     {
-        MapPoint* pMP = *sit;
         pMP->SetWorldPos(s * Ryw * pMP->GetWorldPos() + tyw);
         pMP->UpdateNormalAndDepth();
     }
@@ -286,12 +273,13 @@ void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s, const bool b
 
 void Map::ChangeId(long unsigned int nId)
 {
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mnId = nId;
 }
 
 unsigned int Map::GetLowerKFID()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     if (mpKFlowerID)
     {
         return mpKFlowerID->mnId;
@@ -301,25 +289,25 @@ unsigned int Map::GetLowerKFID()
 
 int Map::GetMapChangeIndex()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mnMapChange;
 }
 
 void Map::IncreaseChangeIndex()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mnMapChange++;
 }
 
 int Map::GetLastMapChange()
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     return mnMapChangeNotified;
 }
 
 void Map::SetLastMapChange(int currentChangeId)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
+    std::lock_guard<std::mutex> lock(mMutexMap);
     mnMapChangeNotified = currentChangeId;
 }
 

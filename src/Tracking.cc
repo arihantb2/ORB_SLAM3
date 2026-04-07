@@ -1996,10 +1996,8 @@ void Tracking::UpdateLocalKeyFrames()
         {
             if (!pMP->isBad())
             {
-                const std::map<KeyFrame*, std::tuple<int, int>> observations = pMP->GetObservations();
-                for (std::map<KeyFrame*, std::tuple<int, int>>::const_iterator it = observations.begin(),
-                                                                               itend = observations.end();
-                     it != itend; it++)
+                const auto observations = pMP->GetObservations();
+                for (auto it = observations.begin(), itend = observations.end(); it != itend; it++)
                 {
                     keyframeCounter[it->first]++;
                 }

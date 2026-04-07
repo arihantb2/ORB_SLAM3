@@ -25,8 +25,7 @@
 
 #include <mutex>
 #include <opencv2/core/core.hpp>
-
-#include <set>
+#include <unordered_map>
 
 namespace ORB_SLAM3
 {
@@ -46,45 +45,45 @@ public:
     MapPoint(const Eigen::Vector3f& Pos, Map* pMap, Frame* pFrame, const int& idxF);
 
     void SetWorldPos(const Eigen::Vector3f& Pos);
-    Eigen::Vector3f GetWorldPos();
+    [[nodiscard]] Eigen::Vector3f GetWorldPos();
 
-    Eigen::Vector3f GetNormal();
+    [[nodiscard]] Eigen::Vector3f GetNormal();
     void SetNormalVector(const Eigen::Vector3f& normal);
 
-    KeyFrame* GetReferenceKeyFrame();
+    [[nodiscard]] KeyFrame* GetReferenceKeyFrame();
 
-    std::map<KeyFrame*, std::tuple<int, int>> GetObservations();
-    int Observations();
+    [[nodiscard]] std::unordered_map<KeyFrame*, std::tuple<int, int>> GetObservations();
+    [[nodiscard]] int Observations();
 
     void AddObservation(KeyFrame* pKF, int idx);
     void EraseObservation(KeyFrame* pKF);
 
-    std::tuple<int, int> GetIndexInKeyFrame(KeyFrame* pKF);
-    bool IsInKeyFrame(KeyFrame* pKF);
+    [[nodiscard]] std::tuple<int, int> GetIndexInKeyFrame(KeyFrame* pKF);
+    [[nodiscard]] bool IsInKeyFrame(KeyFrame* pKF);
 
     void SetBadFlag();
-    bool isBad();
+    [[nodiscard]] bool isBad();
 
     void Replace(MapPoint* pMP);
-    MapPoint* GetReplaced();
+    [[nodiscard]] MapPoint* GetReplaced();
 
     void IncreaseVisible(int n = 1);
     void IncreaseFound(int n = 1);
-    float GetFoundRatio();
-    inline int GetFound() { return mnFound; }
+    [[nodiscard]] float GetFoundRatio();
+    [[nodiscard]] inline int GetFound() { return mnFound; }
 
     void ComputeDistinctiveDescriptors();
 
-    cv::Mat GetDescriptor();
+    [[nodiscard]] cv::Mat GetDescriptor();
 
     void UpdateNormalAndDepth();
 
-    float GetMinDistanceInvariance();
-    float GetMaxDistanceInvariance();
-    int PredictScale(const float& currentDist, KeyFrame* pKF);
-    int PredictScale(const float& currentDist, Frame* pF);
+    [[nodiscard]] float GetMinDistanceInvariance();
+    [[nodiscard]] float GetMaxDistanceInvariance();
+    [[nodiscard]] int PredictScale(const float& currentDist, KeyFrame* pKF);
+    [[nodiscard]] int PredictScale(const float& currentDist, Frame* pF);
 
-    Map* GetMap();
+    [[nodiscard]] Map* GetMap();
     void UpdateMap(Map* pMap);
 
     void PrintObservations();
@@ -131,8 +130,6 @@ public:
     double mInitV;
     KeyFrame* mpHostKF;
 
-    static std::mutex mGlobalMutex;
-
     unsigned int mnOriginMapId;
 
 protected:
@@ -140,7 +137,7 @@ protected:
     Eigen::Vector3f mWorldPos;
 
     // Keyframes observing the point and associated index in keyframe
-    std::map<KeyFrame*, std::tuple<int, int>> mObservations;
+    std::unordered_map<KeyFrame*, std::tuple<int, int>> mObservations;
 
     // Mean viewing direction
     Eigen::Vector3f mNormalVector;
