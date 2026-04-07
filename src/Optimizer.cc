@@ -61,7 +61,7 @@ bool sortByVal(const std::pair<MapPoint*, int>& a, const std::pair<MapPoint*, in
 // Returns observations sorted by KeyFrame mnId so that graph edge construction order
 // is deterministic regardless of pointer address (ASLR).
 static std::vector<std::pair<KeyFrame*, std::tuple<int, int>>>
-sortedObservations(const std::map<KeyFrame*, std::tuple<int, int>>& obs)
+sortedObservations(const std::unordered_map<KeyFrame*, std::tuple<int, int>>& obs)
 {
     std::vector<std::pair<KeyFrame*, std::tuple<int, int>>> v(obs.begin(), obs.end());
     std::sort(v.begin(), v.end(),
@@ -129,7 +129,7 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs, const std:
         initial.insert(pk, Xw);
         landmarkKeys.push_back(pk);
 
-        const std::map<KeyFrame*, std::tuple<int, int>> observations = pMP->GetObservations();
+        const auto observations = pMP->GetObservations();
         int nEdges = 0;
 
         for (const auto& [pKF, tup] : sortedObservations(observations))
@@ -461,7 +461,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag, Map* pMap
     std::list<KeyFrame*> lFixedCameras;
     for (std::list<MapPoint*>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++)
     {
-        const std::map<KeyFrame*, std::tuple<int, int>> observations = (*lit)->GetObservations();
+        const auto observations = (*lit)->GetObservations();
         for (const auto& [pKFi, tup] : sortedObservations(observations))
         {
             if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId)
