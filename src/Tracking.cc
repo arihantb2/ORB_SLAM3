@@ -801,7 +801,7 @@ void Tracking::StereoInitialization()
         {
             Eigen::Vector3f x3D;
             mCurrentFrame.UnprojectStereo(i, x3D);
-            MapPoint* pNewMP = new MapPoint(x3D, pKFini, mpAtlas->GetCurrentMap());
+            MapPoint* pNewMP = mpAtlas->GetCurrentMap()->CreateMapPoint(x3D, pKFini);
             new_map_points.push_back({i, pNewMP});
         }
     }
@@ -971,7 +971,7 @@ void Tracking::CreateInitialMapMonocular()
         //Create MapPoint.
         Eigen::Vector3f worldPos;
         worldPos << mvIniP3D[i].x, mvIniP3D[i].y, mvIniP3D[i].z;
-        MapPoint* pMP = new MapPoint(worldPos, pKFcur, mpAtlas->GetCurrentMap());
+        MapPoint* pMP = mpAtlas->GetCurrentMap()->CreateMapPoint(worldPos, pKFcur);
 
         pKFini->AddMapPoint(pMP, i);
         pKFcur->AddMapPoint(pMP, mvIniMatches[i]);
@@ -1831,7 +1831,7 @@ void Tracking::CreateNewKeyFrame()
 
                     mCurrentFrame.UnprojectStereo(i, x3D);
 
-                    MapPoint* pNewMP = new MapPoint(x3D, pKF, mpAtlas->GetCurrentMap());
+                    MapPoint* pNewMP = mpAtlas->GetCurrentMap()->CreateMapPoint(x3D, pKF);
                     pNewMP->AddObservation(pKF, i);
 
                     //Check if it is a stereo observation in order to not

@@ -57,7 +57,10 @@ Map::Map(int initKFid)
 
 Map::~Map()
 {
-    //TODO: erase all points from memory
+    // DestroyAll calls the destructor on every live MapPoint and frees all chunk
+    // memory. Must run before mspMapPoints.clear() so that no MapPoint object is
+    // left alive after its pool chunk is freed.
+    mMapPointPool.DestroyAll();
     mspMapPoints.clear();
 
     //TODO: erase all keyframes from memory
@@ -97,11 +100,27 @@ void Map::AddMapPoint(MapPoint* pMP)
 
 void Map::EraseMapPoint(MapPoint* pMP)
 {
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mspMapPoints.erase(pMP);
+    {
+        std::unique_lock<std::mutex> lock(mMutexMap);
+        mspMapPoints.erase(pMP);
+    }
+    // mMutexMap is released before Release() so that mMutexMap and mPoolMutex
+    // (inside the pool) are never held simultaneously — see lock-order notes in
+    // MapPointPool.h.
+    mMapPointPool.Release(pMP);
+}
 
-    // TODO: This only erase the pointer.
-    // Delete the MapPoint
+MapPoint* Map::CreateMapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF)
+{
+    // mMutexPointCreation is locked inside the MapPoint constructor (for nNextId),
+    // after mPoolMutex has already been released by Acquire(). Lock order is safe.
+    return mMapPointPool.Acquire(Pos, pRefKF, this);
+}
+
+MapPoint* Map::CreateMapPoint(const double invDepth, cv::Point2f uv_init,
+                              KeyFrame* pRefKF, KeyFrame* pHostKF)
+{
+    return mMapPointPool.Acquire(invDepth, uv_init, pRefKF, pHostKF, this);
 }
 
 void Map::EraseKeyFrame(KeyFrame* pKF)
@@ -217,14 +236,14 @@ void Map::SetStoredMap()
 
 void Map::clear()
 {
-    //    for(std::set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
-    //        delete *sit;
+    // Destroy all live MapPoints and release all pool chunks before clearing the
+    // pointer set, so no object outlives its backing memory.
+    mMapPointPool.DestroyAll();
 
     for (std::set<KeyFrame*>::iterator sit = mspKeyFrames.begin(), send = mspKeyFrames.end(); sit != send; sit++)
     {
         KeyFrame* pKF = *sit;
         pKF->UpdateMap(static_cast<Map*>(NULL));
-        //        delete *sit;
     }
 
     mspMapPoints.clear();

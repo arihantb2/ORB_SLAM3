@@ -23,6 +23,7 @@
 #include "KeyFrame.h"
 #include "Map.h"
 
+#include <cstddef>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 
@@ -44,6 +45,7 @@ public:
     MapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const double invDepth, cv::Point2f uv_init, KeyFrame* pRefKF, KeyFrame* pHostKF, Map* pMap);
     MapPoint(const Eigen::Vector3f& Pos, Map* pMap, Frame* pFrame, const int& idxF);
+
 
     void SetWorldPos(const Eigen::Vector3f& Pos);
     Eigen::Vector3f GetWorldPos();
@@ -92,6 +94,12 @@ public:
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
+
+    // Pool bookkeeping: which chunk and slot within MapPointPool this object
+    // occupies. Set by MapPointPool::Acquire() after construction. Used by
+    // MapPointPool::Release() for O(1) chunk identification.
+    std::size_t mnPoolChunkIdx{0};
+    std::size_t mnPoolSlotIdx{0};
     long int mnFirstKFid;
     long int mnFirstFrame;
     int nObs;
