@@ -327,6 +327,14 @@ public:
     int mMotionModelRetryProjectionSearchTh = 60;
     int mMotionModelMinRetryMatches = 20;
     int mMotionModelMinOptimizedMapMatches = 10;
+
+    // KLT motion prior parameters
+    int      mKLTPyrLevels          = 3;
+    cv::Size mKLTWinSize            = {21, 21};
+    int      mKLTMinTrackedPoints   = 15;   // min KLT successes needed to attempt PnP
+    int      mKLTMinInliers         = 10;   // min PnP RANSAC inliers for a valid prior
+    float    mKLTProjectionSearchTh = 5.0f; // search radius (px) when KLT prior is valid
+
     int mLocalMapGenericMinInliers = 10;
     int mLocalMapVisualMinInliers = 30;
 
@@ -370,6 +378,11 @@ protected:
     // Compute velocity from priors
     bool ComputeVelocityFromPriors();
 
+    // KLT-based motion prior: tracks last-frame keypoints into the current frame via
+    // pyramidal Lucas-Kanade and solves PnP+RANSAC to get a pose estimate.
+    // Returns true and fills T_estimated (T_cw) if a valid prior was found.
+    bool ComputeKLTPrior(Sophus::SE3f& T_estimated);
+
     // Load settings
     void loadFromSettings(Settings* settings);
 
@@ -396,8 +409,9 @@ protected:
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
 
-    // Store the last frame image
-    cv::Mat mImGrayLast;
+    // Grayscale images for KLT optical-flow motion prior
+    cv::Mat mImGrayLast;     // image from the previous frame (populated after each successful tracking step)
+    cv::Mat mImGrayCurrent;  // image from the current frame (populated in GrabImage* before Frame construction)
 
     // System
     System* mpSystem;

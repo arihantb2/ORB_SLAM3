@@ -82,6 +82,24 @@ Tracking.MotionModel.MinRetryMatches: 20
 # Final gate before declaring motion model tracking successful.
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
+# KLT optical-flow motion prior
+# [ComputeKLTPrior()] — pyramid levels for cv::calcOpticalFlowPyrLK.
+# More levels = more robust to large displacements; fewer = faster.
+Tracking.KLT.PyrLevels: 3
+# [ComputeKLTPrior()] — window size (square, in pixels) for each pyramid level.
+# Larger windows capture faster motion but are slower and noisier.
+Tracking.KLT.WinSize: 21
+# [ComputeKLTPrior()] — minimum KLT-tracked point-MapPoint pairs needed to attempt PnP.
+# Set higher for stricter prior; lower to allow KLT in sparse scenes.
+Tracking.KLT.MinTrackedPoints: 15
+# [ComputeKLTPrior()] — minimum PnP RANSAC inliers to accept the KLT-derived pose.
+# Below this the function returns false and the constant-velocity model is used instead.
+Tracking.KLT.MinInliers: 10
+# [TrackWithMotionModel()] — SearchByProjection radius (px) when KLT prior is valid.
+# Intentionally much tighter than MotionModel.ProjectionSearchTh (e.g. 5 vs 15) since
+# the KLT-based pose is already accurate; a small window reduces perceptual-aliasing risk.
+Tracking.KLT.ProjectionSearchTh: 5.0
+
 # Local map tracking success thresholds (visual path only)
 # [TrackLocalMap()] — two-tier success check:
 # GenericMinInliers: lower bound — if inliers exceed this AND other conditions hold,

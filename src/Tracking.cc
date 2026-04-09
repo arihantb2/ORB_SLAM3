@@ -203,6 +203,13 @@ void Tracking::loadFromSettings(Settings* settings)
     mMotionModelMinRetryMatches = settings->motionModelMinRetryMatches();
     mMotionModelMinOptimizedMapMatches = settings->motionModelMinOptimizedMapMatches();
 
+    // KLT motion prior parameters
+    mKLTPyrLevels = settings->kltPyrLevels();
+    mKLTWinSize = cv::Size(settings->kltWinSize(), settings->kltWinSize());
+    mKLTMinTrackedPoints = settings->kltMinTrackedPoints();
+    mKLTMinInliers = settings->kltMinInliers();
+    mKLTProjectionSearchTh = settings->kltProjectionSearchTh();
+
     // Local map tracking success thresholds
     mLocalMapGenericMinInliers = settings->localMapGenericMinInliers();
     mLocalMapVisualMinInliers = settings->localMapVisualMinInliers();
@@ -243,6 +250,9 @@ TrackingResult Tracking::GrabImageStereo(const cv::Mat& imageLeft, const cv::Mat
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
+
+    // Store image for KLT motion prior (must happen before Frame discards it)
+    mImGrayCurrent = imageLeft.clone();
 
     // Create the current frame, extracting features and computing stereo matches.
     mCurrentFrame = Frame(imageLeft, imageRight, timestamp, mpFeatureExtractorLeft, mpFeatureextractorRight,
@@ -298,6 +308,9 @@ TrackingResult Tracking::GrabImageMonocular(const cv::Mat& image, const double& 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << "----------------------------------------------------------------------------------------------------"
         << std::endl;
+
+    // Store image for KLT motion prior (must happen before Frame discards it)
+    mImGrayCurrent = image.clone();
 
     // Create the current frame, extracting features.
     if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET || (lastID - initID) < mMaxFrames)
@@ -411,6 +424,10 @@ void Tracking::UpdateAfterTracking(bool tracking_success)
 
         // Relative motion (last camera -> current camera) in Tcw convention
         mVelocity = T_cCurrcLast;
+
+        // Keep the current image alive as the "last" image for the next KLT call.
+        // No clone needed: mImGrayCurrent won't be overwritten until the next GrabImage* call.
+        mImGrayLast = mImGrayCurrent;
 
         // Delta position in world frame
         const Eigen::Vector3f& p_wcLast = T_cLastw.inverse().translation();
@@ -1416,6 +1433,120 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
     return result;
 }
 
+bool Tracking::ComputeKLTPrior(Sophus::SE3f& T_estimated)
+{
+    if (mImGrayLast.empty() || mImGrayCurrent.empty())
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] KLT_PRIOR failed: empty images." << std::endl;
+        return false;
+    }
+
+    // ---- 1. Collect last-frame keypoints that have valid, non-bad MapPoints ----
+    std::vector<cv::Point2f> pts_last;
+    std::vector<MapPoint*> vMP;
+    for (int i = 0; i < mLastFrame.N; i++)
+    {
+        MapPoint* pMP = mLastFrame.mvpMapPoints[i];
+        if (!pMP || mLastFrame.mvbOutlier[i] || pMP->isBad())
+        {
+            continue;
+        }
+        pts_last.push_back(mLastFrame.mvKeys[i].pt);
+        vMP.push_back(pMP);
+    }
+    if ((int)pts_last.size() < mKLTMinTrackedPoints)
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] KLT_PRIOR failed: not enough tracked points." << std::endl;
+        return false;
+    }
+
+    // ---- 2. Pyramidal KLT optical flow (distorted image space) ----
+    std::vector<cv::Point2f> pts_curr = pts_last;  // warm-start from last positions
+    std::vector<uchar> status;
+    std::vector<float> err;
+    cv::calcOpticalFlowPyrLK(mImGrayLast, mImGrayCurrent, pts_last, pts_curr, status, err, mKLTWinSize, mKLTPyrLevels);
+
+    // ---- 3. Build 3-D / 2-D correspondences from successful tracks ----
+    std::vector<cv::Point3f> obj_pts;
+    std::vector<cv::Point2f> img_pts;
+    for (size_t i = 0; i < status.size(); i++)
+    {
+        if (!status[i])
+        {
+            continue;
+        }
+        // Reject tracks that drifted outside the image
+        if (pts_curr[i].x < 0.f || pts_curr[i].x >= (float)mImGrayCurrent.cols || pts_curr[i].y < 0.f ||
+            pts_curr[i].y >= (float)mImGrayCurrent.rows)
+        {
+            continue;
+        }
+        const Eigen::Vector3f Xw = vMP[i]->GetWorldPos();
+        obj_pts.push_back({Xw(0), Xw(1), Xw(2)});
+        img_pts.push_back(pts_curr[i]);
+    }
+    if ((int)obj_pts.size() < mKLTMinTrackedPoints)
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] KLT_PRIOR failed: not enough valid 3D-2D correspondences." << std::endl;
+        return false;
+    }
+
+    // ---- 4. PnP + RANSAC (tracked positions are in the distorted image) ----
+    cv::Mat K = mCurrentFrame.mpCamera->toK();
+    cv::Mat rvec, tvec;
+    std::vector<int> inliers;
+    const bool ok = cv::solvePnPRansac(obj_pts, img_pts, K, mDistCoef, rvec, tvec,
+                                       /*useExtrinsicGuess=*/false,
+                                       /*iterationsCount=*/100,
+                                       /*reprojectionError=*/8.0f,
+                                       /*confidence=*/0.99, inliers, cv::SOLVEPNP_ITERATIVE);
+    if (!ok || (int)inliers.size() < mKLTMinInliers)
+    {
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] KLT_PRIOR failed: PnP RANSAC failed or not enough inliers ("
+            << inliers.size() << " < " << mKLTMinInliers << ")." << std::endl;
+        return false;
+    }
+
+    // ---- 5. Refine with inlier-only set ----
+    std::vector<cv::Point3f> obj_in;
+    std::vector<cv::Point2f> img_in;
+    obj_in.reserve(inliers.size());
+    img_in.reserve(inliers.size());
+    for (int idx : inliers)
+    {
+        obj_in.push_back(obj_pts[idx]);
+        img_in.push_back(img_pts[idx]);
+    }
+    cv::solvePnP(obj_in, img_in, K, mDistCoef, rvec, tvec, /*useExtrinsicGuess=*/true);
+
+    // ---- 6. Convert (rvec, tvec) → Sophus::SE3f  (T_cw convention) ----
+    cv::Mat Rcv;
+    cv::Rodrigues(rvec, Rcv);
+    Rcv.convertTo(Rcv, CV_32F);
+    tvec.convertTo(tvec, CV_32F);
+    Eigen::Matrix3f R;
+    Eigen::Vector3f t;
+    for (int i = 0; i < 3; i++)
+    {
+        t(i) = tvec.at<float>(i);
+        for (int j = 0; j < 3; j++)
+        {
+            R(i, j) = Rcv.at<float>(i, j);
+        }
+    }
+    T_estimated = Sophus::SE3f(R, t);
+
+    Verbose::Print(Verbose::VERBOSITY_DEBUG)
+        << "[" << mCurrentFrame.mnId << "] KLT_PRIOR: inliers=" << inliers.size() << "/" << obj_pts.size()
+        << " t=" << T_estimated.translation().transpose() << std::endl;
+
+    return true;
+}
+
 MotionModelTrackingResult Tracking::TrackWithMotionModel()
 {
     const DescriptorType descriptorType =
@@ -1426,26 +1557,48 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-    mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
+    // --- KLT motion prior ---
+    // Try to compute a tighter initial pose from sparse optical flow + PnP.
+    // Fall back to the constant-velocity model when KLT fails.
+    Sophus::SE3f T_klt;
+    const bool klt_valid = ComputeKLTPrior(T_klt);
+
+    if (klt_valid)
+    {
+        mCurrentFrame.SetPose(T_klt);
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: using KLT prior, "
+            << "searchTh=" << mKLTProjectionSearchTh << std::endl;
+    }
+    else
+    {
+        mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
+        Verbose::Print(Verbose::VERBOSITY_DEBUG)
+            << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: KLT unavailable, "
+            << "using constant-velocity model, searchTh=" << mMotionModelProjectionSearchTh << std::endl;
+    }
 
     MotionModelTrackingResult result;
     result.initial_pose = mCurrentFrame.GetPose().inverse();
 
     fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
-    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, mMotionModelProjectionSearchTh,
-                                              mSensor == System::MONOCULAR);
+    // Tighter search window when KLT gives an accurate prior
+    const float searchTh = klt_valid ? mKLTProjectionSearchTh : (float)mMotionModelProjectionSearchTh;
+    int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, searchTh, mSensor == System::MONOCULAR);
 
     result.num_matches = nmatches;
 
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
+        << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << " (klt=" << klt_valid
+        << ", searchTh=" << searchTh << ")" << std::endl;
 
     if (nmatches < mMotionModelMinInitialMatches)
     {
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
             << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: Not enough matches [" << nmatches
-            << "] < MinInitialMatches=" << mMotionModelMinInitialMatches << "." << std::endl;
+            << "] < MinInitialMatches=" << mMotionModelMinInitialMatches
+            << ". Retrying with wider window th=" << mMotionModelRetryProjectionSearchTh << std::endl;
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
 
         nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, mMotionModelRetryProjectionSearchTh,
@@ -1455,7 +1608,7 @@ MotionModelTrackingResult Tracking::TrackWithMotionModel()
         result.num_matches_retry = nmatches;
 
         Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches=" << nmatches << std::endl;
+            << "[" << mCurrentFrame.mnId << "] TRACK_WITH_MOTION_MODEL: nmatches after retry=" << nmatches << std::endl;
     }
 
     // Build a reverse lookup: MapPoint* -> index in mLastFrame.mvpMapPoints.

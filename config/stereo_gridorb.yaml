@@ -87,6 +87,13 @@ Tracking.MotionModel.MinRetryMatches: 20
 # Final gate before declaring motion model tracking successful.
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
+# KLT optical-flow motion prior — see stereo_orb.yaml for full parameter descriptions
+Tracking.KLT.PyrLevels: 3
+Tracking.KLT.WinSize: 21
+Tracking.KLT.MinTrackedPoints: 15
+Tracking.KLT.MinInliers: 10
+Tracking.KLT.ProjectionSearchTh: 5.0
+
 # Local map tracking success thresholds (visual path only)
 # [TrackLocalMap()] — two-tier success check:
 # GenericMinInliers: lower bound — if inliers exceed this AND other conditions hold,

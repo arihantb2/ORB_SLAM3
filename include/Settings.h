@@ -158,6 +158,11 @@ public:
     int motionModelRetryProjectionSearchTh() { return motionModelRetryProjectionSearchTh_; }
     int motionModelMinRetryMatches() { return motionModelMinRetryMatches_; }
     int motionModelMinOptimizedMapMatches() { return motionModelMinOptimizedMapMatches_; }
+    int kltPyrLevels() { return kltPyrLevels_; }
+    int kltWinSize() { return kltWinSize_; }
+    int kltMinTrackedPoints() { return kltMinTrackedPoints_; }
+    int kltMinInliers() { return kltMinInliers_; }
+    float kltProjectionSearchTh() { return kltProjectionSearchTh_; }
     int localMapGenericMinInliers() { return localMapGenericMinInliers_; }
     int localMapVisualMinInliers() { return localMapVisualMinInliers_; }
 
@@ -304,6 +309,11 @@ private:
     int motionModelRetryProjectionSearchTh_;
     int motionModelMinRetryMatches_;
     int motionModelMinOptimizedMapMatches_;
+    int kltPyrLevels_;
+    int kltWinSize_;
+    int kltMinTrackedPoints_;
+    int kltMinInliers_;
+    float kltProjectionSearchTh_;
     int localMapGenericMinInliers_;
     int localMapVisualMinInliers_;
 

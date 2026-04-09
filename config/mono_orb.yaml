@@ -71,6 +71,13 @@ Tracking.MotionModel.RetryProjectionSearchTh: 30
 Tracking.MotionModel.MinRetryMatches: 20
 Tracking.MotionModel.MinOptimizedMapMatches: 10
 
+# KLT optical-flow motion prior — see stereo_orb.yaml for full parameter descriptions
+Tracking.KLT.PyrLevels: 3
+Tracking.KLT.WinSize: 21
+Tracking.KLT.MinTrackedPoints: 15
+Tracking.KLT.MinInliers: 10
+Tracking.KLT.ProjectionSearchTh: 5.0
+
 # Local map tracking success thresholds
 Tracking.LocalMap.GenericMinInliers: 10
 Tracking.LocalMap.VisualMinInliers: 30

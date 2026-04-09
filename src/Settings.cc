@@ -406,6 +406,12 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     motionModelMinOptimizedMapMatches_ =
         readParameter<int>(fSettings, "Tracking.MotionModel.MinOptimizedMapMatches", found, 10, false);
 
+    kltPyrLevels_ = readParameter<int>(fSettings, "Tracking.KLT.PyrLevels", found, 3, false);
+    kltWinSize_ = readParameter<int>(fSettings, "Tracking.KLT.WinSize", found, 21, false);
+    kltMinTrackedPoints_ = readParameter<int>(fSettings, "Tracking.KLT.MinTrackedPoints", found, 15, false);
+    kltMinInliers_ = readParameter<int>(fSettings, "Tracking.KLT.MinInliers", found, 10, false);
+    kltProjectionSearchTh_ = readParameter<float>(fSettings, "Tracking.KLT.ProjectionSearchTh", found, 5.0f, false);
+
     localMapGenericMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.GenericMinInliers", found, 10, false);
     localMapVisualMinInliers_ = readParameter<int>(fSettings, "Tracking.LocalMap.VisualMinInliers", found, 30, false);
 
