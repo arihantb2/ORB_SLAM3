@@ -54,6 +54,12 @@ Frame::Frame()
 {
 }
 
+Frame::~Frame()
+{
+    // release keypoints, descriptors, map points and image data
+
+}
+
 //Copy Constructor
 Frame::Frame(const Frame& frame)
     : mpORBvocabulary(frame.mpORBvocabulary),
@@ -187,7 +193,7 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight, const double& timeSt
         << "[" << mnId << "] STEREO_PINHOLE_FRAME: stereo_inlier_matches=" << nStereoInliers << " (keypoints=" << N
         << " ratio=" << (N > 0 ? static_cast<float>(nStereoInliers) / N : 0.f) << ")." << std::endl;
 
-    mvpMapPoints = std::vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
+    mvpMapPoints = std::vector<MapPoint*>(N, nullptr);
     mvbOutlier = std::vector<bool>(N, false);
     mmProjectPoints.clear();
     mmMatchedInImage.clear();
@@ -244,7 +250,7 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* e
       mbf(bf),
       mThDepth(thDepth),
       mpPrevFrame(pPrevF),
-      mpReferenceKF(static_cast<KeyFrame*>(NULL)),
+      mpReferenceKF(static_cast<KeyFrame*>(nullptr)),
       mbIsSet(false),
       mpCamera(pCamera),
       mbHasPose(false),
@@ -282,7 +288,7 @@ Frame::Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* e
     mvDepth = std::vector<float>(N, -1);
     mnCloseMPs = 0;
 
-    mvpMapPoints = std::vector<MapPoint*>(N, static_cast<MapPoint*>(NULL));
+    mvpMapPoints = std::vector<MapPoint*>(N, nullptr);
 
     mmProjectPoints.clear();  // = std::map<long unsigned int, cv::Point2f>(N, static_cast<cv::Point2f>(NULL));
     mmMatchedInImage.clear();

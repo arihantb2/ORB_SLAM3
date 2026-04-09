@@ -155,6 +155,8 @@ public:
     Frame(const cv::Mat& imGray, const double& timeStamp, FeatureExtractor* extractor, IBowVocabulary* voc,
           GeometricCamera* pCamera, cv::Mat& distCoef, const float& bf, const float& thDepth, Frame* pPrevF = nullptr);
 
+    ~Frame();
+
     void ExtractFeatures(bool left, const cv::Mat& im, const int x0, const int x1);
     void ComputeBoW();
 
