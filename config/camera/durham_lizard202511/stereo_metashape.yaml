@@ -1,0 +1,62 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# System config
+#--------------------------------------------------------------------------------------------
+
+# When the variables are commented, the system doesn't load a previous session or not store the current one
+
+# If the LoadFile doesn't exist, the system give a message and create a new Atlas from scratch
+#System.LoadAtlasFromFile: "Session_MH01_MH02_MH03_Mono"
+
+# The store file is created from the current session, if a file with the same name exists it is deleted
+#System.SaveAtlasToFile: "Session_MH01_MH02_MH03_Mono"
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+#--------------------------------------------------------------------------------------------
+# Camera Configuration
+#--------------------------------------------------------------------------------------------
+Camera.type: "Metashape"
+
+# Camera resolution
+Camera.width: 2816
+Camera.height: 2848
+
+# Camera 1 (Left - AC)
+Camera1.f:   3153.5938494259258
+Camera1.cx:  46.832216868217294 # offset from the image center, not from the top left corner
+Camera1.cy: -11.707580944257979 # offset from the image center, not from the top left corner
+Camera1.b1: -0.75887695418296819
+Camera1.b2:  0.82236145921047676
+
+# Distortion coefficients
+Camera1.k1: -0.13555807057676325
+Camera1.k2:  0.29841908621725677
+Camera1.k3: -0.24058963455830645
+Camera1.k4:  0.0
+Camera1.p1:  0.00015758128410807551
+Camera1.p2: -0.00051070998512042548
+
+# Camera 2 (Right - FC)
+Camera2.f:   3127.2964497383996
+Camera2.cx:  15.826190638032427
+Camera2.cy:  10.959438650578869
+Camera2.b1: -1.3865619651341994
+Camera2.b2: -0.51400777434547307
+
+# Distortion coefficients
+Camera2.k1: -0.17240091787615411
+Camera2.k2:  0.74360123910766662
+Camera2.k3: -2.0159640127509211
+Camera2.k4:  2.2915013802133339
+Camera2.p1: -0.00079089238273405275
+Camera2.p2: -0.00061047177140657622
+
+# T_c1_c2 from static_tf at runtime (override stereo-left-frame / stereo-right-frame if needed).
+
+# Thuber: Close/Far threshold (baseline * 40 is a common rule of thumb)
+Stereo.ThDepth: 30.0

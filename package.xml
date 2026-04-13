@@ -16,6 +16,20 @@
   <depend>fbow</depend>
   <depend>gtsam</depend>
 
+  <!-- vo + wrapper dependencies -->
+  <depend>lcm_log_player</depend>
+  <depend>acfr_lcm_types</depend>
+  <depend>static_tf</depend>
+  <depend>boost</depend>
+  <depend>rclcpp</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+
   <export>
     <build_type>cmake</build_type>
   </export>

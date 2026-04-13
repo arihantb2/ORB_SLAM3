@@ -1,0 +1,69 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+#--------------------------------------------------------------------------------------------
+# Camera Configuration
+#--------------------------------------------------------------------------------------------
+Camera.type: "Metashape"
+
+# Camera resolution
+Camera.width: 2816
+Camera.height: 2848
+
+# Camera 1 (Left - AC)
+# <calibration type="frame" class="adjusted">
+# <resolution width="2816" height="2848"/>
+# <f>3131.4524097766871</f>
+# <cx>34.616550174343388</cx>
+# <cy>20.822019226931914</cy>
+# <k1>-0.1463843227754732</k1>
+# <k2>0.39132817853432533</k2>
+# <k3>-0.43665562100761901</k3>
+# <p1>0.00014034021971985052</p1>
+# <p2>-0.00019266675728437811</p2>
+# </calibration>
+
+Camera1.f:   3131.4524097766871
+Camera1.cx:  34.616550174343388 # offset from the image center, not from the top left corner
+Camera1.cy:  20.822019226931914 # offset from the image center, not from the top left corner
+Camera1.b1:  0.0
+Camera1.b2:  0.0
+
+Camera1.k1: -0.1463843227754732
+Camera1.k2:  0.39132817853432533
+Camera1.k3: -0.43665562100761901
+Camera1.k4:  0.0
+Camera1.p1:  0.00014034021971985052
+Camera1.p2: -0.00019266675728437811
+
+# Camera 2 (Right - FC)
+# <calibration type="frame" class="adjusted">
+# <resolution width="2816" height="2848"/>
+# <f>3110.0705635004165</f>
+# <cx>-2.0845214813268043</cx>
+# <cy>9.8226918506607053</cy>
+# <k1>-0.11323516800789955</k1>
+# <k2>0.23165816228994907</k2>
+# <k3>-0.19948808477690555</k3>
+# <p1>-0.00046783034415465093</p1>
+# <p2>0.00018395757890485716</p2>
+# </calibration>
+
+Camera2.f: 3110.0705635004165
+Camera2.cx: -2.0845214813268043 # offset from the image center, not from the top left corner
+Camera2.cy: 9.8226918506607053 # offset from the image center, not from the top left corner
+Camera2.b1: 0.0
+Camera2.b2: 0.0
+
+Camera2.k1: -0.11323516800789955
+Camera2.k2:  0.23165816228994907
+Camera2.k3: -0.19948808477690555
+Camera2.k4:  0.0
+Camera2.p1: -0.00046783034415465093
+Camera2.p2:  0.00018395757890485716
+
+Stereo.ThDepth: 40.0

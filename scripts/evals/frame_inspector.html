@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ORB-SLAM3 Inspector</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --bg: #f7f8fb;
+    --panel: #ffffff;
+    --panel-2: #f1f5f9;
+    --border: #d7dde6;
+    --text: #0f172a;
+    --muted: #475569;
+    --muted-2: #64748b;
+    --accent: #2563eb;
+    --accent-2: #0ea5e9;
+    --danger: #dc2626;
+    --shadow: rgba(2, 6, 23, 0.06);
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace;
+         font-size: 12px; display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── load screen ── */
+  #load-screen {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px;
+  }
+  #load-screen h1 { font-size: 22px; color: var(--accent); letter-spacing: .06em; }
+  #load-screen p  { font-size: 12px; color: var(--muted); }
+  #load-screen code { color: var(--text); }
+  #load-screen.drag-over { border: 2px dashed var(--accent); background: var(--panel-2); }
+  .load-btn {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 22px; font-size: 13px; font-family: monospace;
+    cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s;
+    box-shadow: 0 6px 22px var(--shadow);
+  }
+  .load-btn:hover { background: var(--panel-2); border-color: #b8c2d1; }
+
+  /* ── dashboard ── */
+  #sidebar { width: 230px; min-width: 230px; background: var(--panel); padding: 14px 12px;
+             display: none; flex-direction: column; gap: 10px; overflow-y: auto;
+             border-right: 1px solid var(--border); }
+  #sidebar h2 { font-size: 13px; color: var(--accent); letter-spacing:.05em;
+                border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  #sidebar h3 { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                letter-spacing: .08em; margin-top: 4px; }
+  .section { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: var(--panel); }
+  .run-meta { font-size: 10px; color: var(--muted-2); line-height: 1.7; }
+  .run-meta span { color: var(--text); }
+  #signal-list { display: flex; flex-direction: column; gap: 4px; }
+  .sig-row { display: flex; align-items: center; gap: 8px; padding: 5px 7px;
+             border-radius: 5px; cursor: pointer; user-select: none;
+             border: 1px solid transparent; transition: background .15s, border-color .15s; }
+  .sig-row:hover { background: var(--panel-2); }
+  .sig-row.active { background: #eff6ff; border-color: var(--sc); }
+  .sig-dot-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .sig-label { flex: 1; color: var(--text); }
+  .flag-row { display: flex; align-items: center; gap: 8px; padding: 5px 7px;
+              border-radius: 5px; cursor: pointer; user-select: none; transition: background .15s; }
+  .flag-row:hover { background: var(--panel-2); }
+  .flag-row input[type=checkbox] { accent-color: var(--fc); width: 14px; height: 14px; cursor: pointer; }
+  .flag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .flag-label { flex: 1; color: var(--text); }
+  .flag-count { color: var(--muted); font-size: 10px; }
+  #agg-stats { font-size: 11px; color: var(--muted); line-height: 1.8; }
+  /* sidebar section groups */
+  #sidebar-ts-sections, #sidebar-3d-sections { display: flex; flex-direction: column; gap: 10px; }
+  .sig-group-hdr { font-size: 9px; color: var(--muted-2); text-transform: uppercase;
+                   letter-spacing: .08em; padding: 6px 7px 2px;
+                   border-top: 1px solid var(--border); margin-top: 2px; }
+
+  /* ── main area ── */
+  #main { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
+
+  /* ── tab bar ── */
+  #tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border);
+             padding: 0 10px; gap: 2px; flex-shrink: 0; }
+  .tab-btn { background: transparent; color: var(--muted); border: none; border-bottom: 2px solid transparent;
+             padding: 8px 16px; font-size: 11px; font-family: monospace; cursor: pointer;
+             transition: color .15s, border-color .15s; letter-spacing: .04em; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── time-series panel ── */
+  #ts-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  #toolbar { padding: 7px 14px; display: flex; align-items: center; gap: 12px;
+             border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; flex-shrink: 0; }
+  #toolbar label { color: var(--muted); font-size: 11px; }
+  select.ctl { background: var(--panel); color: var(--text); border: 1px solid var(--border);
+               border-radius: 4px; padding: 3px 7px; font-size: 11px; font-family: monospace; cursor: pointer; }
+  .reload-btn { background: var(--panel); color: var(--accent); border: 1px solid var(--border);
+                border-radius: 4px; padding: 3px 10px; font-size: 11px; font-family: monospace;
+                cursor: pointer; transition: background .15s; margin-left: auto; }
+  .reload-btn:hover { background: var(--panel-2); }
+  .jump-btn { background: var(--panel); color: var(--muted-2); border: 1px solid var(--border);
+              border-radius: 4px; padding: 2px 8px; font-size: 10px; font-family: monospace;
+              cursor: pointer; margin-left: 2px; }
+  .jump-btn:hover { background: var(--panel-2); color: var(--text); }
+  #current-frame { color: var(--accent); font-size: 11px; margin-left: 12px; }
+  #charts { flex: 1; overflow: hidden; min-height: 0; }
+  #stats-bar { padding: 5px 14px; background: var(--panel); border-top: 1px solid var(--border);
+               font-size: 11px; color: var(--muted); display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0; }
+  #stats-bar span { color: var(--text); }
+  .lost-seg { padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 10px;
+              color: var(--muted-2); margin-bottom: 2px; }
+  .lost-seg:hover { background: var(--panel-2); color: var(--text); }
+
+  /* ── 3D trajectory panel ── */
+  #td-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  #chart-3d  { flex: 1; overflow: hidden; min-height: 0; }
+
+  /* ── correlation panel ── */
+  #corr-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  #corr-toolbar { padding: 7px 14px; display: flex; align-items: center; gap: 12px;
+                  border-bottom: 1px solid var(--border); background: var(--panel);
+                  flex-wrap: wrap; flex-shrink: 0; }
+  #corr-toolbar label { color: var(--muted); font-size: 11px; }
+  #corr-plot { flex: 1; overflow: hidden; min-height: 0; }
+</style>
+</head>
+<body>
+
+<!-- file picker (hidden, shared by load screen and toolbar) -->
+<input type="file" id="file-input" accept=".json" style="display:none">
+
+<!-- load screen -->
+<div id="load-screen">
+  <h1>&#x2B23; Frame Inspector</h1>
+  <button class="load-btn" onclick="pickFile()">&#128193; Load inspector_data.json</button>
+  <p>Select a <code>*_inspector_data.json</code> file, or drag and drop one here.</p>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
+    <label style="color:var(--muted);font-size:11px">Recent:</label>
+    <select id="recent-select-loadscreen" class="ctl" style="min-width:320px;max-width:78vw"></select>
+    <button class="jump-btn" id="btn-load-recent-loadscreen" title="Load selected recent dataset">Load</button>
+  </div>
+</div>
+
+<!-- dashboard (hidden until data loaded) -->
+<div id="sidebar">
+  <h2>&#x2B23; Frame Inspector</h2>
+  <div class="section run-meta" id="run-meta-box"></div>
+
+  <!-- time-series controls (hidden when 3D tab active) -->
+  <div id="sidebar-ts-sections">
+    <div class="section">
+      <h3>Signals <span style="color:var(--muted-2);font-size:10px;">(click to toggle)</span></h3>
+      <div style="height:4px"></div>
+      <div id="signal-list"></div>
+    </div>
+
+    <div class="section">
+      <h3>Overlay Mode</h3>
+      <div style="height:4px"></div>
+      <select id="mode-select" class="ctl" style="width:100%">
+        <option value="overlay">Overlay markers</option>
+        <option value="filter">Filter (show only)</option>
+        <option value="highlight">Highlight (dim others)</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <h3>Boolean Flags</h3>
+      <div style="height:4px"></div>
+      <div id="flag-list"></div>
+    </div>
+
+    <div class="section">
+      <h3>Aggregate</h3>
+      <div style="height:4px"></div>
+      <div id="agg-stats"></div>
+    </div>
+
+  </div>
+
+  <!-- 3D trajectory controls (shown only when 3D tab active) -->
+  <div id="sidebar-3d-sections" style="display:none">
+    <div class="section">
+      <h3>Color By</h3>
+      <div style="height:4px"></div>
+      <select id="color-by-select" class="ctl" style="width:100%"></select>
+    </div>
+    <div class="section">
+      <h3>Colorscale</h3>
+      <div style="height:4px"></div>
+      <select id="colorscale-select" class="ctl" style="width:100%">
+        <option value="Viridis">Viridis</option>
+        <option value="Plasma">Plasma</option>
+        <option value="Turbo">Turbo</option>
+        <option value="RdYlGn">RdYlGn</option>
+        <option value="Hot">Hot</option>
+        <option value="Cividis">Cividis</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- tab bar -->
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="ts">Time Series</button>
+    <button class="tab-btn" data-tab="corr">Correlation</button>
+    <button class="tab-btn" data-tab="3d" id="tab-3d-btn" style="display:none">3D Trajectory</button>
+  </div>
+
+  <!-- time series panel -->
+  <div id="ts-panel">
+    <div id="toolbar">
+      <label>FLAGS ON:</label>
+      <select id="flag-target" class="ctl">
+        <option value="all">All subplots</option>
+        <option value="first">Top subplot only</option>
+      </select>
+      <label style="margin-left:8px">LINK X:</label>
+      <select id="link-axes" class="ctl">
+        <option value="yes">Yes (shared zoom)</option>
+        <option value="no">No (independent)</option>
+      </select>
+      <span id="current-frame">Frame: — | t= — s</span>
+      <button class="jump-btn" id="btn-prev" title="Previous frame">&#9664;</button>
+      <button class="jump-btn" id="btn-next" title="Next frame">&#9654;</button>
+      <button class="jump-btn" id="btn-prev-kf" title="Previous keyframe">&#9664; KF</button>
+      <button class="jump-btn" id="btn-next-kf" title="Next keyframe">KF &#9654;</button>
+      <button class="jump-btn" id="btn-prev-lost" title="Previous lost">&#9664; L</button>
+      <button class="jump-btn" id="btn-next-lost" title="Next lost">L &#9654;</button>
+      <button class="jump-btn" id="btn-zoom-reset" title="Reset zoom">Reset zoom</button>
+      <button class="reload-btn" onclick="pickFile()">&#8635; Load file</button>
+      <label style="margin-left:10px">Recent:</label>
+      <select id="recent-select-toolbar" class="ctl" style="min-width:220px;max-width:36vw"></select>
+      <button class="jump-btn" id="btn-load-recent-toolbar" title="Load selected recent dataset">Load</button>
+    </div>
+    <div id="charts"></div>
+    <div id="stats-bar">
+      <div>Frames: <span id="sb-total">-</span></div>
+      <div>Lost: <span id="sb-lost">-</span></div>
+      <div>Active signals: <span id="sb-sigs">-</span></div>
+      <div>Active flags: <span id="sb-flag">none</span></div>
+    </div>
+  </div>
+
+  <!-- correlation panel -->
+  <div id="corr-panel">
+    <div id="corr-toolbar">
+      <label>X:</label>
+      <select id="corr-x-select" class="ctl"></select>
+      <label>Y:</label>
+      <select id="corr-y-select" class="ctl"></select>
+      <label style="margin-left:8px">Apply FLAGS:</label>
+      <select id="corr-flags-mode" class="ctl">
+        <option value="none">No</option>
+        <option value="mask">Use active flags</option>
+      </select>
+    </div>
+    <div id="corr-plot"></div>
+  </div>
+
+  <!-- 3D trajectory panel -->
+  <div id="td-panel">
+    <div id="chart-3d"></div>
+  </div>
+
+</div>
+
+<script>
+let META, RAW, FLAGS, SIGS, N;
+let COLOR_DEFS = [];
+let activeTrajColor = null;
+let activeColorscale = 'Viridis';
+let traj3dRendered = false;
+let activeTab = 'ts';
+let currentFrameIndex = null;
+let zoomRange = null;
+let lostIndices = [];
+let kfIndices = [];
+let lostSegments = [];
+let last3dIdx = [];
+let chartsHandlersBound = false;
+let chart3dHandlersBound = false;
+let relayoutAutoYInFlight = false;
+
+const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+const p95  = a => { const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length*0.95)]??0; };
+const pick = (arr, idx) => idx.map(i => arr[i]);
+
+// ── persistence (recent files + last loaded payload) ───────────────────────────
+// Note: browsers do NOT expose real local file paths. If your JSON includes
+// meta.source_path, we use that as the label (it can be a full path).
+// To allow multiple tabs of the same HTML to remember different datasets, we
+// namespace storage keys by an optional `profile` query parameter:
+//   frame_inspector.html?profile=runA
+//   frame_inspector.html?profile=runB
+// Tabs opened with different profiles keep independent "last" selections. If no
+// profile is provided, we auto-generate one the first time a file is loaded,
+// update the URL (history.replaceState), and persist under that profile.
+let PROFILE_ID = (function initialProfileId() {
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const raw = (sp.get('profile') || '').trim();
+    if (!raw) return null;
+    return raw.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 40) || null;
+  } catch {
+    return null;
+  }
+})();
+
+function ensureProfileId() {
+  if (PROFILE_ID) return PROFILE_ID;
+  const rand = Math.random().toString(36).slice(2, 8);
+  const id = `tab_${Date.now().toString(36)}_${rand}`;
+  PROFILE_ID = id;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('profile', id);
+    window.history.replaceState(null, '', url.toString());
+  } catch {
+    // non-fatal; storage will still be namespaced by PROFILE_ID.
+  }
+  return PROFILE_ID;
+}
+
+function recentsStorageKey() {
+  const id = PROFILE_ID || 'pending';
+  return `orbslam3_inspector_recents_v1_${id}`;
+}
+
+function lastStorageKey() {
+  const id = PROFILE_ID || 'pending';
+  return `orbslam3_inspector_last_v1_${id}`;
+}
+const DB_NAME     = 'orbslam3_inspector_db_v1';
+const STORE_NAME  = 'payloads';
+
+function openInspectorDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(key, value) {
+  const db = await openInspectorDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await openInspectorDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function getRecents() {
+  if (!PROFILE_ID) return [];
+  try {
+    const raw = localStorage.getItem(recentsStorageKey());
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function setRecents(arr) {
+  if (!PROFILE_ID) return;
+  try { localStorage.setItem(recentsStorageKey(), JSON.stringify(arr)); } catch { /* ignore */ }
+}
+
+function upsertRecent(entry) {
+  ensureProfileId();
+  const recents = getRecents().filter(r => r && r.key !== entry.key);
+  recents.unshift(entry);
+  setRecents(recents.slice(0, 5));
+  try { localStorage.setItem(lastStorageKey(), entry.key); } catch { /* ignore */ }
+}
+
+function formatRecentLabel(r) {
+  const when = r && r.loadedAt ? new Date(r.loadedAt).toLocaleString() : '';
+  const base = (r && r.label) ? r.label : (r && r.fileName ? r.fileName : 'dataset');
+  return when ? `${base}  (${when})` : base;
+}
+
+function populateRecentSelect(selectEl) {
+  if (!selectEl) return;
+  const recents = getRecents();
+  selectEl.innerHTML = '';
+  const opt0 = document.createElement('option');
+  opt0.value = '';
+  opt0.textContent = recents.length ? '— select recent dataset —' : '— no recent datasets —';
+  selectEl.appendChild(opt0);
+  recents.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.key;
+    opt.textContent = formatRecentLabel(r);
+    selectEl.appendChild(opt);
+  });
+}
+
+function refreshRecentUi() {
+  populateRecentSelect(document.getElementById('recent-select-loadscreen'));
+  populateRecentSelect(document.getElementById('recent-select-toolbar'));
+}
+
+async function loadRecentByKey(key) {
+  if (!key) return;
+  ensureProfileId();
+  const payload = await idbGet(key);
+  if (!payload) { alert('Recent dataset not found in browser cache. Please reload the JSON file.'); return; }
+  loadPayload(payload);
+}
+
+const THEME = {
+  bg:        '#f7f8fb',
+  panel:     '#ffffff',
+  panel2:    '#f1f5f9',
+  border:    '#d7dde6',
+  grid:      '#e2e8f0',
+  text:      '#0f172a',
+  muted:     '#475569',
+  muted2:    '#64748b',
+  accent:    '#2563eb',
+  danger:    '#dc2626',
+  trajDim:   '#94a3b8',
+  curr:      '#e11d48',
+};
+
+// ── file picker ───────────────────────────────────────────────────────────────
+function pickFile() {
+  const inp = document.getElementById('file-input');
+  inp.value = '';          // reset so same file can be re-selected
+  inp.click();
+}
+
+function loadFile(file) {
+  if (!file || (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json')) return false;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let payload;
+    try { payload = JSON.parse(ev.target.result); }
+    catch(err) { alert('Failed to parse JSON: ' + err); return; }
+    // Assign a profile to this tab on first successful load, then persist.
+    ensureProfileId();
+    // Persist to browser cache (IndexedDB) for restore + recent list.
+    // Use meta.source_path as label if provided (can be full path).
+    try {
+      const label = payload && payload.meta && payload.meta.source_path ? String(payload.meta.source_path) : file.name;
+      const key = `${file.name}::${file.lastModified || 0}::${file.size || 0}`;
+      idbPut(key, payload).then(() => {
+        upsertRecent({ key, label, fileName: file.name, loadedAt: Date.now() });
+        refreshRecentUi();
+      }).catch(() => { /* ignore persistence failures */ });
+    } catch { /* ignore */ }
+    loadPayload(payload);
+  };
+  reader.readAsText(file);
+  return true;
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+(function() {
+  const el = document.getElementById('load-screen');
+  el.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', e => { e.preventDefault(); el.classList.remove('drag-over'); });
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    const file = e.dataTransfer && e.dataTransfer.files[0];
+    if (file && loadFile(file)) { /* loaded */ } else if (file) { alert('Please drop a .json file.'); }
+  });
+})();
+
+// Recent UI wiring + auto-restore last payload
+document.addEventListener('DOMContentLoaded', () => {
+  refreshRecentUi();
+  const btnLs = document.getElementById('btn-load-recent-loadscreen');
+  const selLs = document.getElementById('recent-select-loadscreen');
+  if (btnLs && selLs) btnLs.onclick = () => loadRecentByKey(selLs.value);
+  const btnTb = document.getElementById('btn-load-recent-toolbar');
+  const selTb = document.getElementById('recent-select-toolbar');
+  if (btnTb && selTb) btnTb.onclick = () => loadRecentByKey(selTb.value);
+
+  // Auto-restore last loaded dataset (if still cached) only when a profile is
+  // already present in the URL. This keeps blank-profile tabs independent until
+  // the first file is loaded and a profile is assigned.
+  if (PROFILE_ID) {
+    let lastKey = null;
+    try { lastKey = localStorage.getItem(lastStorageKey()); } catch { lastKey = null; }
+    if (lastKey) {
+      loadRecentByKey(lastKey).catch(() => { /* ignore */ });
+    }
+  }
+});
+
+// ── tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tab === activeTab) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+
+    document.getElementById('ts-panel').style.display = activeTab === 'ts' ? 'flex' : 'none';
+    document.getElementById('corr-panel').style.display = activeTab === 'corr' ? 'flex' : 'none';
+    document.getElementById('td-panel').style.display = activeTab === '3d' ? 'flex' : 'none';
+    document.getElementById('sidebar-ts-sections').style.display =
+      (activeTab === 'ts' || activeTab === 'corr') ? 'flex' : 'none';
+    document.getElementById('sidebar-3d-sections').style.display = activeTab === '3d' ? 'flex' : 'none';
+
+    if (activeTab === '3d') {
+      if (!traj3dRendered) {
+        traj3dRendered = true;
+        setTimeout(render3d, 0);
+      } else {
+        setTimeout(() => Plotly.Plots.resize('chart-3d'), 0);
+      }
+    } else if (activeTab === 'corr') {
+      setTimeout(renderCorr, 0);
+    } else {
+      setTimeout(() => Plotly.Plots.resize('charts'), 0);
+    }
+  });
+});
+
+// ── load payload ──────────────────────────────────────────────────────────────
+function loadPayload(payload) {
+  META       = payload.meta;
+  RAW        = payload.raw;
+  FLAGS      = payload.flags;
+  SIGS       = payload.sigs;
+  COLOR_DEFS = payload.color_defs || [];
+  N          = RAW.t.length;
+
+  traj3dRendered = false;
+  activeTab      = 'ts';
+
+  // hide load screen, show dashboard
+  document.getElementById('load-screen').style.display = 'none';
+  document.getElementById('sidebar').style.display     = 'flex';
+  document.getElementById('main').style.display        = 'flex';
+
+  // show/hide 3D tab button
+  const has3d = COLOR_DEFS.length > 0 && Array.isArray(RAW.tx);
+  document.getElementById('tab-3d-btn').style.display = has3d ? '' : 'none';
+
+  // reset to time-series tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-tab="ts"]').classList.add('active');
+  document.getElementById('ts-panel').style.display          = 'flex';
+  document.getElementById('corr-panel').style.display        = 'none';
+  document.getElementById('td-panel').style.display          = 'none';
+  document.getElementById('sidebar-ts-sections').style.display = 'flex';
+  document.getElementById('sidebar-3d-sections').style.display = 'none';
+
+  FLAGS.forEach(f => { f.count = RAW[f.col] ? RAW[f.col].filter(v=>v===f.val).length : 0; });
+
+  lostIndices = [];
+  if (RAW.tracking_state) for (let i = 0; i < N; i++) if (RAW.tracking_state[i] === 0) lostIndices.push(i);
+  kfIndices = [];
+  if (RAW.is_keyframe) for (let i = 0; i < N; i++) if (RAW.is_keyframe[i] === 1) kfIndices.push(i);
+  lostSegments = [];
+  for (let i = 0; i < lostIndices.length; i++) {
+    let j = i;
+    while (j + 1 < lostIndices.length && lostIndices[j + 1] === lostIndices[j] + 1) j++;
+    lostSegments.push({
+      startIdx: lostIndices[i], endIdx: lostIndices[j],
+      t0: RAW.t[lostIndices[i]], t1: RAW.t[lostIndices[j]],
+      nFrames: j - i + 1
+    });
+    i = j;
+  }
+  currentFrameIndex = null;
+  zoomRange = null;
+
+  if (has3d) buildColorDropdown();
+  buildSidebar();
+  // setTimeout(0) defers until after styles/layout are committed so Plotly
+  // reads a non-zero container on first render.
+  setTimeout(() => {
+    render();
+    renderCorr();
+  }, 0);
+}
+
+// ── build sidebar (called once per payload load) ──────────────────────────────
+let activeSignals, activeFlags, mode, flagTarget, linkAxes;
+
+function buildSidebar() {
+  activeSignals = new Set(SIGS.filter(s=>s.default).map(s=>s.col));
+  activeFlags   = new Set();
+  mode          = 'overlay';
+  flagTarget    = 'all';
+  linkAxes      = true;
+
+  // run meta
+  const uptimePct = 100 - (META.pct_lost ?? 0);
+  const nLossEvents = lostSegments.length;
+  const nLostFrames = lostIndices.length;
+  document.getElementById('run-meta-box').innerHTML =
+    `Run: <span>${META.run_name}</span><br>` +
+    `Frames: <span>${META.n_frames}</span><br>` +
+    `Duration: <span>${META.duration_s} s</span><br>` +
+    `Lost: <span>${META.n_lost} (${META.pct_lost}%)</span><br>` +
+    `Uptime: <span>${uptimePct.toFixed(1)}%</span><br>` +
+    `Losses: <span>${nLossEvents}</span> events, <span>${nLostFrames}</span> frames<br>` +
+    `Keyframes: <span>${META.n_kf} (${META.pct_kf}%)</span>`;
+
+  // signal toggles
+  const sigList = document.getElementById('signal-list');
+  sigList.innerHTML = '';
+  let shownTrajHdr = false;
+  SIGS.forEach(s => {
+    if (s.group === 'traj' && !shownTrajHdr) {
+      shownTrajHdr = true;
+      const hdr = document.createElement('div');
+      hdr.className = 'sig-group-hdr';
+      hdr.textContent = 'Trajectory errors';
+      sigList.appendChild(hdr);
+    }
+    const row = document.createElement('div');
+    row.className = 'sig-row' + (activeSignals.has(s.col) ? ' active' : '');
+    row.style.setProperty('--sc', s.color);
+    row.dataset.col = s.col;
+    row.innerHTML =
+      `<div class="sig-dot-sq" style="background:${s.color}"></div>` +
+      `<span class="sig-label">${s.label}</span>`;
+    row.addEventListener('click', () => {
+      if (activeSignals.has(s.col)) {
+        if (activeSignals.size === 1) return;
+        activeSignals.delete(s.col);
+        row.classList.remove('active');
+      } else {
+        activeSignals.add(s.col);
+        row.classList.add('active');
+      }
+      render();
+    });
+    sigList.appendChild(row);
+  });
+
+  // flag checkboxes
+  const flagList = document.getElementById('flag-list');
+  flagList.innerHTML = '';
+  FLAGS.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.className = 'flag-row';
+    row.style.setProperty('--fc', f.color);
+    row.innerHTML =
+      `<input type="checkbox" id="cb${i}">` +
+      `<div class="flag-dot" style="background:${f.color}"></div>` +
+      `<span class="flag-label">${f.label}</span>` +
+      `<span class="flag-count">${f.count}</span>`;
+    row.querySelector('input').addEventListener('change', e => {
+      if (e.target.checked) activeFlags.add(i); else activeFlags.delete(i);
+      render();
+    });
+    flagList.appendChild(row);
+  });
+
+  // jump buttons
+  document.getElementById('btn-prev').onclick = () => { setFrame(Math.max(0, (currentFrameIndex ?? 0) - 1)); };
+  document.getElementById('btn-next').onclick = () => { setFrame(Math.min(N - 1, (currentFrameIndex ?? 0) + 1)); };
+  document.getElementById('btn-prev-kf').onclick = () => jumpKf(-1);
+  document.getElementById('btn-next-kf').onclick = () => jumpKf(1);
+  document.getElementById('btn-prev-lost').onclick = () => jumpLost(-1);
+  document.getElementById('btn-next-lost').onclick = () => jumpLost(1);
+  document.getElementById('btn-zoom-reset').onclick = () => { zoomRange = null; render(); if (traj3dRendered) render3d(); };
+
+  // toolbar controls — reset selects to defaults
+  document.getElementById('mode-select').value  = 'overlay';
+  document.getElementById('flag-target').value  = 'all';
+  document.getElementById('link-axes').value    = 'yes';
+
+  document.getElementById('mode-select').onchange  = e => { mode       = e.target.value; render(); };
+  document.getElementById('flag-target').onchange  = e => { flagTarget = e.target.value; render(); };
+  document.getElementById('link-axes').onchange    = e => { linkAxes   = e.target.value === 'yes'; render(); };
+
+  // correlation panel controls
+  const corrXSel = document.getElementById('corr-x-select');
+  const corrYSel = document.getElementById('corr-y-select');
+  if (corrXSel && corrYSel) {
+    corrXSel.innerHTML = '';
+    corrYSel.innerHTML = '';
+    SIGS.forEach((s, idx) => {
+      const optX = document.createElement('option');
+      optX.value = s.col;
+      optX.textContent = s.label;
+      corrXSel.appendChild(optX);
+      const optY = document.createElement('option');
+      optY.value = s.col;
+      optY.textContent = s.label;
+      corrYSel.appendChild(optY);
+      if (idx === 0) corrXSel.value = s.col;
+      if (idx === 1) corrYSel.value = s.col;
+    });
+    corrXSel.onchange = () => renderCorr();
+    corrYSel.onchange = () => renderCorr();
+    const corrFlagsMode = document.getElementById('corr-flags-mode');
+    if (corrFlagsMode) corrFlagsMode.onchange = () => renderCorr();
+  }
+
+  window.onresize = () => {
+    if (activeTab === 'ts') Plotly.Plots.resize('charts');
+    else if (activeTab === '3d') Plotly.Plots.resize('chart-3d');
+    else if (activeTab === 'corr') Plotly.Plots.resize('corr-plot');
+  };
+
+  document.addEventListener('keydown', (e) => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.key === 'ArrowLeft') { document.getElementById('btn-prev').click(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { document.getElementById('btn-next').click(); e.preventDefault(); }
+  });
+}
+
+// ── 3D color dropdown ─────────────────────────────────────────────────────────
+function buildColorDropdown() {
+  const sel = document.getElementById('color-by-select');
+  sel.innerHTML = '';
+  COLOR_DEFS.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.col;
+    opt.textContent = d.label;
+    sel.appendChild(opt);
+  });
+  activeTrajColor = COLOR_DEFS[0]?.col || null;
+
+  sel.onchange = e => { activeTrajColor = e.target.value; render3d(); };
+  document.getElementById('colorscale-select').onchange = e => {
+    activeColorscale = e.target.value;
+    render3d();
+  };
+}
+
+// ── render 3D trajectory ──────────────────────────────────────────────────────
+function render3d() {
+  const el = document.getElementById('chart-3d');
+
+  // Only rows where tx is not null (trajectory poses)
+  const idx = [];
+  const txArr = RAW.tx || [];
+  for (let i = 0; i < N; i++) if (txArr[i] != null) idx.push(i);
+
+  if (idx.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);padding:2em">No trajectory positions in data.<br>' +
+                   '<small>Re-generate the JSON with <code>--trajectory</code> to enable 3D view.</small></p>';
+    return;
+  }
+
+  // Stamp explicit pixel dimensions on the container before Plotly initialises
+  // its WebGL canvas — reading clientWidth/clientHeight forces a synchronous
+  // layout so we always get the true post-flex dimensions.
+  const panel = el.parentElement;
+  const pw = panel.clientWidth;
+  const ph = panel.clientHeight;
+  if (pw > 0) el.style.width  = pw + 'px';
+  if (ph > 0) el.style.height = ph + 'px';
+
+  last3dIdx = idx;
+  const x = idx.map(i => RAW.tx[i]);
+  const y = idx.map(i => RAW.ty[i]);
+  const z = idx.map(i => RAW.tz[i]);
+  const t = idx.map(i => RAW.t[i]);
+
+  const cDef   = COLOR_DEFS.find(d => d.col === activeTrajColor) || COLOR_DEFS[0];
+  const cCol   = cDef ? RAW[cDef.col] : null;
+  const rawC   = cCol ? idx.map(i => cCol[i] ?? null) : null;
+  // If every value is null (column absent after merge), treat as no color data
+  const cVals  = (rawC && rawC.some(v => v != null)) ? rawC : null;
+  const cLabel = cDef ? cDef.label : '';
+
+  const hoverText = t.map((tv, ii) => {
+    const cv = cVals ? cVals[ii] : null;
+    return `t=${tv.toFixed(1)} s (frame ${idx[ii]})<br>${cLabel}: ${cv != null ? cv.toFixed(4) : 'N/A'}` +
+           `<br>x=${x[ii].toFixed(3)} y=${y[ii].toFixed(3)} z=${z[ii].toFixed(3)}`;
+  });
+
+  const hasZoom = Array.isArray(zoomRange) && zoomRange.length === 2 && isFinite(zoomRange[0]) && isFinite(zoomRange[1]);
+  const z0 = hasZoom ? Math.min(zoomRange[0], zoomRange[1]) : null;
+  const z1 = hasZoom ? Math.max(zoomRange[0], zoomRange[1]) : null;
+
+  const computeMinMax = (vals) => {
+    let mn = null, mx = null;
+    if (!vals) return { mn: null, mx: null };
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals[i];
+      if (v == null || !isFinite(v)) continue;
+      if (mn == null || v < mn) mn = v;
+      if (mx == null || v > mx) mx = v;
+    }
+    if (mn == null || mx == null) return { mn: null, mx: null };
+    if (mn === mx) return { mn: mn - 1, mx: mx + 1 };
+    return { mn, mx };
+  };
+
+  // Default normalization is global over the full trajectory. When zoomed, re-normalize
+  // the highlighted segment so the selected window uses the full colorscale range.
+  const globalMM = computeMinMax(cVals);
+  let segMM = globalMM;
+  if (hasZoom && cVals) {
+    const seg = [];
+    for (let ii = 0; ii < t.length; ii++) {
+      if (t[ii] >= z0 && t[ii] <= z1) seg.push(cVals[ii]);
+    }
+    const segTry = computeMinMax(seg);
+    if (segTry.mn != null && segTry.mx != null) segMM = segTry;
+  }
+
+  const traces = [];
+  if (hasZoom) {
+    // Dim full trajectory, then overlay highlighted subset within [z0, z1].
+    traces.push({
+      type: 'scatter3d',
+      mode: 'lines+markers',
+      x, y, z,
+      line: { color: THEME.trajDim, width: 2 },
+      marker: { color: THEME.trajDim, size: 3, opacity: 0.12 },
+      text: hoverText,
+      hovertemplate: '%{text}<extra></extra>',
+      showlegend: false,
+    });
+
+    const xSel = [];
+    const ySel = [];
+    const zSel = [];
+    const tSel = [];
+    const cSel = cVals ? [] : null;
+    const hoverSel = [];
+    for (let ii = 0; ii < t.length; ii++) {
+      const inRange = t[ii] >= z0 && t[ii] <= z1;
+      xSel.push(inRange ? x[ii] : null);
+      ySel.push(inRange ? y[ii] : null);
+      zSel.push(inRange ? z[ii] : null);
+      tSel.push(inRange ? t[ii] : null);
+      if (cSel) cSel.push(inRange ? cVals[ii] : null);
+      hoverSel.push(inRange ? hoverText[ii] : '');
+    }
+    traces.push({
+      type: 'scatter3d',
+      mode: 'lines+markers',
+      x: xSel, y: ySel, z: zSel,
+      line: {
+        color: THEME.accent,
+        width: 3,
+      },
+      marker: {
+        color: cSel || THEME.accent,
+        ...(cSel ? {
+          colorscale: activeColorscale,
+          cmin: segMM.mn,
+          cmax: segMM.mx,
+        } : {}),
+        size: 3,
+        opacity: 0.9,
+        colorbar: cSel ? {
+          title: { text: cLabel, font: { size: 10, color: THEME.text } },
+          thickness: 14,
+          len: 0.7,
+          tickfont: { size: 9, color: THEME.muted },
+        } : null,
+      },
+      text: hoverSel,
+      hovertemplate: '%{text}<extra></extra>',
+      showlegend: false,
+    });
+  } else {
+    traces.push({
+      type: 'scatter3d',
+      mode: 'lines+markers',
+      x, y, z,
+      line: {
+        color: THEME.accent,
+        width: 3,
+      },
+      marker: {
+        color: cVals || THEME.accent,
+        ...(cVals ? {
+          colorscale: activeColorscale,
+          cmin: globalMM.mn,
+          cmax: globalMM.mx,
+        } : {}),
+        size: 3,
+        opacity: 0.85,
+        colorbar: cVals ? {
+          title: { text: cLabel, font: { size: 10, color: THEME.text } },
+          thickness: 14,
+          len: 0.7,
+          tickfont: { size: 9, color: THEME.muted },
+        } : null,
+      },
+      text: hoverText,
+      hovertemplate: '%{text}<extra></extra>',
+    });
+  }
+
+  const posInIdx = currentFrameIndex != null ? idx.indexOf(currentFrameIndex) : -1;
+  if (posInIdx >= 0) {
+    traces.push({
+      type: 'scatter3d',
+      mode: 'markers',
+      x: [x[posInIdx]],
+      y: [y[posInIdx]],
+      z: [z[posInIdx]],
+      marker: { size: 10, color: THEME.curr, line: { width: 1, color: THEME.panel } },
+      text: [`Current frame ${currentFrameIndex}`],
+      hovertemplate: '%{text}<extra></extra>',
+      showlegend: false,
+    });
+  }
+  Plotly.react('chart-3d', traces, {
+    paper_bgcolor: THEME.bg,
+    scene: {
+      xaxis: { title: { text: 'X (m)', font: { size: 10 } },
+               gridcolor: THEME.grid, zerolinecolor: THEME.grid, tickfont: { size: 9, color: THEME.muted } },
+      yaxis: { title: { text: 'Y (m)', font: { size: 10 } },
+               gridcolor: THEME.grid, zerolinecolor: THEME.grid, tickfont: { size: 9, color: THEME.muted } },
+      zaxis: { title: { text: 'Z (m)', font: { size: 10 } },
+               gridcolor: THEME.grid, zerolinecolor: THEME.grid, tickfont: { size: 9, color: THEME.muted } },
+      bgcolor: THEME.panel,
+      aspectmode: 'data',
+    },
+    font:   { family: 'Courier New,monospace', color: THEME.text, size: 11 },
+    margin: { t: 20, r: 20, b: 20, l: 20 },
+  }, {
+    responsive: true,
+    scrollZoom: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    toImageButtonOptions: { format: 'png', width: 1600, height: 1200, scale: 2 },
+  }).then(() => {
+    // Remove explicit sizing and let flex take over; resize to fill container.
+    el.style.width  = '';
+    el.style.height = '';
+    Plotly.Plots.resize(el);
+    if (!chart3dHandlersBound) {
+      chart3dHandlersBound = true;
+      el.on('plotly_click', (ev) => {
+        if (ev.points && ev.points[0] != null && last3dIdx.length > 0) {
+          const pt = ev.points[0];
+          // For zoomed view, highlighted segment may be curve 1; accept both.
+          if ((pt.curveNumber === 0 || pt.curveNumber === 1) && pt.pointIndex != null) {
+            const frame = last3dIdx[pt.pointIndex];
+            setFrame(frame);
+          }
+        }
+      });
+    }
+  });
+}
+
+// ── mask ──────────────────────────────────────────────────────────────────────
+function computeMask() {
+  if (!activeFlags.size) return null;
+  const mask = new Uint8Array(N);
+  activeFlags.forEach(i => {
+    const f = FLAGS[i], col = RAW[f.col];
+    if (col) for (let r=0; r<N; r++) if (col[r] === f.val) mask[r] = 1;
+  });
+  return mask;
+}
+
+// ── render correlation scatter ───────────────────────────────────────────────────
+function renderCorr() {
+  if (!RAW || !SIGS) return;
+  const xSel = document.getElementById('corr-x-select');
+  const ySel = document.getElementById('corr-y-select');
+  const flagsModeSel = document.getElementById('corr-flags-mode');
+  if (!xSel || !ySel || !flagsModeSel) return;
+
+  const xCol = xSel.value;
+  const yCol = ySel.value;
+  if (!xCol || !yCol) return;
+
+  const xArr = RAW[xCol];
+  const yArr = RAW[yCol];
+  const t    = RAW.t;
+  if (!xArr || !yArr || !t) return;
+
+  const useFlagsMask = flagsModeSel.value === 'mask';
+  const mask = useFlagsMask ? computeMask() : null;
+
+  const hasZoom = Array.isArray(zoomRange) && zoomRange.length === 2 &&
+                  isFinite(zoomRange[0]) && isFinite(zoomRange[1]);
+  const z0 = hasZoom ? Math.min(zoomRange[0], zoomRange[1]) : null;
+  const z1 = hasZoom ? Math.max(zoomRange[0], zoomRange[1]) : null;
+
+  const xs = [];
+  const ys = [];
+  const colors = [];
+  const hover = [];
+
+  for (let i = 0; i < N; i++) {
+    if (mask && !mask[i]) continue;
+    if (hasZoom && (t[i] < z0 || t[i] > z1)) continue;
+    const xv = Number(xArr[i]);
+    const yv = Number(yArr[i]);
+    if (!isFinite(xv) || !isFinite(yv)) continue;
+    xs.push(xv);
+    ys.push(yv);
+    const lost = RAW.tracking_state && RAW.tracking_state[i] === 0;
+    colors.push(lost ? THEME.danger : THEME.accent);
+    hover.push(
+      `${xCol}=${xv.toFixed(4)}<br>${yCol}=${yv.toFixed(4)}<br>` +
+      `t=${t[i].toFixed(2)}s` +
+      (RAW.image_name ? `<br>${RAW.image_name[i]}` : '')
+    );
+  }
+
+  const trace = {
+    x: xs,
+    y: ys,
+    mode: 'markers',
+    type: 'scatter',
+    marker: { size: 4, opacity: 0.8, color: colors },
+    text: hover,
+    hovertemplate: '%{text}<extra></extra>',
+  };
+
+  Plotly.react('corr-plot', [trace], {
+    paper_bgcolor: THEME.bg,
+    plot_bgcolor: THEME.panel,
+    font: { family: 'Courier New,monospace', color: THEME.text, size: 11 },
+    margin: { t: 20, r: 20, b: 55, l: 70 },
+    xaxis: {
+      title: { text: xSel.options[xSel.selectedIndex]?.text || xCol, font: { size: 10 } },
+      gridcolor: THEME.grid,
+      zerolinecolor: THEME.grid,
+      tickfont: { size: 9 },
+    },
+    yaxis: {
+      title: { text: ySel.options[ySel.selectedIndex]?.text || yCol, font: { size: 10 } },
+      gridcolor: THEME.grid,
+      zerolinecolor: THEME.grid,
+      tickfont: { size: 9 },
+    },
+    hovermode: 'closest',
+    dragmode: 'pan',
+  }, {
+    responsive: true,
+    scrollZoom: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d','select2d'],
+    toImageButtonOptions: {
+      format: 'png',
+      width: 1200,
+      height: 900,
+      scale: 2,
+    },
+  }).then(() => {
+    const el = document.getElementById('corr-plot');
+    if (el) Plotly.Plots.resize(el);
+  });
+}
+
+function setFrame(i) {
+  if (i < 0 || i >= N) return;
+  currentFrameIndex = i;
+  const el = document.getElementById('current-frame');
+  if (el) el.textContent = `Frame: ${i} | t= ${RAW.t[i].toFixed(1)} s`;
+  render();
+  if (traj3dRendered) render3d();
+}
+
+function jumpKf(dir) {
+  if (!kfIndices.length) return;
+  let i = currentFrameIndex ?? 0;
+  if (dir > 0) { const next = kfIndices.find(k => k > i); setFrame(next != null ? next : kfIndices[kfIndices.length - 1]); }
+  else { const prev = [...kfIndices].reverse().find(k => k < i); setFrame(prev != null ? prev : kfIndices[0]); }
+}
+
+function jumpLost(dir) {
+  if (!lostIndices.length) return;
+  let i = currentFrameIndex ?? 0;
+  if (dir > 0) { const next = lostIndices.find(k => k > i); setFrame(next != null ? next : lostIndices[lostIndices.length - 1]); }
+  else { const prev = [...lostIndices].reverse().find(k => k < i); setFrame(prev != null ? prev : lostIndices[0]); }
+}
+
+// ── render time series ────────────────────────────────────────────────────────
+function render() {
+  const t    = RAW.t;
+  const mask = computeMask();
+
+  let baseIdx;
+  if (mask && mode === 'filter') {
+    baseIdx = []; for (let i=0; i<N; i++) if (mask[i]) baseIdx.push(i);
+  } else {
+    baseIdx = Array.from({length:N}, (_,i) => i);
+  }
+  const baseOpacity = (mask && mode === 'highlight') ? 0.08 : 0.85;
+
+  const activeSigDefs = SIGS.filter(s => activeSignals.has(s.col));
+  const nSubs = activeSigDefs.length;
+
+  const lostIdx = [];
+  if (RAW.tracking_state)
+    for (let i=0; i<N; i++) if (RAW.tracking_state[i] === 0) lostIdx.push(i);
+
+  const traces = [];
+  const shapes = [];
+  const axes   = {};
+
+  activeSigDefs.forEach((s, si) => {
+    const sub  = si + 1;
+    const yref = sub === 1 ? 'y'  : `y${sub}`;
+    const xref = sub === 1 ? 'x'  : (linkAxes ? 'x' : `x${sub}`);
+    const yKey = sub === 1 ? 'yaxis'  : `yaxis${sub}`;
+    const xKey = sub === 1 ? 'xaxis'  : `xaxis${sub}`;
+    const yArr = RAW[s.col] || new Array(N).fill(0);
+
+    const baseText = baseIdx.map(i =>
+      `${s.label}=${yArr[i]}<br>` +
+      `t=${t[i].toFixed(1)}s | ` +
+      `${RAW.tracking_state && RAW.tracking_state[i]===1?'OK':'LOST'} | ` +
+      `kf=${RAW.is_keyframe && RAW.is_keyframe[i]===1?'Y':'N'}` +
+      (RAW.image_name ? `<br>${RAW.image_name[i]}` : '')
+    );
+
+    traces.push({
+      x: pick(t, baseIdx), y: pick(yArr, baseIdx),
+      xaxis: xref, yaxis: yref,
+      type: 'scatter', mode: 'markers',
+      name: s.label, legendgroup: s.col, showlegend: si === 0,
+      line:   { color: s.color, width: 0.8 },
+      marker: { color: s.color, size: 3, opacity: baseOpacity },
+      text: baseText, hovertemplate: '%{text}<extra></extra>',
+    });
+
+    if (flagTarget === 'all' || si === 0) {
+      activeFlags.forEach(fi => {
+        const f = FLAGS[fi];
+        const fcol = RAW[f.col];
+        if (!fcol) return;
+        const fidx = [];
+        for (let i=0; i<N; i++) if (fcol[i] === f.val) fidx.push(i);
+        const ftext = fidx.map(i =>
+          `<b>${f.label}</b> | ${s.label}=${yArr[i]}<br>t=${t[i].toFixed(1)}s` +
+          (RAW.image_name ? `<br>${RAW.image_name[i]}` : '')
+        );
+        traces.push({
+          x: pick(t, fidx), y: pick(yArr, fidx),
+          xaxis: xref, yaxis: yref,
+          type: 'scatter', mode: 'markers',
+          name: f.label, legendgroup: f.label, showlegend: si === 0,
+          marker: {
+            color: f.color,
+            size:    mode === 'highlight' ? 7 : 5,
+            opacity: mode === 'highlight' ? 1 : 0.8,
+            line: { width: 0.5, color: THEME.panel },
+          },
+          text: ftext, hovertemplate: '%{text}<extra></extra>',
+        });
+      });
+    }
+
+    lostIdx.forEach(i => {
+      shapes.push({
+        type:'rect', xref: xref, yref: `${yref} domain`,
+        x0: t[i]-0.3, x1: t[i]+0.3, y0: 0, y1: 1,
+        fillcolor: THEME.danger, opacity:0.10, line:{width:0}, layer:'below',
+      });
+    });
+    if (currentFrameIndex != null) {
+      const tc = t[currentFrameIndex];
+      shapes.push({
+        type: 'line', xref, yref: `${yref} domain`,
+        x0: tc, x1: tc, y0: 0, y1: 1,
+        line: { color: THEME.accent, width: 1, dash: 'dot' },
+      });
+    }
+
+    const gap = nSubs > 1 ? 0.035 : 0;
+    const rowH = 1 / nSubs;
+    const y0   = 1 - (si+1)*rowH + gap/2;
+    const y1   = 1 - si*rowH     - gap/2;
+
+    axes[yKey] = {
+      title: { text: s.label, font:{size:10}, standoff:4 },
+      domain: [y0, y1],
+      gridcolor: THEME.grid, zerolinecolor: THEME.grid,
+      tickfont: {size:9}, anchor: xref,
+    };
+    if (!linkAxes || si === 0) {
+      axes[xKey] = {
+        title: (si===nSubs-1) ? {text:'Elapsed time (s)',font:{size:10}} : {},
+        domain: [0, 1],
+        gridcolor: THEME.grid, zerolinecolor: THEME.grid,
+        tickfont: {size:9},
+        showticklabels: si===nSubs-1 || !linkAxes,
+        anchor: yref,
+        ...(linkAxes && si > 0 ? {matches:'x'} : {}),
+        ...(zoomRange ? { range: zoomRange } : {}),
+      };
+    }
+  });
+
+  const requestAutoY = () => {
+    if (relayoutAutoYInFlight) return;
+    relayoutAutoYInFlight = true;
+    const upd = {};
+    for (let si = 0; si < nSubs; si++) {
+      const yKey = si === 0 ? 'yaxis.autorange' : `yaxis${si + 1}.autorange`;
+      upd[yKey] = true;
+    }
+    Plotly.relayout('charts', upd).finally(() => { relayoutAutoYInFlight = false; });
+  };
+
+  Plotly.newPlot('charts', traces, {
+    paper_bgcolor: THEME.bg, plot_bgcolor: THEME.panel,
+    font: { family:'Courier New,monospace', color: THEME.text, size:11 },
+    margin: { t:20, r:20, b:40, l:95 },
+    hovermode: 'x unified',
+    dragmode: 'pan',
+    legend: { bgcolor: THEME.panel, bordercolor: THEME.border, borderwidth:1,
+              font:{size:10}, x:1.01, xanchor:'left', y:1 },
+    shapes, ...axes,
+  }, {
+    responsive: true,
+    scrollZoom: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d','select2d'],
+    toImageButtonOptions: { format:'png', width:1600, height:Math.max(200*nSubs+80,400), scale:2 },
+  }).then(() => {
+    const chartsEl = document.getElementById('charts');
+    if (!chartsHandlersBound) {
+      chartsHandlersBound = true;
+
+      chartsEl.on('plotly_click', (ev) => {
+        if (ev.points && ev.points[0] != null) {
+          const x = ev.points[0].x;
+          let best = 0;
+          for (let i = 1; i < N; i++) if (Math.abs(RAW.t[i] - x) < Math.abs(RAW.t[best] - x)) best = i;
+          setFrame(best);
+        }
+      });
+
+      chartsEl.on('plotly_relayout', (ev) => {
+        // When user zooms/pans (including zoom tool), mirror that x-range into zoomRange.
+        if (!ev) return;
+        if (relayoutAutoYInFlight) return;
+        const anyXAuto = Object.keys(ev).some(k => /^xaxis\d*\.autorange$/.test(k) && ev[k] === true);
+        if (anyXAuto) {
+          zoomRange = null;
+          if (traj3dRendered) render3d();
+          requestAutoY();
+          return;
+        }
+        let xRangeChanged = false;
+        if (Array.isArray(ev['xaxis.range'])) {
+          const r = ev['xaxis.range'];
+          if (r.length === 2) { zoomRange = [Number(r[0]), Number(r[1])]; xRangeChanged = true; }
+        } else if (ev['xaxis.range[0]'] != null && ev['xaxis.range[1]'] != null) {
+          zoomRange = [Number(ev['xaxis.range[0]']), Number(ev['xaxis.range[1]'])];
+          xRangeChanged = true;
+        } else {
+          // If axes aren't linked, the event might refer to xaxis2/xaxis3/...; use the first one we find.
+          const k0 = Object.keys(ev).find(k => /xaxis\d*\.range\[0\]/.test(k));
+          if (k0) {
+            const k1 = k0.replace('range[0]', 'range[1]');
+            if (ev[k0] != null && ev[k1] != null) { zoomRange = [Number(ev[k0]), Number(ev[k1])]; xRangeChanged = true; }
+          }
+        }
+        if (zoomRange && (!isFinite(zoomRange[0]) || !isFinite(zoomRange[1]))) zoomRange = null;
+        if (traj3dRendered) render3d();
+        if (xRangeChanged) requestAutoY();
+      });
+    }
+  });
+
+  const cfEl = document.getElementById('current-frame');
+  if (cfEl && currentFrameIndex != null) cfEl.textContent = `Frame: ${currentFrameIndex} | t= ${RAW.t[currentFrameIndex].toFixed(1)} s`;
+
+  document.getElementById('sb-total').textContent = N;
+  document.getElementById('sb-lost').textContent  = lostIdx.length;
+  document.getElementById('sb-sigs').textContent  = activeSigDefs.map(s=>s.label).join(', ');
+  document.getElementById('sb-flag').textContent  =
+    activeFlags.size ? [...activeFlags].map(i=>FLAGS[i].label).join(', ') : 'none';
+
+  const aggEl = document.getElementById('agg-stats');
+  if (!activeFlags.size) {
+    aggEl.innerHTML = `<span style="color:${THEME.muted2}">— enable flags to see stats —</span>`;
+    return;
+  }
+  aggEl.innerHTML = [...activeFlags].map(fi => {
+    const f = FLAGS[fi];
+    const fcol = RAW[f.col];
+    if (!fcol) return '';
+    const fidx = [];
+    for (let i=0; i<N; i++) if (fcol[i] === f.val) fidx.push(i);
+    const rows = activeSigDefs.map(s => {
+      const fy = fidx.map(i => RAW[s.col][i]).filter(v => v > 0);
+      return `<span style="color:${THEME.muted};padding-left:8px;">${s.label}: ` +
+             `&mu;=${fy.length?mean(fy).toFixed(1):'-'} ` +
+             `p95=${fy.length?p95(fy).toFixed(0):'-'}</span>`;
+    }).join('<br>');
+    return `<div style="color:${f.color};margin-bottom:6px;">` +
+           `${f.label} &mdash; n=${fidx.length} (${(100*fidx.length/N).toFixed(1)}%)<br>${rows}</div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
