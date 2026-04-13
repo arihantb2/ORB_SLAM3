@@ -1,0 +1,47 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+# Camera Calibration and Distortion Parameters
+Camera.type: "Metashape"
+
+# Camera resolution
+Camera.width: 2816
+Camera.height: 2848
+
+# Camera intrinsic parameters
+Camera1.f: 3127.2964497383996
+Camera1.cx: 15.826190638032427
+Camera1.cy: 10.959438650578869
+Camera1.b1: -1.3865619651341994
+Camera1.b2: -0.51400777434547307
+
+# Distortion coefficients
+Camera1.k1: -0.17240091787615411
+Camera1.k2: 0.74360123910766662
+Camera1.k3: -2.0159640127509211
+Camera1.k4: 2.2915013802133339
+Camera1.p1: -0.00079089238273405275
+Camera1.p2: -0.00061047177140657622
+
+# Metashape Calibration Parameters
+# <calibration>
+# <projection>frame</projection>
+# <width>2816</width>
+# <height>2848</height>
+# <f>3127.2964497383996</f>
+# <cx>15.826190638032427</cx>
+# <cy>10.959438650578869</cy>
+# <b1>-1.3865619651341994</b1>
+# <b2>-0.51400777434547307</b2>
+# <k1>-0.17240091787615411</k1>
+# <k2>0.74360123910766662</k2>
+# <k3>-2.0159640127509211</k3>
+# <k4>2.2915013802133339</k4>
+# <p1>-0.00079089238273405275</p1>
+# <p2>-0.00061047177140657622</p2>
+# <date>2026-01-27T22:59:27Z</date>
+# </calibration>

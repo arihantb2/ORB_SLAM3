@@ -1,0 +1,37 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+Camera.type: "Metashape"
+
+# <resolution width="2816" height="2848"/>
+# <f>3107.8326869919647</f>
+# <cx>-0.77772496642620048</cx>
+# <cy>8.7511994496820069</cy>
+# <k1>-0.15545988724408255</k1>
+# <k2>0.44192943864243733</k2>
+# <k3>-0.53769277274163618</k3>
+# <p1>-0.00024753909664465643</p1>
+# <p2>-6.720504095135524e-05</p2>
+
+# Camera calibration and distortion parameters (Metashape frame model)
+Camera1.f: 3107.8326869919647
+Camera1.cx: -0.77772496642620048 # offset from the image center, not from the top left corner
+Camera1.cy: 8.7511994496820069 # offset from the image center, not from the top left corner
+Camera1.b1: 0.0
+Camera1.b2: 0.0
+
+Camera1.k1: -0.15545988724408255
+Camera1.k2: 0.44192943864243733
+Camera1.k3: -0.53769277274163618
+Camera1.k4: 0.0
+Camera1.p1: -0.00024753909664465643
+Camera1.p2: -6.720504095135524e-05
+
+Camera.width: 2816
+Camera.height: 2848
+
+Camera.ScalingFactor: 0.25

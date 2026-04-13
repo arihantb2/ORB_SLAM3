@@ -52,8 +52,11 @@ find_package(DBoW2 REQUIRED)
 find_package(fbow REQUIRED)
 find_package(GTSAM REQUIRED)
 
-# Build the main library
+# Build the main library (+ feature_extractor, bow)
 add_subdirectory(src)
+
+# VO base class library + ROS2 wrapper executable
+add_subdirectory(orb_slam3_wrapper)
 
 # Unit tests
 enable_testing()

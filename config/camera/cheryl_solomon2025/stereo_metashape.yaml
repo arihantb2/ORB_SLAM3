@@ -1,0 +1,48 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+#--------------------------------------------------------------------------------------------
+# Camera Configuration
+#--------------------------------------------------------------------------------------------
+Camera.type: "Metashape"
+
+# Camera resolution
+Camera.width: 2816
+Camera.height: 2848
+
+# Camera 1 (Left - AC)
+Camera1.f:   3119.0801214017383
+Camera1.cx:  29.774822693556079 # offset from the image center, not from the top left corner
+Camera1.cy:  26.879661673463406 # offset from the image center, not from the top left corner
+Camera1.b1:  0.0
+Camera1.b2:  0.0
+
+Camera1.k1: -0.11633508696961772
+Camera1.k2:  0.28087491730086545
+Camera1.k3: -0.30164257714524184
+Camera1.k4:  0.0
+Camera1.p1: -0.00024671787346879504
+Camera1.p2:  9.1345770830969774e-05
+
+# Camera 2 (Right - FC)
+Camera2.f:   3107.8326869919647
+Camera2.cx: -0.77772496642620048 # offset from the image center, not from the top left corner
+Camera2.cy:  8.7511994496820069 # offset from the image center, not from the top left corner
+Camera2.b1:  0.0
+Camera2.b2:  0.0
+
+Camera2.k1: -0.15545988724408255
+Camera2.k2:  0.44192943864243733
+Camera2.k3: -0.53769277274163618
+Camera2.k4:  0.0
+Camera2.p1: -0.00024753909664465643
+Camera2.p2: -6.720504095135524e-05
+
+# T_c1_c2 from static_tf at runtime (default frames: cam_aft=left, cam_fwd=right).
+
+# Thuber: Close/Far threshold (baseline * 40 is a common rule of thumb)
+Stereo.ThDepth: 40.0

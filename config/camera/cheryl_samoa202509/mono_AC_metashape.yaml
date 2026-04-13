@@ -1,0 +1,51 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# System config
+#--------------------------------------------------------------------------------------------
+
+# When the variables are commented, the system doesn't load a previous session or not store the current one
+
+# If the LoadFile doesn't exist, the system give a message and create a new Atlas from scratch
+#System.LoadAtlasFromFile: "Session_MH01_MH02_MH03_Mono"
+
+# The store file is created from the current session, if a file with the same name exists it is deleted
+#System.SaveAtlasToFile: "Session_MH01_MH02_MH03_Mono"
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+File.version: "1.0"
+
+Camera.type: "Metashape"
+
+# Camera calibration and distortion parameters (Metashape frame model)
+# <calibration type="frame" class="adjusted">
+# <resolution width="2816" height="2848"/>
+# <f>3131.4524097766871</f>
+# <cx>34.616550174343388</cx>
+# <cy>20.822019226931914</cy>
+# <k1>-0.1463843227754732</k1>
+# <k2>0.39132817853432533</k2>
+# <k3>-0.43665562100761901</k3>
+# <p1>0.00014034021971985052</p1>
+# <p2>-0.00019266675728437811</p2>
+# </calibration>
+
+Camera1.f:   3131.4524097766871
+Camera1.cx:  34.616550174343388 # offset from the image center, not from the top left corner
+Camera1.cy:  20.822019226931914 # offset from the image center, not from the top left corner
+Camera1.b1:  0.0
+Camera1.b2:  0.0
+
+Camera1.k1: -0.1463843227754732
+Camera1.k2:  0.39132817853432533
+Camera1.k3: -0.43665562100761901
+Camera1.k4:  0.0
+Camera1.p1:  0.00014034021971985052
+Camera1.p2: -0.00019266675728437811
+
+Camera.width: 2816
+Camera.height: 2848
+
+Camera.ScalingFactor: 0.25
