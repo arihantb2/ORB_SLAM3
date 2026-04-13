@@ -87,7 +87,7 @@ Tracking.LostResetMinKFs: 999999
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
 # Minimum interval (seconds) between local bundle adjustments (non-inertial)
-LocalMapping.OptimizeEveryTSeconds: 0.0
+LocalMapping.OptimizeEveryTSeconds: 5.0
 # Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 
