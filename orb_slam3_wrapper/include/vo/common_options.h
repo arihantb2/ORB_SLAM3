@@ -16,6 +16,7 @@ struct CommonOptions
     bool monocular = false;
     std::string platform_config = "";
     bool use_priors = false;
+    std::string pose_prior_csv_path = "";
     std::string image_name_filter = "";
     bool apply_clahe = false;
     /// static_tf child frame ids for stereo: T_c1_c2 = lookup(left, right). Defaults match Seeker (AC=left=cam_aft, FC=right=cam_fwd).
@@ -36,6 +37,9 @@ inline void add_common_options(boost::program_options::options_description& desc
         ("debug-video,d", boost::program_options::bool_switch()->default_value(false), "Disable debug display video (written when output-dir is set)")
         ("monocular,m", boost::program_options::bool_switch()->default_value(false), "Use monocular or stereo VO")
         ("use-priors,u", boost::program_options::bool_switch()->default_value(false), "Use priors for tracking, only used for monocular mode")
+        ("nav-csv",
+         boost::program_options::value<std::string>()->default_value(""),
+         "Path to precomputed navigation trajectory CSV: timestamp,tx,ty,tz,qw,qx,qy,qz (world_T_dvl)")
         ("image-name-filter,f", boost::program_options::value<std::string>()->default_value(""), "Filter image names by substring for monocular mode")
         ("apply-clahe,a", boost::program_options::bool_switch()->default_value(false), "Apply CLAHE to the grayscale image")
         ("left-camera-frame-id",
@@ -60,6 +64,7 @@ inline CommonOptions get_common_options(const boost::program_options::variables_
     opts.monocular = vm["monocular"].as<bool>();
     opts.platform_config = vm["platform-config"].as<std::string>();
     opts.use_priors = vm["use-priors"].as<bool>();
+    opts.pose_prior_csv_path = vm["nav-csv"].as<std::string>();
     opts.image_name_filter = vm["image-name-filter"].as<std::string>();
     opts.apply_clahe = vm["apply-clahe"].as<bool>();
     opts.left_camera_frame_id = vm["left-camera-frame-id"].as<std::string>();

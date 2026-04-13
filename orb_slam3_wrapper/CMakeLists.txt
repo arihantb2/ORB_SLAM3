@@ -15,6 +15,7 @@ find_package(diagnostic_msgs REQUIRED)
 # --- VO base class library ---
 add_library(vo SHARED
     src/visual_odometry.cpp
+    src/csv_pose_prior.cpp
 )
 
 target_include_directories(vo PUBLIC
@@ -38,6 +39,10 @@ enable_testing()
 add_executable(vo_tests src/test/visual_odometry_tests.cpp)
 target_link_libraries(vo_tests PRIVATE vo)
 add_test(NAME vo_tests COMMAND vo_tests)
+
+add_executable(csv_pose_prior_tests src/test/csv_pose_prior_tests.cpp)
+target_link_libraries(csv_pose_prior_tests PRIVATE vo)
+add_test(NAME csv_pose_prior_tests COMMAND csv_pose_prior_tests)
 
 # At build time, ORB_SLAM3 library headers live at ${PROJECT_SOURCE_DIR}/include/Foo.h
 # (no ORB_SLAM3/ subdirectory). Create a symlink so the wrapper can use the

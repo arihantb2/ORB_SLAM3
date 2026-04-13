@@ -2,6 +2,7 @@
 
 #include <utils/vo_utils.h>
 #include <vo/common_options.h>
+#include <vo/csv_pose_prior.h>
 #include <vo/dispatch_types.h>
 #include <vo/image_dispatch_sync.h>
 #include <vo/prediction_data.h>

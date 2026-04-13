@@ -4,6 +4,7 @@
 #include <static_tf/static_tf_tree.hpp>
 
 #include <cassert>
+#include <fstream>
 #include <iostream>
 
 namespace visual_odometry
@@ -120,10 +121,38 @@ static void test_images_before_first_nav_are_not_dispatched()
     assert(VisualOdometryTestHelper::pending_mono_size(vo) == 0);
 }
 
+static std::string write_temp_nav_csv()
+{
+    const std::string path = "/tmp/vo_nav_csv_tests.csv";
+    std::ofstream out(path);
+    assert(out.is_open());
+    out << "timestamp,tx,ty,tz,qw,qx,qy,qz\n";
+    out << "0,0,0,0,1,0,0,0\n";
+    out << "10,10,0,0,1,0,0,0\n";
+    out.close();
+    return path;
+}
+
+static void test_nav_csv_dispatches_without_nav_messages()
+{
+    visual_odometry::cli::CommonOptions opts;
+    opts.pose_prior_csv_path = write_temp_nav_csv();
+
+    TestVisualOdometry vo(static_tf::StaticTfTree(), opts);
+
+    cv::Mat dummy_image(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
+    auto raw = make_rawlog(5.0, "image_with_csv_nav");
+    vo.handle_monocular_image(dummy_image, raw);
+
+    assert(vo.mono_call_count == 1);
+    assert(VisualOdometryTestHelper::pending_mono_size(vo) == 0);
+}
+
 int main()
 {
     test_image_dispatched_only_when_sandwiched();
     test_images_before_first_nav_are_not_dispatched();
+    test_nav_csv_dispatches_without_nav_messages();
 
     std::cout << "All VisualOdometry tests passed." << std::endl;
     return 0;

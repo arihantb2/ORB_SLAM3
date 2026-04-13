@@ -1,6 +1,7 @@
 #include <vo/visual_odometry.h>
 
 #include <cmath>
+#include <iomanip>
 #include <thread>
 
 namespace visual_odometry
@@ -147,12 +148,38 @@ VisualOdometry::VisualOdometry(const static_tf::StaticTfTree& platform_tree, con
             std::lock_guard<std::mutex> lock(processing_mutex_);
             dispatch_stereo_with_context(f, c);
         });
+
+    if (!options_.pose_prior_csv_path.empty())
+    {
+        CsvPosePrior nav_csv(options_.pose_prior_csv_path);
+        std::cout << "[VisualOdometry] loaded nav CSV: path=" << options_.pose_prior_csv_path
+                  << " samples=" << nav_csv.size() << " t_range=[" << std::fixed << std::setprecision(6)
+                  << nav_csv.start_time_sec() << ", " << nav_csv.end_time_sec() << "]" << std::endl;
+
+        for (size_t i = 0; i < nav_csv.size(); ++i)
+        {
+            double t_sec = 0.0;
+            Eigen::Matrix4f world_T_dvl;
+            if (!nav_csv.try_get_sample(i, t_sec, world_T_dvl))
+            {
+                continue;
+            }
+            nav_prediction_data_->push(std::make_pair(t_sec, world_T_dvl));
+            log_writer_.write_nav_pose(t_sec, world_T_dvl, "map", "dvl");
+        }
+
+        dispatch_sync_->on_nav_updated();
+    }
 }
 
 VisualOdometry::~VisualOdometry() {}
 
 void VisualOdometry::handle_nav_message(const acfrlcm::auv_acfr_nav_t& msg)
 {
+    if (!options_.pose_prior_csv_path.empty())
+    {
+        return;
+    }
     const double timestamp = static_cast<double>(msg.utime) / 1e6;
     const Eigen::Matrix4f nav_pose = acfr_nav_to_eigen_matrix(msg);
 
