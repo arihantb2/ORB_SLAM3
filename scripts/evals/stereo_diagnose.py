@@ -18,6 +18,7 @@ import numpy as np
 
 from stereo import (
     detect_and_match,
+    load_bayer_bggr_pair_bgr_u8,
     estimate_fundamental_inliers,
     fundamental_matrix_from_rtk,
     load_stereo_params,
@@ -328,12 +329,7 @@ def main():
         if not os.path.exists(path):
             raise FileNotFoundError(f"Path not found: {path}")
 
-    left_bgr  = cv2.imread(args.left,  cv2.IMREAD_COLOR)
-    right_bgr = cv2.imread(args.right, cv2.IMREAD_COLOR)
-    if left_bgr is None or right_bgr is None:
-        raise ValueError("Could not read one or both input images.")
-    if left_bgr.shape[:2] != right_bgr.shape[:2]:
-        raise ValueError("Left and right images must have identical dimensions.")
+    left_bgr, right_bgr = load_bayer_bggr_pair_bgr_u8(args.left, args.right)
 
     params = load_stereo_params(
         args.config,

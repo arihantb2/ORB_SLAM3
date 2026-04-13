@@ -14,12 +14,14 @@ import os
 import sys
 
 import cv2
+import numpy as np
 
 from stereo import (
     RigorousValidationArgs,
     detect_and_match,
     draw_matches_overlay,
     epipolar_stats,
+    load_bayer_bggr_pair_bgr_u8,
     load_stereo_params,
     rectify_pair,
     resize_to_width,
@@ -28,6 +30,26 @@ from stereo import (
     window_search_debug,
 )
 from stereo.cli import add_stereo_config_args
+
+
+def _ensure_gray(img):
+    if img is None:
+        raise ValueError("Image is None.")
+    if img.ndim == 2:
+        gray = img
+    if img.ndim == 3 and img.shape[2] == 1:
+        gray = img[:, :, 0]
+    if img.ndim == 3 and img.shape[2] in (3, 4):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    if "gray" not in locals():
+        raise ValueError(f"Unsupported image shape for grayscale conversion: {img.shape}")
+
+    # ORB/SIFT expect 8-bit images.
+    if gray.dtype == np.uint8:
+        return gray
+    if gray.dtype == np.uint16:
+        return (gray >> 8).astype(np.uint8, copy=False)
+    return cv2.convertScaleAbs(gray)
 
 
 def _parse_args():
@@ -105,12 +127,7 @@ def main():
         if not os.path.exists(path):
             raise FileNotFoundError(f"Path not found: {path}")
 
-    left_bgr  = cv2.imread(args.left,  cv2.IMREAD_COLOR)
-    right_bgr = cv2.imread(args.right, cv2.IMREAD_COLOR)
-    if left_bgr is None or right_bgr is None:
-        raise ValueError("Could not read one or both input images.")
-    if left_bgr.shape[:2] != right_bgr.shape[:2]:
-        raise ValueError("Left and right images must have identical dimensions.")
+    left_bgr, right_bgr = load_bayer_bggr_pair_bgr_u8(args.left, args.right)
 
     params = load_stereo_params(
         args.config,
@@ -124,8 +141,8 @@ def main():
         left_bgr, right_bgr, params, return_transforms=True
     )
 
-    left_gray  = cv2.cvtColor(rect_left,  cv2.COLOR_BGR2GRAY)
-    right_gray = cv2.cvtColor(rect_right, cv2.COLOR_BGR2GRAY)
+    left_gray = _ensure_gray(rect_left)
+    right_gray = _ensure_gray(rect_right)
     kp1, kp2, all_matches = detect_and_match(left_gray, right_gray, args.detector, args.ratio_test)
     matches = all_matches[:args.max_matches]
     stats   = epipolar_stats(kp1, kp2, matches)

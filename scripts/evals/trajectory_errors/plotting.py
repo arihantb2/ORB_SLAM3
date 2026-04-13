@@ -17,7 +17,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
     rpe_scale = results["rpe_scale"]
     delta_t = results["delta_t"]
     segments = results["segments"]
-    nav_dist = results["nav_dist"]
+    ref_dist = results["ref_dist"]
 
     seg_colors = [plt.get_cmap("tab10")(i % 10) for i in range(len(segments))]
 
@@ -201,7 +201,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
         color="C1",
         linestyle="--",
         alpha=0.5,
-        label="Nav trajectory",
+        label="Ref trajectory",
     )
     for start_idx, end_idx in segments:
         seg_slice = slice(start_idx, end_idx)
@@ -212,7 +212,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
             seg_est[:, 2],
             color="C0",
             linewidth=2.5,
-            label="Frame trajectory" if start_idx == segments[0][0] else None,
+            label="Test trajectory" if start_idx == segments[0][0] else None,
         )
     est_scatter = ax_traj.scatter(
         p_est_plot[:, 0],
@@ -223,7 +223,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
         norm=time_norm,
         s=8,
         alpha=0.7,
-        label="Frame time",
+        label="Test time",
     )
     fig_traj.colorbar(est_scatter, ax=ax_traj, pad=0.1, label="Test time (s)")
     ax_traj.set_title("3D Trajectory Overlay")
@@ -255,7 +255,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
             color="C1",
             linestyle="--",
             alpha=0.5,
-            label="Nav trajectory",
+            label="Ref trajectory",
         )
         plotted_points.append(p_ref_full)
         for start_idx, end_idx in segments:
@@ -267,7 +267,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
                 seg_est[:, yi],
                 color="C0",
                 linewidth=2.5,
-                label="Frame trajectory" if start_idx == segments[0][0] else None,
+                label="Test trajectory" if start_idx == segments[0][0] else None,
             )
         ax.set_title(f"{label} Overlay")
         ax.set_xlabel(f"{label[0]} (m)")
@@ -291,7 +291,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
         color="C1",
         linestyle="--",
         alpha=0.5,
-        label="Nav trajectory",
+        label="Ref trajectory",
     )
     for start_idx, end_idx in segments:
         seg_slice = slice(start_idx, end_idx)
@@ -302,7 +302,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
             seg_est[:, 2],
             color="C0",
             linewidth=2.5,
-            label="Frame trajectory" if start_idx == segments[0][0] else None,
+            label="Test trajectory" if start_idx == segments[0][0] else None,
         )
     planes_scatter = ax_3d.scatter(
         p_est_plot[:, 0],
@@ -313,7 +313,7 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
         norm=time_norm,
         s=8,
         alpha=0.7,
-        label="Frame time",
+        label="Test time",
     )
     fig_planes.colorbar(planes_scatter, ax=ax_3d, pad=0.1, label="Test time (s)")
     ax_3d.set_title("3D Overlay")
@@ -335,12 +335,12 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
             seg_ape_vec = seg_ape_vec - seg_ape_vec[0]
         seg_ape = np.linalg.norm(seg_ape_vec, axis=1)
         ax_drift.plot(
-            nav_dist[seg_slice],
+            ref_dist[seg_slice],
             seg_ape,
             color=seg_colors[idx],
             label="APE drift" if start_idx == segments[0][0] else None,
         )
-    ax_drift.set_title("Cumulative Drift vs Distance (Nav)")
+    ax_drift.set_title("Cumulative Drift vs Distance (Ref)")
     ax_drift.set_xlabel("Distance traveled (m)")
     ax_drift.set_ylabel("Error (m)")
     ax_drift.grid(True, axis="y")

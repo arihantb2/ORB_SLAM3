@@ -26,6 +26,11 @@ from .matching import (
     epipolar_stats,
     matches_to_points,
 )
+from .io import (
+    demosaic_bggr_to_bgr_u8,
+    load_bayer_bggr_pair_bgr_u8,
+    to_u8,
+)
 from .rectify import rectify_pair
 from .validation import RigorousValidationArgs, rigorous_epipolar_validation
 from .visualization import (
@@ -50,6 +55,10 @@ __all__ = [
     "matches_to_points",
     # rectify
     "rectify_pair",
+    # io
+    "to_u8",
+    "demosaic_bggr_to_bgr_u8",
+    "load_bayer_bggr_pair_bgr_u8",
     # validation
     "RigorousValidationArgs",
     "rigorous_epipolar_validation",

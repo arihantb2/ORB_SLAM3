@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from scipy.spatial.transform import Rotation as ScipyRotation
 
 
 # ---------------------------------------------------------------------------
@@ -75,31 +74,6 @@ def _load_pinhole_camera(
     return K, D
 
 
-def _chain_to_root(
-    edges: dict[str, tuple[str, np.ndarray]], root: str, frame: str
-) -> np.ndarray:
-    """Compose T_root_frame (p_root = T * p_frame), matching static_tf::StaticTfTree."""
-    T = np.eye(4, dtype=np.float64)
-    current = frame
-    max_depth = len(edges) + 1
-    depth = 0
-    while current != root:
-        if current not in edges:
-            raise ValueError(
-                f"Unknown static_tf frame '{current}' (expected a sensor key under 'sensors:' "
-                f"or the root '{root}')."
-            )
-        parent, Tpc = edges[current]
-        T = Tpc @ T
-        current = parent
-        depth += 1
-        if depth > max_depth:
-            raise ValueError(
-                f"Cycle or unreachable frame '{frame}' toward root '{root}' in static_tf YAML."
-            )
-    return T
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -112,38 +86,15 @@ def extrinsic_T_c1_c2_from_static_tf_file(
 ) -> np.ndarray:
     """T_c1_c2 = lookup(left, right) with static_tf conventions (p_left = T * p_right)."""
     try:
-        import yaml
+        from static_tf.loader import load_tree
     except ImportError as e:
         raise ImportError(
-            "extrinsic_T_c1_c2_from_static_tf_file requires PyYAML (pip install pyyaml)."
+            "extrinsic_T_c1_c2_from_static_tf_file requires static_tf to be installed "
+            "(pip install -e src/static_tf/python)."
         ) from e
 
-    with open(platform_yaml, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-
-    root = "body"
-    if cfg.get("metadata") and cfg["metadata"].get("reference_frame"):
-        root = str(cfg["metadata"]["reference_frame"])
-
-    edges: dict[str, tuple[str, np.ndarray]] = {}
-    sensors = cfg.get("sensors") or {}
-    for name, s in sensors.items():
-        parent = str(s["parent_frame"])
-        tnode = s["T_body_sensor"]
-        t = np.array(tnode["translation"], dtype=np.float64)
-        q = tnode["quaternion"]
-        w, x, y, z = (float(q[i]) for i in range(4))
-        Rm = ScipyRotation.from_quat([x, y, z, w]).as_matrix()
-        T = np.eye(4, dtype=np.float64)
-        T[:3, :3] = Rm
-        T[:3, 3] = t
-        edges[str(name)] = (parent, T)
-
-    if stereo_left_frame == stereo_right_frame:
-        return np.eye(4, dtype=np.float64)
-    Rt = _chain_to_root(edges, root, stereo_left_frame)
-    Rs = _chain_to_root(edges, root, stereo_right_frame)
-    return np.linalg.inv(Rt) @ Rs
+    tree = load_tree(platform_yaml)
+    return tree.lookup(stereo_left_frame, stereo_right_frame).astype(np.float64)
 
 
 def load_stereo_params(

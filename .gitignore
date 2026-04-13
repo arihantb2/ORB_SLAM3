@@ -17,3 +17,5 @@ venv/**
 .claude
 AGENTS.md
 CLAUDE.md
+
+__pycache__

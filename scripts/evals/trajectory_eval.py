@@ -14,57 +14,25 @@ from trajectory_errors.alignment import compute_errors
 from trajectory_errors.io import load_csv, load_xml, write_trajectory_csv
 from trajectory_errors.plotting import plot_errors
 
-def get_cam_dvl_static_transform(camera):
-    # Translation: mm to meters
-    if camera == 'FC':
-        p_cam_dvl = 0.001 * np.array([-206.4, 0.0, -102.0])
-    elif camera == 'AC':
-        p_cam_dvl = 0.001 * np.array([-299.35, 0.0, -102.0])
-    
-    # Rotation: 180 degrees (pi) around Z-axis
-    r_cam_dvl = R.from_euler('z', 180, degrees=True).as_matrix()
-    
-    # Construct 4x4 Homogeneous Transformation Matrix T_Cam_DVL
-    t_cam_dvl = np.eye(4)
-    t_cam_dvl[:3, :3] = r_cam_dvl
-    t_cam_dvl[:3, 3] = p_cam_dvl
-    
-    return t_cam_dvl
-
-# Initialize the static constants
-T_CAM_DVL_AC = get_cam_dvl_static_transform('AC')
-T_CAM_DVL_FC = get_cam_dvl_static_transform('FC')
-
-def apply_cam_dvl_transform(row, camera):
+def _apply_static_transform(row, T_src_dst):
     """
-    Applies the static T_DVL_CAM transform to a dataframe row 
-    containing [tx, ty, tz, qx, qy, qz, qw].
+    Applies a static transform to a dataframe row containing
+    [tx, ty, tz, qx, qy, qz, qw], interpreted as T_world_src.
+
+    T_src_dst is a 4x4 mapping p_dst -> p_src.
     """
-    # 1. Extract current pose from row
     pos = row[["tx", "ty", "tz"]].values
     quat = row[["qx", "qy", "qz", "qw"]].values
 
-    # 2. Convert row pose to 4x4 Matrix (T_World_Cam)
-    t_world_cam = np.eye(4)
-    t_world_cam[:3, :3] = R.from_quat(quat).as_matrix()
-    t_world_cam[:3, 3] = pos
-    
-    # 3. Apply the transform
-    # To get DVL in World frame: T_World_DVL = T_World_Cam * T_Cam_DVL
-    # Or to change frame of reference: T_new = T_DVL_CAM * T_World_Cam
-    # Assuming you want to transform the Camera pose into the DVL frame:
-    t_world_dvl = t_world_cam @ T_CAM_DVL_AC if camera == 'AC' else t_world_cam @ T_CAM_DVL_FC
-    
-    # 4. Extract back to components
-    new_pos = t_world_dvl[:3, 3]
-    new_quat = R.from_matrix(t_world_dvl[:3, :3]).as_quat()
-    
-    return np.concatenate([new_pos, new_quat])
+    T_world_src = np.eye(4)
+    T_world_src[:3, :3] = R.from_quat(quat).as_matrix()
+    T_world_src[:3, 3] = pos
 
-# Usage:
-# df[["tx", "ty", "tz", "qx", "qy", "qz", "qw"]] = df.apply(
-#     lambda row: apply_dvl_transform(row), axis=1, result_type='expand'
-# )
+    T_world_dst = T_world_src @ T_src_dst
+
+    new_pos = T_world_dst[:3, 3]
+    new_quat = R.from_matrix(T_world_dst[:3, :3]).as_quat()
+    return np.concatenate([new_pos, new_quat])
 
 def invert_pose(row):
     """
@@ -84,7 +52,10 @@ def parse_args():
     parser.add_argument(
         "--dir",
         default="",
-        help="Directory with trajectories, will automatically use <dir>/trajectory_frames.csv for and <dir>/trajectory_nav.csv if --ref not provided."
+        help=(
+            "Directory with trajectories, will automatically use <dir>/trajectory_frames.csv for test "
+            "and <dir>/trajectory_nav.csv for ref if --ref not provided."
+        )
     )
     parser.add_argument(
         "--test",
@@ -163,6 +134,21 @@ def parse_args():
         choices=["trajectory_start", "central"],
         default="trajectory_start",
         help="Alignment mode: start-of-segment or central (Umeyama).",
+    )
+    parser.add_argument(
+        "--platform-config",
+        required=True,
+        help="Path to static_tf platform YAML (e.g. src/static_tf/config/seeker-cheryl.yaml).",
+    )
+    parser.add_argument(
+        "--test-frame",
+        required=True,
+        help="Frame id that the test trajectory is expressed in (static_tf frame name).",
+    )
+    parser.add_argument(
+        "--ref-frame",
+        required=True,
+        help="Frame id that the reference trajectory is expressed in (static_tf frame name).",
     )
     return parser.parse_args()
 
@@ -269,12 +255,12 @@ def main():
 
     if args.dir:
         test_traj_path = os.path.join(args.dir, "trajectory_frames.csv")
-        nav_traj_path = os.path.join(args.dir, "trajectory_nav.csv")
+        ref_traj_path = os.path.join(args.dir, "trajectory_nav.csv")
         if args.ref:
-            nav_traj_path = args.ref
+            ref_traj_path = args.ref
     else:
         test_traj_path = args.test
-        nav_traj_path = args.ref
+        ref_traj_path = args.ref
 
     # Verify test trajectory path exists
     if not os.path.exists(test_traj_path):
@@ -283,11 +269,11 @@ def main():
 
     print(f'Test trajectory {test_traj_path} found')
 
-    if not os.path.exists(nav_traj_path):
-        print(f'Reference trajectory {nav_traj_path} not found')
+    if not os.path.exists(ref_traj_path):
+        print(f'Ref trajectory {ref_traj_path} not found')
         return
 
-    print(f'Reference trajectory {nav_traj_path} found')
+    print(f'Ref trajectory {ref_traj_path} found')
 
     output_dir = args.output_dir or (
         os.path.join(args.dir, "trajectory_errors") if args.dir else None
@@ -303,14 +289,14 @@ def main():
     # From here on, duplicate console output into output_dir (when set).
     if tee_ctx:
         with tee_ctx:
-            _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_dir)
+            _run_main_with_optional_logging(args, test_traj_path, ref_traj_path, output_dir)
     else:
-        _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_dir)
+        _run_main_with_optional_logging(args, test_traj_path, ref_traj_path, output_dir)
 
 
-def _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_dir):
+def _run_main_with_optional_logging(args, test_traj_path, ref_traj_path, output_dir):
 
-    df_est = load_csv(test_traj_path, "Estimated trajectory")
+    df_est = load_csv(test_traj_path, "Test trajectory")
 
     # Remove rows with nan
     df_est = df_est.dropna()
@@ -321,32 +307,39 @@ def _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_
             lambda row: invert_pose(row), axis=1, result_type='expand'
         )
 
-    # Check which camera is used, assume AC if not specified
-    camera = 'AC'
-    if 'AC' in test_traj_path:
-        camera = 'AC'
-    elif 'FC' in test_traj_path:
-        camera = 'FC'
-
-    # Apply a static transform to the test trajectory
-    df_est[["tx", "ty", "tz", "qx", "qy", "qz", "qw"]] = df_est.apply(
-        lambda row: apply_cam_dvl_transform(row, camera), axis=1, result_type='expand'
-    )
-
-    # Verify reference trajectory path exists
-    if not os.path.exists(nav_traj_path):
-        print(f'Reference trajectory {nav_traj_path} not found')
+    try:
+        from static_tf.loader import load_tree
+    except Exception as e:
+        print(f"Failed to import static_tf. Is it installed in your venv? Error: {e}")
         return
 
-    nav_lower = nav_traj_path.lower()
-    if nav_lower.endswith(".csv"):
-        df_ref = load_csv(nav_traj_path, "Reference trajectory")
-    elif nav_lower.endswith(".xml"):
+    tree = load_tree(args.platform_config)
+
+    if args.test_frame != args.ref_frame:
+        # tree.lookup(target, source) returns T_target_source mapping p_source -> p_target
+        # We need T_test_ref mapping p_ref -> p_test to compute:
+        #   T_world_ref = T_world_test @ T_test_ref
+        T_test_ref = tree.lookup(args.test_frame, args.ref_frame)
+        df_est[["tx", "ty", "tz", "qx", "qy", "qz", "qw"]] = df_est.apply(
+            lambda row: _apply_static_transform(row, T_test_ref),
+            axis=1,
+            result_type="expand",
+        )
+
+    # Verify reference trajectory path exists
+    if not os.path.exists(ref_traj_path):
+        print(f'Ref trajectory {ref_traj_path} not found')
+        return
+
+    ref_lower = ref_traj_path.lower()
+    if ref_lower.endswith(".csv"):
+        df_ref = load_csv(ref_traj_path, "Ref trajectory")
+    elif ref_lower.endswith(".xml"):
         df_ref = load_xml(
-            nav_traj_path, "Reference trajectory", group_id=args.ref_group_id
+            ref_traj_path, "Ref trajectory", group_id=args.ref_group_id
         )
     else:
-        print(f'Reference trajectory {nav_traj_path} file extension not supported, try .csv or .xml')
+        print(f'Ref trajectory {ref_traj_path} file extension not supported, try .csv or .xml')
         return
 
     df_ref = df_ref.dropna()
@@ -364,7 +357,7 @@ def _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_
     segments = results["segments"]
     segment_scales = results["segment_scales"]
     t_est_valid = results["t_est_valid"]
-    nav_dist = results["nav_dist"]
+    ref_dist = results["ref_dist"]
     ape_vec = results["ape_vec"]
     t_start = float(t_est_valid[0]) if len(t_est_valid) else None
     t_end = float(t_est_valid[-1]) if len(t_est_valid) else None
@@ -455,7 +448,7 @@ def _run_main_with_optional_logging(args, test_traj_path, nav_traj_path, output_
         seg_mean = float(np.mean(seg_ape)) if seg_ape.size else 0.0
         seg_max = float(np.max(seg_ape)) if seg_ape.size else 0.0
         seg_duration = float(seg_times[-1] - seg_times[0]) if seg_times.size > 1 else 0.0
-        seg_dist = float(nav_dist[end_idx - 1] - nav_dist[start_idx])
+        seg_dist = float(ref_dist[end_idx - 1] - ref_dist[start_idx])
         seg_scale = segment_scales[idx] if idx < len(segment_scales) else float("nan")
         print(
             f"{idx + 1:>3}  {end_idx - start_idx:>7}  "

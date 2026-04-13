@@ -177,9 +177,9 @@ def compute_errors(
     ape_trans = np.linalg.norm(p_ref_interp - p_est_aligned, axis=1)
     ape_rot_deg = (rot_ref_interp.inv() * rot_est_final).magnitude() * (180 / np.pi)
 
-    nav_dist = np.zeros_like(t_est_valid, dtype=float)
+    ref_dist = np.zeros_like(t_est_valid, dtype=float)
     if len(p_ref_interp) > 1:
-        nav_dist[1:] = np.cumsum(np.linalg.norm(np.diff(p_ref_interp, axis=0), axis=1))
+        ref_dist[1:] = np.cumsum(np.linalg.norm(np.diff(p_ref_interp, axis=0), axis=1))
 
     idx_next = np.searchsorted(t_est_valid, t_est_valid + delta_t)
     rpe_trans_list = []
@@ -245,7 +245,7 @@ def compute_errors(
         "rpe_vec": rpe_vec,
         "rpe_scale": rpe_scale,
         "segments": segments,
-        "nav_dist": nav_dist,
+        "ref_dist": ref_dist,
         "segment_scales": scales,
         "segments_total": len(segments_all),
         "segments_kept": len(segments),
