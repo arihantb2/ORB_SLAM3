@@ -278,6 +278,8 @@ def main():
     output_dir = args.output_dir or (
         os.path.join(args.dir, "trajectory_errors") if args.dir else None
     )
+    if output_dir and args.no_scale:
+        output_dir = output_dir + "_no_scale"
 
     print(f'Output directory {output_dir}')
 

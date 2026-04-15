@@ -1,0 +1,41 @@
+# Seeker-class AUV — Base Sensor Extrinsics
+#
+# Convention : T_body_sensor maps p_sensor -> p_body
+# Body frame : NED, origin at vehicle geometric centre
+#              x-forward, y-starboard, z-down
+# Quaternion : Hamilton [w, x, y, z], unit norm
+# Translation: metres
+
+metadata:
+  name: "SEEKER.CHERYL"
+  vehicle: "seeker-class"
+  reference_frame: "body"
+  last_calibrated: "UNCALIBRATED"
+
+sensors:
+  # Nortek Nucleus 1000 (DVL + INS + AHRS + depth + altimeter)
+  dvl:
+    parent_frame: "body"
+    T_body_sensor:
+      translation: [0.0, 0.0, 0.0]
+      quaternion:  [1.0, 0.0, 0.0, 0.0]
+
+  # IMU (part of Nucleus 1000)
+  imu:
+    parent_frame: "dvl"
+    T_body_sensor:
+      translation: [0.0, 0.0, 0.0]
+      quaternion:  [1.0, 0.0, 0.0, 0.0]
+
+  # Stereo cameras — 2x Alvium C811, downward-facing
+  cam_fwd:
+    parent_frame: "body"
+    T_body_sensor:
+      translation: [-0.197725, 0.0, -0.102]
+      quaternion:  [0.0, 0.0, 0.0, 1.0]
+
+  cam_aft:
+    parent_frame: "body"
+    T_body_sensor:
+      translation: [-0.273175, 0.0, -0.102]
+      quaternion:  [0.0, 0.0, 0.0, 1.0]

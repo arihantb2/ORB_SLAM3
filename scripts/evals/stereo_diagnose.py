@@ -233,55 +233,105 @@ def _save_plots(
         print("matplotlib not available; skipping --plots.")
         return
 
+    plt.style.use(["seaborn-v0_8-paper", "seaborn-v0_8-whitegrid"])
+    plt.rcParams.update({
+        "savefig.dpi": 300,
+        "figure.dpi": 100,
+        "axes.titlesize": 11,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "lines.linewidth": 1.5,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    })
+
     out_dir = Path(output_prefix).parent
     if out_dir and not out_dir.exists():
         out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Readable quadrant labels: (col, row) → position in image
+    _quad_label = {(0, 0): "Top-left", (1, 0): "Top-right",
+                   (0, 1): "Bot-left", (1, 1): "Bot-right"}
+
     # 1) Quadrant median |dy| bar chart
-    fig, ax = plt.subplots()
-    nq   = spatial_metrics["n_quad"]
+    fig, ax = plt.subplots(figsize=(6, 4))
     quad = spatial_metrics["quadrant_median_abs_dy"]
-    labels = [f"({i},{j})" for (i, j) in sorted(quad.keys())]
+    labels = [_quad_label.get(k, str(k)) for k in sorted(quad.keys())]
     vals   = [quad[k] if not np.isnan(quad[k]) else 0.0 for k in sorted(quad.keys())]
-    ax.bar(labels, vals, color="steelblue", edgecolor="black")
-    ax.set_ylabel("Median |dy| (px)")
-    ax.set_title("Median |dy| by quadrant")
+    bars = ax.bar(labels, vals, color="steelblue", edgecolor="white", width=0.55)
+    ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=9)
+    ax.axhline(0.5, color="r", linestyle="--", linewidth=1.0, label="0.5 px threshold")
+    ax.set_xlabel("Image quadrant")
+    ax.set_ylabel("Median  |Δy|  (px)")
+    ax.set_title("Epipolar residual by image quadrant")
+    ax.legend()
     fig.tight_layout()
-    fig.savefig(f"{output_prefix}_quadrants.png", dpi=120)
+    fig.savefig(f"{output_prefix}_quadrants.png")
     plt.close(fig)
 
-    # 2) Left vs right reprojection: violin plot
-    fig, ax = plt.subplots()
+    # 2) Left vs right reprojection: violin plot with jittered overlay
+    rng = np.random.default_rng(0)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    err_l = reproj_metrics["err_left"]
+    err_r = reproj_metrics["err_right"]
     parts = ax.violinplot(
-        [reproj_metrics["err_left"], reproj_metrics["err_right"]],
+        [err_l, err_r],
         positions=[0, 1], showmeans=True, showmedians=True,
     )
     for i, pc in enumerate(parts["bodies"]):
-        pc.set_facecolor("coral" if i == 0 else "seagreen")
-        pc.set_alpha(0.7)
+        pc.set_facecolor("steelblue" if i == 0 else "darkorange")
+        pc.set_alpha(0.55)
+    # Jittered strip overlay
+    for pos, err in ((0, err_l), (1, err_r)):
+        jitter = rng.uniform(-0.06, 0.06, len(err))
+        ax.scatter(
+            np.full(len(err), pos) + jitter, err,
+            s=4, alpha=0.25, color="k", linewidths=0, zorder=5,
+        )
+    # RMS annotations above each violin
+    y_top = max(err_l.max(), err_r.max())
+    for pos, rms, label in (
+        (0, reproj_metrics["rms_left_px"],  "Left"),
+        (1, reproj_metrics["rms_right_px"], "Right"),
+    ):
+        ax.text(pos, y_top * 1.05, f"RMS = {rms:.3f} px",
+                ha="center", fontsize=9)
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["Left", "Right"])
-    ax.set_ylabel("Reprojection error (px)")
-    ax.set_title("Reprojection error distribution")
+    ax.set_xticklabels(["Left camera", "Right camera"])
+    ax.set_ylabel("Reprojection error  (px)")
+    ax.set_title("Reprojection error — left vs. right")
     fig.tight_layout()
-    fig.savefig(f"{output_prefix}_reproj.png", dpi=120)
+    fig.savefig(f"{output_prefix}_reproj.png")
     plt.close(fig)
 
-    # 3) dy vs position scatter
+    # 3) dy vs x-position scatter with linear fit overlay
     dy = pts1[:, 1] - pts2[:, 1]
     width_  = max(np.ptp(pts1[:, 0]), 1e-9)
     height_ = max(np.ptp(pts1[:, 1]), 1e-9)
     x_norm = (pts1[:, 0] - np.min(pts1[:, 0])) / width_
     y_norm = (pts1[:, 1] - np.min(pts1[:, 1])) / height_
-    fig, ax = plt.subplots()
-    sc = ax.scatter(x_norm, dy, c=y_norm, cmap="viridis", s=8, alpha=0.7)
-    ax.axhline(0, color="gray", linestyle="--")
-    ax.set_xlabel("x (normalized)")
-    ax.set_ylabel("dy (px)")
-    ax.set_title("dy vs x (colour = y)")
-    plt.colorbar(sc, ax=ax, label="y norm")
+    fig, ax = plt.subplots(figsize=(7, 5))
+    sc = ax.scatter(x_norm, dy, c=y_norm, cmap="viridis", s=6, alpha=0.6, linewidths=0)
+    plt.colorbar(sc, ax=ax, label="Image y (normalized)")
+    ax.axhline(0, color="0.4", linestyle="--", linewidth=1.0, zorder=3, label="Zero")
+    # Draw linear fit at median y (y_norm = 0.5)
+    c = spatial_metrics["linear_coeffs"]
+    a, b, bias = c["a"], c["b"], c["c"]
+    x_range = np.array([0.0, 1.0])
+    fit_line = a * x_range + 0.5 * b + bias
+    ax.plot(
+        x_range, fit_line,
+        color="darkorange", linestyle="--", linewidth=1.5, zorder=4,
+        label=f"Linear fit  (a={a:.3f}, b={b:.3f}, c={bias:.3f})",
+    )
+    ax.set_xlabel("Image x (normalized)")
+    ax.set_ylabel("Epipolar residual  \u0394y  (px)")
+    ax.set_title("Spatial distribution of epipolar residuals")
+    ax.legend()
     fig.tight_layout()
-    fig.savefig(f"{output_prefix}_dy_spatial.png", dpi=120)
+    fig.savefig(f"{output_prefix}_dy_spatial.png")
     plt.close(fig)
 
     print(f"Diagnosis plots saved to {output_prefix}_*.png")

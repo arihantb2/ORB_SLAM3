@@ -112,11 +112,11 @@ def _plot_rectification_warp(
     ax.set_title(title, fontsize=10)
     ax.set_xlabel("x  (px)")
     ax.set_ylabel("y  (px)")
-    ax.legend(loc="lower right", fontsize=7)
+    ax.legend(loc="lower right", fontsize=9)
     ax.text(
-        0.02, 0.02, f"max|disp| = {mag.max():.1f} px",
-        transform=ax.transAxes, fontsize=7, va="bottom",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.75),
+        0.02, 0.02, f"max displacement = {mag.max():.1f} px",
+        transform=ax.transAxes, fontsize=9, va="bottom",
+        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.85),
     )
     return sc
 
@@ -265,6 +265,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    plt.style.use(["seaborn-v0_8-paper", "seaborn-v0_8-whitegrid"])
+    plt.rcParams.update({
+        "savefig.dpi": 300,
+        "figure.dpi": 100,
+        "axes.titlesize": 11,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    })
+
     params = load_stereo_params(
         args.config,
         platform_config_path=args.platform_config,
@@ -324,14 +337,14 @@ def main() -> None:
 
     config_name = Path(args.config).name
     fig.suptitle(
-        f"Stereo geometry — {camera_type}\n{config_name}  ({width}×{height})",
+        f"Stereo geometry — {camera_type}\n{config_name}  ({width}\u00d7{height})",
         fontsize=12,
     )
     plt.tight_layout()
 
     output = Path(args.output) if args.output else \
         Path(args.config).with_name(Path(args.config).stem + "_stereo_geometry.png")
-    plt.savefig(output, dpi=150, bbox_inches="tight")
+    plt.savefig(output, bbox_inches="tight")
     print(f"Saved: {output}")
 
 

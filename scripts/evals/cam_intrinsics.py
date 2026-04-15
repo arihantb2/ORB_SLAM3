@@ -117,8 +117,8 @@ def _plot_camera_warp(
     lines.append(f"max|disp| = {mag.max():.1f} px")
 
     ax.text(
-        0.02, 0.02, "\n".join(lines), transform=ax.transAxes, fontsize=7, va="bottom",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.75), zorder=10,
+        0.02, 0.02, "\n".join(lines), transform=ax.transAxes, fontsize=9, va="bottom",
+        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.85), zorder=10,
     )
     return sc
 
@@ -146,6 +146,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    plt.style.use(["seaborn-v0_8-paper", "seaborn-v0_8-whitegrid"])
+    plt.rcParams.update({
+        "savefig.dpi": 300,
+        "figure.dpi": 100,
+        "axes.titlesize": 11,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    })
+
     width, height, cameras = load_camera_intrinsics(args.config)
     n_cams = len(cameras)
 
@@ -162,14 +175,14 @@ def main() -> None:
 
     config_name = Path(args.config).name
     fig.suptitle(
-        f"Camera intrinsics — distortion warp\n{config_name}  ({width}×{height})",
-        fontsize=11,
+        f"Camera intrinsics — distortion warp\n{config_name}  ({width}\u00d7{height})",
+        fontsize=12,
     )
     plt.tight_layout()
 
     output = Path(args.output) if args.output else \
         Path(args.config).with_name(Path(args.config).stem + "_intrinsics.png")
-    plt.savefig(output, dpi=150, bbox_inches="tight")
+    plt.savefig(output, bbox_inches="tight")
     print(f"Saved: {output}")
 
 
