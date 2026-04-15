@@ -21,8 +21,8 @@ def _apply_static_transform(row, T_src_dst):
 
     T_src_dst is a 4x4 mapping p_dst -> p_src.
     """
-    pos = row[["tx", "ty", "tz"]].values
-    quat = row[["qx", "qy", "qz", "qw"]].values
+    pos = row[["tx", "ty", "tz"]].values.astype(float)
+    quat = row[["qx", "qy", "qz", "qw"]].values.astype(float)
 
     T_world_src = np.eye(4)
     T_world_src[:3, :3] = R.from_quat(quat).as_matrix()
@@ -38,8 +38,8 @@ def invert_pose(row):
     """
     Inverts the pose of a dataframe row containing [tx, ty, tz, qx, qy, qz, qw].
     """
-    pos = row[["tx", "ty", "tz"]].values
-    quat = row[["qx", "qy", "qz", "qw"]].values
+    pos = row[["tx", "ty", "tz"]].values.astype(float)
+    quat = row[["qx", "qy", "qz", "qw"]].values.astype(float)
     inv_rot = R.from_quat(quat).inv()
     inv_pos = -inv_rot.apply(pos)
     inv_quat = inv_rot.as_quat()

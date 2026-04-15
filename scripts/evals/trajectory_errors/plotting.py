@@ -214,41 +214,6 @@ def plot_errors(results, alignment_on, output_dir=None, show=True):
             p_est_plot[seg_slice] = p_est_plot[seg_slice] + shift
 
     # -------------------------------------------------------------------------
-    # 3D trajectory
-    # -------------------------------------------------------------------------
-    fig_traj = plt.figure(figsize=(10, 8))
-    ax_traj = fig_traj.add_subplot(111, projection="3d")
-
-    ax_traj.plot(
-        p_ref_full[:, 0], p_ref_full[:, 1], p_ref_full[:, 2],
-        color="C1", linestyle="--", linewidth=1.2, alpha=0.6, label="Reference",
-    )
-    first_seg = True
-    for start_idx, end_idx in segments:
-        seg_slice = slice(start_idx, end_idx)
-        seg_est = p_est_plot[seg_slice]
-        ax_traj.plot(
-            seg_est[:, 0], seg_est[:, 1], seg_est[:, 2],
-            color="C0", linewidth=1.8,
-            label="Estimated" if first_seg else None,
-        )
-        first_seg = False
-
-    # Start / end markers on estimated trajectory
-    p0 = p_est_plot[segments[0][0]]
-    p1 = p_est_plot[segments[-1][1] - 1]
-    ax_traj.scatter(*p0, marker="^", color="green", s=60, zorder=5, label="Start")
-    ax_traj.scatter(*p1, marker="s", color="red",   s=60, zorder=5, label="End")
-
-    ax_traj.set_title("Trajectory — 3D Overlay")
-    ax_traj.set_xlabel("X  (m)")
-    ax_traj.set_ylabel("Y  (m)")
-    ax_traj.set_zlabel("Z  (m)")
-    ax_traj.legend()
-    ax_traj.invert_yaxis()
-    ax_traj.invert_zaxis()
-
-    # -------------------------------------------------------------------------
     # Spatial APE distribution (XY)
     # -------------------------------------------------------------------------
     fig_planes, ax_ape_map = plt.subplots(1, 1, figsize=(8, 7))

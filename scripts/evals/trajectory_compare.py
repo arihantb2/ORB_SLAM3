@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -31,12 +32,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-try:
-    import seaborn as sns
-    _HAS_SEABORN = True
-except ImportError:
-    _HAS_SEABORN = False
 
 _APE_COL = "ape_trans_m"
 _RPE_COL = "rpe_trans_m"
@@ -85,23 +80,45 @@ def _null_ctx():
 
 
 def _resolve_path(p: str) -> Path:
-    """Accept a CSV file path or a directory containing trajectory_aligned.csv."""
+    """Accept a CSV file path or a run directory.
+
+    When given a directory, searches for trajectory_aligned.csv in:
+      1. <dir>/trajectory_errors_no_scale/  (preferred)
+      2. <dir>/trajectory_errors/
+    """
     path = Path(p)
     if path.is_dir():
-        candidate = path / "trajectory_aligned.csv"
-        if candidate.exists():
-            return candidate
-        raise FileNotFoundError(f"No trajectory_aligned.csv found in directory: {p}")
+        for subdir in ("trajectory_errors_no_scale", "trajectory_errors"):
+            candidate = path / subdir / "trajectory_aligned.csv"
+            if candidate.exists():
+                return candidate
+        raise FileNotFoundError(
+            f"No trajectory_aligned.csv found under trajectory_errors_no_scale/ "
+            f"or trajectory_errors/ in: {p}"
+        )
     if not path.exists():
         raise FileNotFoundError(f"File not found: {p}")
     return path
 
 
+_DATETIME_RE = re.compile(r"^(\d{8}_\d{6})")
+
+
 def _default_label(path: Path) -> str:
-    """Use the parent directory name when the file is the standard trajectory_aligned.csv."""
+    """Extract the leading YYYYMMDD_HHMMSS datetime from the run's parent directory name.
+
+    Expected path: <parent>/<run_dir>/trajectory_errors[_no_scale]/trajectory_aligned.csv
+    The datetime prefix lives in <parent>.
+    """
     if path.name == "trajectory_aligned.csv":
-        return path.parent.name
-    return path.stem
+        # parent        = trajectory_errors[_no_scale]
+        # parent.parent = run_dir
+        # parent.parent.parent = the directory whose name carries the datetime
+        name = path.parent.parent.name
+    else:
+        name = path.stem
+    m = _DATETIME_RE.match(name)
+    return m.group(1) if m else name
 
 
 def _load_run(path: Path, label: str) -> dict:
@@ -181,13 +198,21 @@ def _print_and_build_summary(runs: list[dict]) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-def _violin_fig(
+_META_STAT_DEFS = [
+    ("rmse",   "RMSE",   "///"),   # forward diagonal
+    ("mean",   "Mean",   "..."),   # dots
+    ("median", "Median", "xxx"),   # cross
+    ("std",    "Std dev","---"),   # horizontal lines
+]
+
+
+def _bar_fig(
     runs: list[dict],
     col_key: str,
     ylabel: str,
     title: str,
 ) -> plt.Figure | None:
-    """Violin + inner-quartile comparison across runs."""
+    """Bar chart — one RMSE bar per run, plus a meta stats cluster at the far right."""
     data = [
         (r["label"], r[col_key])
         for r in runs
@@ -199,41 +224,69 @@ def _violin_fig(
     labels, values = zip(*data)
     labels, values = list(labels), list(values)
 
-    # Build x-tick labels that embed RMSE so readers don't need to cross-reference
-    tick_labels = [
-        f"{lbl}\nRMSE = {np.sqrt(np.mean(v**2)):.4f} m"
-        for lbl, v in zip(labels, values)
-    ]
+    n_runs = len(labels)
+    run_colors = [plt.get_cmap("tab10")(i % 10) for i in range(n_runs)]
 
-    fig_w = max(5, 2.5 * len(data))
+    # Meta stats computed over all individual values pooled across runs
+    pooled = np.concatenate(values)
+    meta = _stats(pooled)
+
+    # Layout: run bars at 0..n_runs-1, meta cluster starting at n_runs+1 (gap of 1)
+    bar_w = 0.6
+    meta_bar_w = 0.18
+    n_meta = len(_META_STAT_DEFS)
+    meta_center = n_runs + 1.0
+    meta_offsets = np.linspace(-(n_meta - 1) / 2, (n_meta - 1) / 2, n_meta) * meta_bar_w
+
+    fig_w = max(7, 1.4 * n_runs + 3)
     fig, ax = plt.subplots(figsize=(fig_w, 5))
 
-    if _HAS_SEABORN:
-        df_long = pd.DataFrame({
-            "run":   np.repeat(labels, [len(v) for v in values]),
-            "value": np.concatenate(values),
-        })
-        # Preserve input order
-        sns.violinplot(
-            data=df_long, x="run", y="value",
-            order=labels,
-            inner="quartile",
-            palette="tab10",
-            linewidth=1.0,
-            ax=ax,
-        )
-    else:
-        parts = ax.violinplot(values, positions=range(len(values)),
-                              showmedians=True, showmeans=False)
-        for pc in parts["bodies"]:
-            pc.set_alpha(0.65)
-        ax.set_xticks(range(len(values)))
+    # Per-run RMSE bars
+    x = np.arange(n_runs, dtype=float)
+    rmses = [_stats(v)["rmse"] for v in values]
+    bars = ax.bar(x, rmses, width=bar_w, color=run_colors, zorder=3)
+    for bar, val in zip(bars, rmses):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.0002,
+                f"{val:.4f}", ha="center", va="bottom", fontsize=7)
 
-    ax.set_xticklabels(tick_labels)
+    # Meta cluster
+    meta_tick_positions = []
+    meta_tick_labels = []
+    for offset, (stat_key, stat_label, hatch) in zip(meta_offsets, _META_STAT_DEFS):
+        pos = meta_center + offset
+        val = meta[stat_key]
+        ax.bar(pos, val, width=meta_bar_w, color="lightgray", hatch=hatch,
+               label=stat_label, zorder=3, edgecolor="dimgray", linewidth=0.8)
+        ax.text(pos, val + 0.0002, f"{val:.4f}",
+                ha="center", va="bottom", fontsize=7, color="dimgray", rotation=90)
+        meta_tick_positions.append(pos)
+        meta_tick_labels.append(stat_label)
+
+    # Separator line between run bars and meta cluster
+    ax.axvline(n_runs + 0.4, color="gray", linestyle="--", linewidth=0.8, zorder=2)
+
+    # X-axis: run labels + individual meta stat labels
+    all_tick_pos = list(x) + meta_tick_positions
+    all_tick_lbl = list(labels) + meta_tick_labels
+    ax.set_xticks(all_tick_pos)
+    ax.set_xticklabels(all_tick_lbl, rotation=45, ha="center")
+
+    # Mark the meta cluster region with a bracket label
+    ax.annotate(
+        "All runs (pooled)",
+        xy=(meta_center, 0), xycoords=("data", "axes fraction"),
+        xytext=(0, -42), textcoords="offset points",
+        ha="center", fontsize=7, color="dimgray",
+        annotation_clip=False,
+    )
+
     ax.set_xlabel("")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.set_ylim(bottom=0)
+    ax.legend(title="Meta stats", loc="upper right", fontsize=8)
+    ax.grid(axis="y", zorder=0)
+    ax.xaxis.grid(False)
     fig.tight_layout()
     return fig
 
@@ -284,13 +337,13 @@ def _run(args, runs: list[dict], labels: list[str], paths: list[Path]) -> None:
     df_summary = _print_and_build_summary(runs)
 
     # ── plots ─────────────────────────────────────────────────────────────────
-    fig_ape = _violin_fig(
-        runs, "ape", "APE translation  (m)", "APE Translation — Run Comparison"
+    fig_ape = _bar_fig(
+        runs, "ape", "APE translation RMSE  (m)", "APE Translation — Run Comparison"
     )
     fig_cdf = _cdf_fig(runs)
     has_rpe = any(r["rpe"] is not None for r in runs)
     fig_rpe = (
-        _violin_fig(runs, "rpe", "RPE translation  (m)", "RPE Translation — Run Comparison")
+        _bar_fig(runs, "rpe", "RPE translation RMSE  (m)", "RPE Translation — Run Comparison")
         if has_rpe else None
     )
 
@@ -359,23 +412,24 @@ def _parse_args():
 def main():
     args = _parse_args()
 
-    # Resolve paths
-    paths = []
-    for inp in args.inputs:
-        try:
-            paths.append(_resolve_path(inp))
-        except FileNotFoundError as e:
-            print(f"ERROR: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    # Validate labels
-    if args.labels is not None and len(args.labels) != len(paths):
+    # Resolve paths, skipping any that don't have the required file
+    if args.labels is not None and len(args.labels) != len(args.inputs):
         print(
-            f"ERROR: --labels has {len(args.labels)} entries but {len(paths)} inputs were given.",
+            f"ERROR: --labels has {len(args.labels)} entries but {len(args.inputs)} inputs were given.",
             file=sys.stderr,
         )
         sys.exit(1)
-    labels = args.labels or [_default_label(p) for p in paths]
+    explicit_labels = args.labels or [None] * len(args.inputs)
+
+    paths, labels = [], []
+    for inp, lbl in zip(args.inputs, explicit_labels):
+        try:
+            p = _resolve_path(inp)
+        except FileNotFoundError as e:
+            print(f"WARNING: skipping {inp} — {e}", file=sys.stderr)
+            continue
+        paths.append(p)
+        labels.append(lbl if lbl is not None else _default_label(p))
 
     # Load (before tee so load errors go to stderr cleanly)
     runs = []
@@ -383,12 +437,15 @@ def main():
         try:
             run = _load_run(path, label)
         except (ValueError, Exception) as e:
-            print(f"ERROR loading {path}: {e}", file=sys.stderr)
-            sys.exit(1)
+            print(f"WARNING: skipping {path} — {e}", file=sys.stderr)
+            continue
         runs.append(run)
 
-    if not runs:
-        print("No runs loaded.")
+    if len(runs) < 2:
+        print(
+            f"ERROR: at least 2 valid runs are required, but only {len(runs)} could be loaded.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Apply style before any figure is created
