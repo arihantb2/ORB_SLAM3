@@ -7,6 +7,7 @@ Generates three figures (saved when -o is given, shown when --show is passed):
   trajectory_2d.png       — best-fit 2D projection of trajectory (PCA)
   motion_distribution.png — 6-panel distribution overview (2 rows × 3 cols)
   motion_timeseries.png   — speed and angular-rate profiles (2 rows × 1 col)
+  rate_distribution.png   — 6-panel velocity/angular-rate distributions (2 rows × 3 cols)
 
 Usage
 -----
@@ -71,8 +72,10 @@ def compute_motion_stats(df: pd.DataFrame) -> dict:
     return dict(
         dx=dpos[:, 0], dy=dpos[:, 1], dz=dpos[:, 2],
         step=step, speed=speed,
+        vx=dpos[:, 0] / dt, vy=dpos[:, 1] / dt, vz=dpos[:, 2] / dt,
         droll=euler[:, 2], dpitch=euler[:, 1], dyaw=euler[:, 0],
         rot_step=rot_step, ang_rate=ang_rate,
+        roll_rate=euler[:, 2] / dt, pitch_rate=euler[:, 1] / dt, yaw_rate=euler[:, 0] / dt,
         t_rel=t_rel,
     )
 
@@ -138,7 +141,8 @@ def _violins(ax, data_lists, labels, axis_labels, colors, ylabel, title):
     ])
 
 
-def _scatter_density(ax, dx_list, dy_list, labels, colors, title):
+def _scatter_density(ax, dx_list, dy_list, labels, colors, title,
+                     xlabel="Δx (m)", ylabel="Δy (m)", invert_x=False):
     for dx, dy, label, color in zip(dx_list, dy_list, labels, colors):
         finite = np.isfinite(dx) & np.isfinite(dy)
         x, y = dx[finite], dy[finite]
@@ -154,10 +158,12 @@ def _scatter_density(ax, dx_list, dy_list, labels, colors, title):
         except Exception:
             pass
     ax.set_aspect("equal", adjustable="datalim")
-    ax.set_xlabel("Δx (m)")
-    ax.set_ylabel("Δy (m)")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.legend(markerscale=4)
+    if invert_x:
+        ax.invert_xaxis()
 
 
 def _rose(ax, dyaw_list, labels, colors, title):
@@ -255,9 +261,11 @@ def plot_motion_distribution(
              [[s["dx"], s["dy"], s["dz"]] for s in stats_list],
              labels, ["Δx", "Δy", "Δz"], colors, "Δposition (m)", "Per-Axis Translation Δ")
     _scatter_density(fig.add_subplot(gs[0, 2]),
-                     [s["dx"] for s in stats_list],
                      [s["dy"] for s in stats_list],
-                     labels, colors, "XY Motion Pattern")
+                     [s["dx"] for s in stats_list],
+                     labels, colors, "XY Motion Pattern",
+                     xlabel="Δy (m)  ←left", ylabel="Δx (m)  forward→",
+                     invert_x=True)
 
     _hist_kde(fig.add_subplot(gs[1, 0]),
               [s["rot_step"] for s in stats_list], labels, colors,
@@ -302,6 +310,53 @@ def plot_time_series(
                  labels, colors, "Angular rate (°/s)", "Angular Rate Profile")
 
     title = (suptitle or "Motion Time Series").replace("Motion Distribution", "Motion Time Series")
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    print(f"Saved: {output_path}")
+
+    if not show:
+        plt.close(fig)
+
+
+def plot_rate_distribution(
+    stats_list: list,
+    labels: list,
+    output_path: str,
+    show: bool,
+    suptitle: str = "",
+) -> None:
+    colors = [plt.get_cmap("tab10")(i % 10) for i in range(len(stats_list))]
+
+    fig = plt.figure(figsize=(13, 8))
+    gs = GridSpec(2, 3, figure=fig, hspace=0.45, wspace=0.38)
+
+    _hist_kde(fig.add_subplot(gs[0, 0]),
+              [s["speed"] for s in stats_list], labels, colors,
+              "Speed (m/s)", "Speed Distribution")
+    _violins(fig.add_subplot(gs[0, 1]),
+             [[s["vx"], s["vy"], s["vz"]] for s in stats_list],
+             labels, ["vx", "vy", "vz"], colors, "Velocity (m/s)", "Per-Axis Velocity")
+    _scatter_density(fig.add_subplot(gs[0, 2]),
+                     [s["vy"] for s in stats_list],
+                     [s["vx"] for s in stats_list],
+                     labels, colors, "XY Velocity Spread",
+                     xlabel="vy (m/s)  ←left", ylabel="vx (m/s)  forward→",
+                     invert_x=True)
+
+    _hist_kde(fig.add_subplot(gs[1, 0]),
+              [s["ang_rate"] for s in stats_list], labels, colors,
+              "Angular rate (°/s)", "Angular Rate Distribution")
+    _violins(fig.add_subplot(gs[1, 1]),
+             [[s["roll_rate"], s["pitch_rate"], s["yaw_rate"]] for s in stats_list],
+             labels, ["roll rate", "pitch rate", "yaw rate"], colors,
+             "Angular rate (°/s)", "Per-Axis Angular Rate")
+    _rose(fig.add_subplot(gs[1, 2], polar=True),
+          [s["yaw_rate"] for s in stats_list],
+          labels, colors, "Yaw Rate Distribution (°/s)")
+
+    title = suptitle or "Rate Distribution"
     fig.suptitle(title, fontsize=13, fontweight="bold")
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -383,6 +438,9 @@ def main():
     plot_time_series(stats_list, args.labels,
                      os.path.join(out, "motion_timeseries.png"),
                      show=args.show, suptitle=args.title)
+    plot_rate_distribution(stats_list, args.labels,
+                           os.path.join(out, "rate_distribution.png"),
+                           show=args.show, suptitle=args.title)
 
     if args.show:
         plt.show()
