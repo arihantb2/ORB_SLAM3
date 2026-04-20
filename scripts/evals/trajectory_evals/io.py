@@ -113,6 +113,79 @@ def load_xml(path, label, group_id=0):
     return df
 
 
+_ONLINE_NAV_MARKER_COLS = {"time", "heading", "depth", "filename"}
+
+
+def _is_online_nav_csv(df: pd.DataFrame) -> bool:
+    return _ONLINE_NAV_MARKER_COLS.issubset(df.columns)
+
+
+def load_online_nav_csv(path: str, label: str) -> pd.DataFrame:
+    """
+    Load a vehicle_online_nav.csv file as a pose trajectory.
+
+    Source columns used: time (µs int), x, y, depth (z-Down in NED, positive-down),
+    roll, pitch, heading (all degrees).
+
+    Heading convention: heading is a signed compass bearing in degrees,
+    range [-180, 180], where 0 = North, positive = clockwise (East).
+    This is the NED-frame yaw convention (rotation around z-Down axis).
+    Euler sequence is intrinsic ZYX: heading first, then pitch, then roll.
+    The resulting quaternion represents body attitude in a local NED-style
+    frame (x=North, y=East, z=Down). No ENU/NED frame flip is applied here;
+    use --ref-frame / --test-frame in trajectory_eval.py to reconcile frames
+    when comparing against an ORB-SLAM3 trajectory.
+
+    Only rows whose filename contains "AC" are kept (one camera per timestamp).
+
+    Returns a DataFrame with columns:
+      timestamp, tx, ty, tz, qx, qy, qz, qw, filename
+    and optionally: latitude, longitude, spatial_error, depth_error,
+      angle_error, heading_error
+    """
+    df_raw = pd.read_csv(path)
+    missing = _ONLINE_NAV_MARKER_COLS - set(df_raw.columns)
+    if missing:
+        raise ValueError(f"{label}: missing columns: {', '.join(sorted(missing))}")
+
+    df_raw = df_raw[df_raw["filename"].str.contains("AC", na=False)].reset_index(drop=True)
+
+    euler_zyx = df_raw[["heading", "pitch", "roll"]].to_numpy(dtype=float)
+    quats = R.from_euler("ZYX", euler_zyx, degrees=True).as_quat()  # (N,4) xyzw
+
+    out = pd.DataFrame({
+        "timestamp": df_raw["time"].to_numpy(dtype=float) / 1e6,
+        "tx":        df_raw["x"].to_numpy(dtype=float),
+        "ty":        df_raw["y"].to_numpy(dtype=float),
+        "tz":        df_raw["depth"].to_numpy(dtype=float),
+        "qx":        quats[:, 0],
+        "qy":        quats[:, 1],
+        "qz":        quats[:, 2],
+        "qw":        quats[:, 3],
+        "filename":  df_raw["filename"].to_numpy(),
+    })
+
+    for col in ("latitude", "longitude", "spatial_error", "depth_error",
+                "angle_error", "heading_error"):
+        if col in df_raw.columns:
+            out[col] = df_raw[col].to_numpy()
+
+    return out.sort_values("timestamp").reset_index(drop=True)
+
+
+def load_pose_file(path: str, label: str, group_id: int = 0) -> pd.DataFrame:
+    """Dispatch loader by file extension and content sniffing."""
+    lower = path.lower()
+    if lower.endswith(".xml"):
+        return load_xml(path, label, group_id=group_id)
+    if lower.endswith(".csv"):
+        df_peek = pd.read_csv(path, nrows=0)
+        if _is_online_nav_csv(df_peek):
+            return load_online_nav_csv(path, label)
+        return load_csv(path, label)
+    raise ValueError(f"{label}: unsupported file type '{path}' (expected .csv or .xml)")
+
+
 def write_json(path, payload):
     """Write payload dict as minified JSON. Creates parent directory if needed."""
     dirname = os.path.dirname(path)

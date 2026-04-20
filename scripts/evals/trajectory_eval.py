@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.spatial.transform import Rotation as R
 
 from trajectory_evals.alignment import compute_errors
-from trajectory_evals.io import load_csv, load_xml, write_trajectory_csv
+from trajectory_evals.io import load_csv, load_xml, load_pose_file, write_trajectory_csv
 from trajectory_evals.plotting import plot_errors
 
 def _apply_static_transform(row, T_src_dst):
@@ -333,18 +333,13 @@ def _run_main_with_optional_logging(args, test_traj_path, ref_traj_path, output_
         print(f'Ref trajectory {ref_traj_path} not found')
         return
 
-    ref_lower = ref_traj_path.lower()
-    if ref_lower.endswith(".csv"):
-        df_ref = load_csv(ref_traj_path, "Ref trajectory")
-    elif ref_lower.endswith(".xml"):
-        df_ref = load_xml(
-            ref_traj_path, "Ref trajectory", group_id=args.ref_group_id
-        )
-    else:
-        print(f'Ref trajectory {ref_traj_path} file extension not supported, try .csv or .xml')
+    try:
+        df_ref = load_pose_file(ref_traj_path, "Ref trajectory", group_id=args.ref_group_id)
+    except ValueError as e:
+        print(f"Ref trajectory load error: {e}")
         return
 
-    df_ref = df_ref.dropna()
+    df_ref = df_ref.dropna(subset=["timestamp", "tx", "ty", "tz", "qx", "qy", "qz", "qw"])
 
     results = compute_errors(
         df_est,

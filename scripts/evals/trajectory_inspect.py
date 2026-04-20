@@ -30,7 +30,7 @@ from scipy.spatial.transform import Rotation
 from scipy.stats import gaussian_kde
 
 import plot_style
-from trajectory_evals.io import load_csv, load_xml
+from trajectory_evals.io import load_csv, load_xml, load_pose_file as _load_pose_file
 
 
 # ---------------------------------------------------------------------------
@@ -38,12 +38,10 @@ from trajectory_evals.io import load_csv, load_xml
 # ---------------------------------------------------------------------------
 
 def load_pose_file(path: str, label: str, group_id: int = 0) -> pd.DataFrame:
-    lower = path.lower()
-    if lower.endswith(".csv"):
-        return load_csv(path, label)
-    if lower.endswith(".xml"):
-        return load_xml(path, label, group_id=group_id)
-    sys.exit(f"ERROR: unsupported file type for {path} (expected .csv or .xml)")
+    try:
+        return _load_pose_file(path, label, group_id=group_id)
+    except ValueError as e:
+        sys.exit(f"ERROR: {e}")
 
 
 # ---------------------------------------------------------------------------
