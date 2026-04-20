@@ -1,8 +1,8 @@
-"""Tests for trajectory_errors/alignment.py — align_umeyama and split_segments_by_gap."""
+"""Tests for trajectory_evals/alignment.py — align_umeyama and split_segments_by_gap."""
 import numpy as np
 import pytest
 
-from trajectory_errors.alignment import align_umeyama, split_segments_by_gap
+from trajectory_evals.alignment import align_umeyama, split_segments_by_gap
 
 
 # ---------------------------------------------------------------------------

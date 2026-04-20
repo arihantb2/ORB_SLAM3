@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation as R
 
-from trajectory_errors.alignment import compute_errors
-from trajectory_errors.io import load_csv, load_xml, write_trajectory_csv
-from trajectory_errors.plotting import plot_errors
+from trajectory_evals.alignment import compute_errors
+from trajectory_evals.io import load_csv, load_xml, write_trajectory_csv
+from trajectory_evals.plotting import plot_errors
 
 def _apply_static_transform(row, T_src_dst):
     """

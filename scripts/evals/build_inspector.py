@@ -42,7 +42,7 @@ try:
 except ImportError:
     sys.exit("pandas is required: pip install pandas")
 
-from trajectory_errors.io import write_json, load_csv as load_trajectory_csv
+from trajectory_evals.io import write_json, load_csv as load_trajectory_csv
 
 # ── Column config ─────────────────────────────────────────────────────────────
 
