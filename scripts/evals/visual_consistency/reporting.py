@@ -1,16 +1,27 @@
 """Dashboard plotting and JSON summary for the visual consistency analysis.
 
-plot_dashboard() creates a 3×2 metric trend figure and returns it for the
-caller to save and/or display.  compute_summary() produces the statistics
-dict.  write_summary_json() delegates to trajectory_evals.io.write_json so
-there is no duplicate JSON serialisation code.
+plot_dashboard() creates a metric trend figure and returns it for the caller
+to save and/or display.  compute_summary() produces the statistics dict.
+write_summary_json() delegates to trajectory_evals.io.write_json so there is
+no duplicate JSON serialisation code.
+
+Both plot_dashboard() and compute_summary() accept an optional metric_defs
+parameter (list of (col, title, subtitle, ylim) tuples) so callers that only
+compute a subset of metrics (e.g. stereo analysis skips single-frame metrics)
+can reuse the same functions without modification.
+
+ylim is a (ymin, ymax) pair where ymax=None means auto-scale the upper bound.
+Bounded metrics (Bhattacharyya, ZNCC, SSIM) get fixed axes so that plots from
+different datasets are directly comparable.  Unbounded metrics (EoG, Phase PSR,
+Spectral Centroid) have their lower bound fixed at 0 and the upper auto-scaled.
 """
 
 from __future__ import annotations
 
+import math
 import os
 from datetime import datetime, timezone
-from typing import Sequence
+from typing import List, Optional, Sequence, Tuple
 
 import cv2
 import matplotlib.pyplot as plt
@@ -20,21 +31,39 @@ import pandas as pd
 
 from trajectory_evals.io import write_json
 
-# (column_name, subplot_title, y-axis description) — dashboard order
+# (column_name, subplot_title, y-axis description, (ymin, ymax|None))
+# Bounded metrics get fixed axes for cross-dataset comparability.
+# Unbounded metrics fix only the lower bound (0); upper auto-scales to data.
 _METRIC_DEFS = [
-    ("bhattacharyya",     "Bhattacharyya Distance",   "intensity distribution distance"),
-    ("zncc",              "ZNCC",                      "texture similarity  [−1, 1]"),
-    ("ssim",              "SSIM",                      "structural similarity  [−1, 1]"),
-    ("eog",               "Energy of Gradient",        "sharpness per pixel"),
-    ("phase_psr",         "Phase Correlation PSR",     "geometric alignment confidence"),
-    ("spectral_centroid", "Spectral Centroid  (px)",   "mean radial frequency"),
+    ("bhattacharyya",     "Bhattacharyya Distance",  "intensity distribution distance", (0.0,  1.0)),
+    ("zncc",              "ZNCC",                     "texture similarity  [−1, 1]",     (-1.0, 1.0)),
+    ("ssim",              "SSIM",                     "structural similarity  [−1, 1]",  (-1.0, 1.0)),
+    ("eog",               "Energy of Gradient",       "sharpness per pixel",             (0.0,  None)),
+    ("phase_psr",         "Phase Correlation PSR",    "geometric alignment confidence",  (0.0,  None)),
+    ("spectral_centroid", "Spectral Centroid  (px)",  "mean radial frequency",           (0.0,  None)),
+]
+
+# Pair-only metrics: EoG and Spectral Centroid omitted (single-frame).
+STEREO_METRIC_DEFS = [
+    ("bhattacharyya", "Bhattacharyya Distance", "intensity distribution distance", (0.0,  1.0)),
+    ("zncc",          "ZNCC",                   "texture similarity  [−1, 1]",     (-1.0, 1.0)),
+    ("ssim",          "SSIM",                   "structural similarity  [−1, 1]",  (-1.0, 1.0)),
+    ("phase_psr",     "Phase Correlation PSR",  "geometric alignment confidence",  (0.0,  None)),
 ]
 
 _OUTLIER_SIGMA = 2.0  # threshold for red-triangle outlier markers
 
+_MetricDefs = List[Tuple[str, str, str, Tuple]]
 
-def plot_dashboard(df: pd.DataFrame) -> plt.Figure:
-    """Create a 3×2 dashboard figure with one subplot per metric.
+
+def plot_dashboard(
+    df: pd.DataFrame,
+    metric_defs: Optional[_MetricDefs] = None,
+) -> plt.Figure:
+    """Create a metric trend dashboard figure with one subplot per metric.
+
+    Grid is auto-sized: 2 columns, ceil(n/2) rows.  For the default 6 metrics
+    this gives the familiar 3×2 layout; for 4 metrics a 2×2 grid is used.
 
     Each subplot shows:
       - A continuous line for the time series.
@@ -44,14 +73,29 @@ def plot_dashboard(df: pd.DataFrame) -> plt.Figure:
     The caller is responsible for saving and/or displaying the figure.
     Call plot_style.apply_paper_style() before this function.
 
+    Args:
+        df:          DataFrame with metric columns.
+        metric_defs: List of (col, title, subtitle, ylim) tuples.  Defaults to
+                     _METRIC_DEFS (all six temporal metrics).
+
     Returns:
         The matplotlib Figure object.
     """
-    fig, axes = plt.subplots(3, 2, figsize=(12, 10))
-    axes_flat = axes.flatten()
+    if metric_defs is None:
+        metric_defs = _METRIC_DEFS
+
+    n = len(metric_defs)
+    ncols = 2
+    nrows = math.ceil(n / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, nrows * 10 / 3))
+    axes_flat = axes.flatten() if n > 1 else [axes]
     x = np.arange(len(df))
 
-    for ax, (col, title, subtitle) in zip(axes_flat, _METRIC_DEFS):
+    # Hide any spare axes when n is odd
+    for spare in axes_flat[n:]:
+        spare.set_visible(False)
+
+    for ax, (col, title, subtitle, ylim) in zip(axes_flat, metric_defs):
         vals = df[col].to_numpy(dtype=float)
         mu = float(np.mean(vals))
         sigma = float(np.std(vals))
@@ -85,26 +129,38 @@ def plot_dashboard(df: pd.DataFrame) -> plt.Figure:
         ax.grid(axis="y", zorder=0)
         ax.xaxis.grid(False)
 
+        # Apply fixed y bounds: both fixed for bounded metrics, floor-only for unbounded.
+        ylo, yhi = ylim
+        ax.set_ylim(bottom=ylo, top=yhi)
+
     fig.suptitle("AUV Visual Consistency Dashboard", fontsize=13, y=1.01)
     fig.tight_layout()
     return fig
 
 
-def compute_summary(df: pd.DataFrame, image_dir: str) -> dict:
+def compute_summary(
+    df: pd.DataFrame,
+    image_dir: str,
+    metric_defs: Optional[_MetricDefs] = None,
+) -> dict:
     """Compute per-metric statistics and a consistency score for the run.
 
     Consistency score = 1 / (1 + CV) where CV = std / |mean|.
     Range [0, 1]; 1 = perfectly consistent (zero variance), lower = noisier.
 
     Args:
-        df:         Output DataFrame from run_analysis().
-        image_dir:  Source directory (stored in metadata).
+        df:          Output DataFrame from run_analysis() or run_stereo_analysis().
+        image_dir:   Source directory (stored in metadata).
+        metric_defs: List of (col, title, subtitle, ylim) tuples.  Defaults to
+                     _METRIC_DEFS (all six temporal metrics).
 
     Returns:
         Dict suitable for write_summary_json().
     """
+    if metric_defs is None:
+        metric_defs = _METRIC_DEFS
     metrics_out: dict = {}
-    for col, _, _ in _METRIC_DEFS:
+    for col, *_ in metric_defs:
         vals = df[col].dropna().to_numpy(float)
         mu = float(np.mean(vals))
         var = float(np.var(vals))
@@ -121,7 +177,7 @@ def compute_summary(df: pd.DataFrame, image_dir: str) -> dict:
         "n_pairs": int(len(df)),
         "metrics": metrics_out,
         "metadata": {
-            "image_dir":    str(image_dir),
+            "image_dir":    str(Path(image_dir).resolve()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     }

@@ -13,6 +13,7 @@ traj-inspect = "trajectory_inspect:main"
 traj-compare = "trajectory_compare:main"
 build-inspector = "build_inspector:main"
 vis-check    = "visual_consistency_check:main"
+stereo-check = "stereo_consistency_check:main"
 
 [tool.setuptools]
 packages = ["trajectory_evals", "stereo", "visual_consistency"]
@@ -27,4 +28,5 @@ py-modules = [
     "stereo_geometry",
     "stereo_debug",
     "visual_consistency_check",
+    "stereo_consistency_check",
 ]

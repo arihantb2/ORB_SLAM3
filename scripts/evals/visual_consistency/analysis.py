@@ -1,4 +1,4 @@
-"""Analysis engine: iterate over an image sequence and compute all six metrics."""
+"""Analysis engine: temporal and stereo visual consistency computation."""
 
 from __future__ import annotations
 
@@ -6,10 +6,11 @@ import warnings
 from pathlib import Path
 from typing import Sequence
 
+import cv2
 import pandas as pd
 
 from visual_consistency import metrics as M
-from visual_consistency.loader import iter_image_pairs
+from visual_consistency.loader import iter_image_pairs, load_image_grayscale_u8
 
 
 def run_analysis(
@@ -86,6 +87,108 @@ def run_analysis(
     if not rows:
         raise ValueError(
             f"No valid image pairs could be processed in {image_dir!r}"
+        )
+
+    return pd.DataFrame(rows)
+
+
+def run_stereo_analysis(
+    left_dir: str,
+    right_dir: str,
+    extensions: Sequence[str] = (".png", ".tif", ".tiff"),
+    progress: bool = True,
+    max_images: int | None = None,
+) -> pd.DataFrame:
+    """Compute all six visual consistency metrics for each left/right stereo pair.
+
+    Pairs images by sorted index: left[i] ↔ right[i].  Only pair-wise
+    metrics are computed (Bhattacharyya, ZNCC, SSIM, Phase PSR); single-frame
+    metrics (EoG, Spectral Centroid) are omitted.  If the directories have
+    different image counts the shorter list determines how many pairs are
+    processed.  If left and right images have different spatial resolutions
+    the right image is resized to match the left before metric computation.
+
+    Args:
+        left_dir:   Directory of left-camera images.
+        right_dir:  Directory of right-camera images.
+        extensions: File extensions to include (case-insensitive).
+        progress:   Show a tqdm progress bar.
+        max_images: Cap on number of stereo pairs to process.
+
+    Returns:
+        DataFrame with columns:
+            frame_left, frame_right, bhattacharyya, zncc, ssim, phase_psr
+
+    Raises:
+        ValueError: if either directory has no matching images, or if every
+                    pair fails to process.
+    """
+    try:
+        from tqdm import tqdm as _tqdm
+        use_tqdm = progress
+    except ImportError:
+        use_tqdm = False
+
+    exts = {e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions}
+    left_paths = sorted(p for p in Path(left_dir).iterdir() if p.suffix.lower() in exts)
+    right_paths = sorted(p for p in Path(right_dir).iterdir() if p.suffix.lower() in exts)
+
+    if not left_paths:
+        raise ValueError(
+            f"No matching images in left_dir {left_dir!r} (extensions: {sorted(exts)})"
+        )
+    if not right_paths:
+        raise ValueError(
+            f"No matching images in right_dir {right_dir!r} (extensions: {sorted(exts)})"
+        )
+
+    n_pairs = min(len(left_paths), len(right_paths))
+    if len(left_paths) != len(right_paths):
+        warnings.warn(
+            f"Left dir has {len(left_paths)} images, right has {len(right_paths)}. "
+            f"Using first {n_pairs} pairs.",
+            stacklevel=2,
+        )
+    if max_images is not None:
+        n_pairs = min(n_pairs, max_images)
+
+    pairs = list(zip(left_paths[:n_pairs], right_paths[:n_pairs]))
+    if use_tqdm:
+        pairs = _tqdm(pairs, total=n_pairs, unit="pair", desc="stereo pairs")
+
+    rows = []
+    for idx, (left_path, right_path) in enumerate(pairs):
+        try:
+            img_l = load_image_grayscale_u8(str(left_path))
+            img_r = load_image_grayscale_u8(str(right_path))
+            if img_l.shape != img_r.shape:
+                warnings.warn(
+                    f"Shape mismatch at pair {idx}: left {img_l.shape} vs "
+                    f"right {img_r.shape}. Resizing right to match left.",
+                    stacklevel=2,
+                )
+                img_r = cv2.resize(img_r, (img_l.shape[1], img_l.shape[0]))
+            row = {
+                "frame_left":    left_path.name,
+                "frame_right":   right_path.name,
+                "bhattacharyya": M.bhattacharyya_distance(img_l, img_r),
+                "zncc":          M.zncc(img_l, img_r),
+                "ssim":          M.ssim(img_l, img_r),
+                "phase_psr":     M.phase_correlation_psr(img_l, img_r),
+            }
+        except Exception as exc:  # noqa: BLE001
+            warnings.warn(
+                f"Skipping stereo pair {idx} "
+                f"({left_path.name} ↔ {right_path.name}): {exc}",
+                stacklevel=2,
+            )
+            continue
+        rows.append(row)
+
+    if not rows:
+        raise ValueError(
+            f"No valid stereo pairs could be processed from "
+            f"{left_dir!r} and {right_dir!r}"
         )
 
     return pd.DataFrame(rows)

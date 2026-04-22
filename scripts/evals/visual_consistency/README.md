@@ -1,10 +1,20 @@
 # visual_consistency
 
 Pre-flight health check for AUV image sequences captured under strobe illumination.
-Quantifies photometric, structural, and frequency-domain stability across a time series
-so you can diagnose *why* a VO run fails before committing to the full pipeline.
+Provides two analysis modes:
+
+- **Temporal** (`vis-check`) — photometric, structural, and frequency-domain stability
+  across consecutive frames from a single camera. Diagnose why a VO run fails before
+  committing to the full pipeline.
+- **Stereo** (`stereo-check`) — same photometric and structural metrics applied across
+  synchronised left/right camera pairs. Diagnose rig issues (exposure mismatch,
+  one-sided lens fouling, sync gaps) without requiring extrinsic calibration.
+
+---
 
 ## CLI quick start
+
+### Temporal (single camera)
 
 ```bash
 # All images in a directory, save outputs
@@ -17,7 +27,21 @@ vis-check i20251003_212212/ --ext tif --max-images 200 -o results/
 vis-check images-AC/ --max-images 50 --show
 ```
 
+### Stereo (left + right cameras)
+
+```bash
+# Compare left and right image directories
+stereo-check images-left/ images-right/ -o results/
+
+# TIF raw files, first 200 pairs
+stereo-check images-left/ images-right/ --ext tif --max-images 200 -o results/
+```
+
+---
+
 ## Outputs
+
+### Temporal (`vis-check`)
 
 | File | Contents |
 |------|----------|
@@ -27,13 +51,34 @@ vis-check images-AC/ --max-images 50 --show
 | `analysis_summary.json` | Per-metric mean, std, variance, consistency score |
 | `visual_consistency_console.txt` | Copy of stdout (only written with `-o`) |
 
+### Stereo (`stereo-check`)
+
+| File | Contents |
+|------|----------|
+| `stereo_consistency_metrics.csv` | Per-pair values for the four pair-wise metrics |
+| `stereo_consistency_dashboard.png` | 2×2 plot, one panel per metric |
+| `stereo_analysis_summary.json` | Per-metric mean, std, variance, consistency score |
+| `stereo_consistency_console.txt` | Copy of stdout (only written with `-o`) |
+
 ---
 
 ## Metrics
 
-Each metric is computed on every consecutive frame pair (i, i+1).
-Energy of Gradient and Spectral Centroid are single-frame metrics stored
-alongside the pair they belong to (computed on frame i).
+### Temporal vs stereo coverage
+
+| Metric | Temporal | Stereo | Notes |
+|--------|----------|--------|-------|
+| Bhattacharyya Distance | ✓ | ✓ | pair-wise |
+| ZNCC | ✓ | ✓ | pair-wise |
+| SSIM | ✓ | ✓ | pair-wise |
+| Phase Correlation PSR | ✓ | ✓ | pair-wise |
+| Energy of Gradient | ✓ | — | single-frame; tracks sharpness over time |
+| Spectral Centroid | ✓ | — | single-frame; tracks focus drift over time |
+
+EoG and Spectral Centroid are omitted from stereo analysis because they describe
+a single frame's sharpness, not the relationship between left and right.
+
+---
 
 ### A. Photometric Consistency
 
@@ -41,30 +86,32 @@ alongside the pair they belong to (computed on frame i).
 **Range:** [0, ∞) — lower is better.
 
 Measures the "distance" between the normalised 256-bin intensity histograms
-of two consecutive frames.
+of two frames.
 
 ```
 B(H₁, H₂) = √(1 − Σ √(H₁(k) · H₂(k)))
 ```
 
-| Value | Interpretation |
-|-------|---------------|
-| ≈ 0 | Identical intensity distributions — stable strobe |
-| 0.1 – 0.3 | Mild illumination variation — acceptable |
-| > 0.3 | Large photometric shift — strobe flicker or exposure jump |
+| Value | Temporal interpretation | Stereo interpretation |
+|-------|------------------------|-----------------------|
+| ≈ 0 | Stable strobe — identical distributions | Left/right well-matched exposures |
+| 0.1 – 0.3 | Mild illumination variation | Minor camera-to-camera gain difference |
+| > 0.3 | Strobe flicker or exposure jump | Significant exposure mismatch between cameras |
 
-**Watch for:** Sudden spikes (single misfired strobe pulse) or a slow drift
-(gradual exposure creep or sediment plume obscuring the seafloor).
+**Watch for (temporal):** Sudden spikes (misfired strobe pulse) or slow drift
+(exposure creep or sediment plume obscuring the seafloor).
+
+**Watch for (stereo):** Sustained high values indicate a persistent exposure
+or gain imbalance between the two cameras that will affect stereo matching quality.
 
 ---
 
 #### 2. Zero-Mean Normalised Cross-Correlation (ZNCC)
 **Range:** [−1, 1] — higher is better.
 
-Measures texture similarity *after* subtracting the mean intensity from each
-frame. Unlike raw correlation, ZNCC is insensitive to global brightness
-changes — a frame that is twice as bright but otherwise identical will give
-ZNCC = 1.
+Measures texture similarity after subtracting the mean intensity from each
+frame. Insensitive to global brightness differences — a frame that is twice
+as bright but otherwise identical gives ZNCC = 1.
 
 ```
 ZNCC(A, B) = Σ[(Aᵢ − μ_A)(Bᵢ − μ_B)] / (N · σ_A · σ_B)
@@ -73,13 +120,16 @@ ZNCC(A, B) = Σ[(Aᵢ − μ_A)(Bᵢ − μ_B)] / (N · σ_A · σ_B)
 | Value | Interpretation |
 |-------|---------------|
 | > 0.8 | Highly consistent texture — good feature repeatability |
-| 0.3 – 0.8 | Moderate variation — acceptable scene motion |
-| < 0.3 | Low texture consistency — marine snow, blur, or large AUV motion |
+| 0.3 – 0.8 | Moderate variation — acceptable scene motion or viewpoint change |
+| < 0.3 | Low texture consistency — marine snow, blur, or large baseline |
 | ≈ 0 | One or both frames are near-uniform (saturated or blank) |
 
-**Watch for:** Sustained low values indicate the strobe is not illuminating
-useful texture (silt cloud, over-exposure). Sudden drops mark individual bad
-frames.
+**Watch for (temporal):** Sustained low values indicate the strobe is not
+illuminating useful texture. Sudden drops mark individual bad frames.
+
+**Watch for (stereo):** Low ZNCC alongside low SSIM suggests the stereo pair
+is not observing the same scene content — possible sync issue or field-of-view
+mismatch.
 
 ---
 
@@ -94,20 +144,25 @@ Computed on float images normalised to [0, 1].
 | Value | Interpretation |
 |-------|---------------|
 | > 0.7 | High structural similarity — stable scene |
-| 0.3 – 0.7 | Moderate change — AUV motion or minor disturbance |
-| < 0.3 | Large structural change — motion blur, marine snow, scene change |
+| 0.3 – 0.7 | Moderate change — AUV motion, viewpoint shift, or minor disturbance |
+| < 0.3 | Large structural change — motion blur, marine snow, or scene change |
 
-**Watch for:** Drops in SSIM that do *not* coincide with drops in ZNCC
-suggest the scene content is changing (AUV turning, seabed topology change)
-rather than an illumination problem.
+**Watch for (temporal):** Drops in SSIM that do *not* coincide with drops in
+ZNCC suggest scene content is changing (AUV turning, seabed topology) rather
+than an illumination problem.
+
+**Watch for (stereo):** Low SSIM with moderate ZNCC indicates structural
+differences not explained by brightness — could be rectification error or
+one camera being out of focus.
 
 ---
 
 #### 4. Energy of Gradient (EoG)
-**Range:** [0, ∞) — higher means sharper.
+**Range:** [0, ∞) — higher means sharper.  **Temporal only.**
 
 Measures image sharpness by summing squared Sobel gradient magnitudes,
 normalised by pixel count so the value is resolution-independent.
+Computed on the earlier frame of each consecutive pair.
 
 ```
 EoG = Σ(Gₓ² + G_y²) / N_pixels
@@ -137,23 +192,21 @@ aligned in the frequency domain.
 PSR = peak(|F(A) · conj(F(B))| / |F(A) · conj(F(B))|)
 ```
 
-| Value | Interpretation |
-|-------|---------------|
-| High, stable | Consistent geometric overlap — good for feature tracking |
-| Low | Visual decorrelation from backscatter, large inter-frame motion |
-| Near zero | Frames are effectively uncorrelated — tracking likely to fail |
-
-**Watch for:** Consistently low PSR even when ZNCC and SSIM are moderate
-suggests high-frequency backscatter noise is dominating the spectrum.
+| Value | Temporal interpretation | Stereo interpretation |
+|-------|------------------------|-----------------------|
+| High, stable | Consistent geometric overlap — good for feature tracking | Strong spatial correlation between views |
+| Low | Backscatter noise or large inter-frame motion | Rectification error or large stereo baseline at close range |
+| Near zero | Frames effectively uncorrelated — tracking likely to fail | Views are decorrelated — stereo matching will fail |
 
 ---
 
 #### 6. Spectral Centroid
-**Range:** [0, ∞) px (radial frequency units) — higher means more detail.
+**Range:** [0, ∞) px (radial frequency units) — higher means more detail.  **Temporal only.**
 
 The power-weighted mean radial distance from DC in the 2D FFT power spectrum.
 Higher values indicate richer high-frequency content (fine seafloor texture);
 lower values indicate a blurred or featureless image.
+Computed on the earlier frame of each consecutive pair.
 
 ```
 SC = Σ(r · P(r)) / Σ(P(r))   where r = √(u² + v²)
@@ -173,7 +226,7 @@ responds to edge intensity, SC responds to high-frequency spatial content.
 
 ## Consistency Score
 
-Each metric in `analysis_summary.json` includes a `consistency_score` in [0, 1]:
+Each metric in the JSON summary includes a `consistency_score` in [0, 1]:
 
 ```
 consistency_score = 1 / (1 + CV)   where CV = std / |mean|
@@ -187,7 +240,8 @@ and the sequence warrants closer inspection.
 
 ## Strobe Stability Heatmap
 
-`strobe_stability_heatmap.png` contains two panels:
+`strobe_stability_heatmap.png` is produced by `vis-check` only (temporal mode).
+It contains two panels:
 
 **Top — Intensity Distribution over Time**
 Each column is the normalised 256-bin histogram of one frame, rendered as a
@@ -213,12 +267,15 @@ diverging colormap is centred at zero:
 ```
 visual_consistency/
 ├── loader.py     Image loading — PNG (uint8) and TIF (Bayer BGGR16 → uint8 grayscale).
-│                 iter_images()      single-frame generator
-│                 iter_image_pairs() consecutive-pair generator (used by analysis)
+│                 iter_images()         single-frame generator
+│                 iter_image_pairs()    consecutive-pair generator (temporal analysis)
+│                 load_image_grayscale_u8()  single image loader (stereo analysis)
 ├── metrics.py    Six pure metric functions (no I/O, no side effects).
-├── analysis.py   run_analysis() — orchestrates the pair loop, returns a DataFrame.
-└── reporting.py  plot_dashboard()         3×2 time-series dashboard
-                  plot_strobe_heatmap()    intensity heatmap + delta analysis
+├── analysis.py   run_analysis()        temporal pair loop → DataFrame (6 metrics)
+│                 run_stereo_analysis() stereo pair loop  → DataFrame (4 metrics)
+└── reporting.py  plot_dashboard()         time-series dashboard (auto-sized grid)
+                  plot_strobe_heatmap()    intensity heatmap + delta (temporal only)
                   compute_summary()        per-metric statistics dict
                   write_summary_json()     JSON output (delegates to trajectory_evals.io)
+                  STEREO_METRIC_DEFS       metric list for stereo callers
 ```
