@@ -54,14 +54,18 @@ def compute_motion_stats(df: pd.DataFrame) -> dict:
     quats = df[["qx", "qy", "qz", "qw"]].to_numpy()   # scipy: x,y,z,w order
     timestamps = df["timestamp"].to_numpy()
 
-    dpos = np.diff(pos, axis=0)
+    rots = Rotation.from_quat(quats)
+
+    dpos_nav = np.diff(pos, axis=0)
     dt = np.diff(timestamps)
     dt = np.where(dt > 0, dt, np.nan)   # guard duplicate timestamps
+
+    # rotate translation increments into the body frame at each step
+    dpos = rots[:-1].inv().apply(dpos_nav)
 
     step = np.linalg.norm(dpos, axis=1)
     speed = step / dt
 
-    rots = Rotation.from_quat(quats)
     r_delta = rots[:-1].inv() * rots[1:]
     rot_step = np.linalg.norm(r_delta.as_rotvec(), axis=1) * (180.0 / np.pi)
     ang_rate = rot_step / dt
