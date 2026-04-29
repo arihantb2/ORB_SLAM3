@@ -24,7 +24,6 @@
 #include <set>
 #include <utility>
 #include <vector>
-#include "feature_extractor/FeatureTypes.h"
 #include "sophus/sim3.hpp"
 
 namespace ORB_SLAM3
@@ -37,12 +36,11 @@ class MapPoint;
 class FeatureMatcher
 {
 public:
-    FeatureMatcher(float nnratio = 0.6, bool checkOri = true, DescriptorType descriptorType = DescriptorType::BINARY);
+    FeatureMatcher(float nnratio = 0.6, bool checkOri = true,
+                   int thLow = TH_LOW, int thHigh = TH_HIGH);
 
-    // Computes descriptor distance (Hamming for binary ORB, L2 for float SIFT).
+    // Computes Hamming distance between two binary descriptors of any width.
     static int DescriptorDistance(const cv::Mat& a, const cv::Mat& b);
-    static int DefaultThLow(DescriptorType descriptorType);
-    static int DefaultThHigh(DescriptorType descriptorType);
 
     int thLow() const { return mThLow; }
     int thHigh() const { return mThHigh; }
@@ -114,15 +112,8 @@ protected:
 
     void ComputeThreeMaxima(std::vector<int>* histo, const int L, int& ind1, int& ind2, int& ind3);
 
-    // When BoW feature vectors are empty (e.g. SIFT float descriptors skip ORB vocabulary), triangulate
-    // using descriptor + epipolar checks over octave-filtered candidate pairs.
-    int SearchForTriangulationNoBoW(KeyFrame* pKF1, KeyFrame* pKF2,
-                                    std::vector<std::pair<size_t, size_t>>& vMatchedPairs, const bool bOnlyStereo,
-                                    const bool bCoarse);
-
     float mfNNratio;
     bool mbCheckOrientation;
-    DescriptorType mDescriptorType;
     int mThLow;
     int mThHigh;
 };

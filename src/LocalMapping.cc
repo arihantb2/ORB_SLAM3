@@ -97,6 +97,8 @@ void LocalMapping::loadFromSettings(Settings* settings)
     mKeyFrameCullingMinObsInOthers = settings->localMappingKeyFrameCullingMinObsInOthers();
     mKeyFrameCullingMaxKeyframesToCheck = settings->localMappingKeyFrameCullingMaxKeyframesToCheck();
     mKeyFrameCullingEarlyExitAfterAbort = settings->localMappingKeyFrameCullingEarlyExitAfterAbort();
+    mMatchThLow  = settings->matchThLow();
+    mMatchThHigh = settings->matchThHigh();
 }
 
 void LocalMapping::SetTracker(Tracking* pTracker)
@@ -499,10 +501,7 @@ CreateNewMapPointsResult LocalMapping::CreateNewMapPoints()
     std::vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
     result.num_neighbour_kfs = static_cast<int>(vpNeighKFs.size());
 
-    const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
-                                              ? DescriptorType::FLOAT32
-                                              : DescriptorType::BINARY;
-    FeatureMatcher matcher(mCreateNewMapPointsMatchRatio, false, descriptorType);
+    FeatureMatcher matcher(mCreateNewMapPointsMatchRatio, false, mMatchThLow, mMatchThHigh);
 
     Sophus::SE3<float> sophTcw1 = mpCurrentKeyFrame->GetPose();
     Eigen::Matrix<float, 3, 4> eigTcw1 = sophTcw1.matrix3x4();
@@ -835,10 +834,7 @@ SearchInNeighborsResult LocalMapping::SearchInNeighbors()
     result.num_target_kfs = static_cast<int>(vpTargetKFs.size());
 
     // Search matches by projection from current KF in target KFs
-    const DescriptorType descriptorType = (mpCurrentKeyFrame && mpCurrentKeyFrame->mDescriptors.type() == CV_32FC1)
-                                              ? DescriptorType::FLOAT32
-                                              : DescriptorType::BINARY;
-    FeatureMatcher matcher(0.6f, true, descriptorType);
+    FeatureMatcher matcher(0.6f, true, mMatchThLow, mMatchThHigh);
     std::vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
     for (std::vector<KeyFrame*>::iterator vit = vpTargetKFs.begin(), vend = vpTargetKFs.end(); vit != vend; vit++)
     {

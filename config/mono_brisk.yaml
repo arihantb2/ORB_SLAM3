@@ -2,11 +2,11 @@
 
 File.version: "1.0"
 
-# Feature extractor selection. Options:
-#   "GridORB"  — custom FAST dual-threshold + quadtree distribution (default, best accuracy)
-#   "ORB"      — cv::ORB per pyramid level + quadtree (see mono_orb.yaml)
-#   "BRISK"    — BRISK with native scale space (see mono_brisk.yaml)
-FeatureExtractor.type: "ORB"
+# Feature extractor selection.
+FeatureExtractor.type: "BRISK"
+
+# Vocabulary must be fbow format trained on BRISK descriptors — not interchangeable with ORB vocabularies.
+Vocabulary.path: "path/to/brisk_vocab.fbow"
 
 # Camera frames per second
 Camera.fps: 2
@@ -14,39 +14,38 @@ Camera.fps: 2
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
 
-
 #--------------------------------------------------------------------------------------------
-# ORB Feature Extractor Parameters
-# minThFAST is accepted but unused — VanillaORB uses a single FAST threshold (iniThFAST).
+# BRISK Parameters
 #--------------------------------------------------------------------------------------------
 
-# Total desired keypoints across all pyramid levels
-FeatureExtractor.ORB.nFeatures: 2000
+# Number of features per image
+FeatureExtractor.BRISK.nFeatures: 2000
+FeatureExtractor.BRISK.nInitFeatures: 5000
 
-# Initial keypoints for monocular initializer (defaults to 2.5x nFeatures if omitted)
-FeatureExtractor.ORB.nInitFeatures: 5000
+# Number of octave levels in BRISK's internal scale space.
+# Scale doubles per octave: 4 levels span 1x–8x scale range.
+# Note: scaleFactor is NOT configurable for BRISK — it is always 2.0
+# (BRISK's native octave scale is fixed at 2x per level).
+FeatureExtractor.BRISK.nLevels: 4
 
-# Scale factor between pyramid levels
-FeatureExtractor.ORB.scaleFactor: 1.2
+# AGAST corner detection threshold. Lower values yield more keypoints.
+# Typical range: 10–40. Start with 30 and adjust per scene.
+FeatureExtractor.BRISK.threshold: 30
 
-# Number of pyramid levels
-FeatureExtractor.ORB.nLevels: 8
-
-# FAST corner detection threshold
-FeatureExtractor.ORB.iniThFAST: 15
-
-# Keypoint ranking metric after FAST detection.
-# "HARRIS" (default) — re-ranks by Harris corner response; more stable keypoints
-# "FAST"             — ranks by raw FAST response; slightly faster, less stable
-FeatureExtractor.ORB.scoreType: "FAST"
-
-#--------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 # Monocular Initialization Parameters
-#--------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 
+# Search window size for monocular initialization
 Tracking.MonocularInit.SearchWindowSize: 300
+
+# Minimum number of keypoints for monocular initialization
 Tracking.MonocularInit.MinKeypoints: 100
+
+# Nearest neighbor ratio for monocular initialization
 Tracking.MonocularInit.NNRatio: 0.9
+
+# Minimum number of matches for monocular initialization
 Tracking.MonocularInit.MinMatches: 100
 
 #--------------------------------------------------------------------------------------------
@@ -74,44 +73,34 @@ Tracking.LocalMap.VisualMinInliers: 30
 Tracking.NewKF.RefRatioMono: 0.9
 Tracking.NewKF.MinInliers: 15
 
-# Min KFs in map before LOST triggers a map reset (high value = never reset, reuse map)
+# Min KFs in map before LOST triggers a map reset
 Tracking.LostResetMinKFs: 999999
 
 #--------------------------------------------------------------------------------------------
 # Local Mapping Parameters
 #--------------------------------------------------------------------------------------------
-# Minimum interval (seconds) between local bundle adjustments (non-inertial)
 LocalMapping.OptimizeEveryTSeconds: 5.0
-# Minimum keyframes in map before running local BA
 LocalMapping.MinKeyframesForLBA: 2
 
-# Local bundle adjustment priors (0 = disabled, 1 = enabled)
-# PosePriors: use external pose priors on keyframes as absolute constraints.
-# ScalePriors: constrain inter-keyframe scale using relative pose priors.
-# OdometryPriors: add between-pose factors between consecutive keyframes.
 Optimizer.LocalBundleAdjustment.PosePriors: 0
 Optimizer.LocalBundleAdjustment.ScalePriors: 1
 Optimizer.LocalBundleAdjustment.OdometryPriors: 0
 
-# MapPoint culling: remove bad/redundant recent map points
 LocalMapping.MapPointCulling.MinObservations: 2
 LocalMapping.MapPointCulling.MinKFAgeForObsCheck: 2
 LocalMapping.MapPointCulling.MaxKFAgeInRecent: 3
 LocalMapping.MapPointCulling.MinFoundRatio: 0.25
 
-# CreateNewMapPoints: triangulation from covisible keyframes
 LocalMapping.CreateNewMapPoints.CovisibilityNeighbors: 30
 LocalMapping.CreateNewMapPoints.MatchRatio: 0.6
 LocalMapping.CreateNewMapPoints.MinBaselineDepthRatio: 0.01
 LocalMapping.CreateNewMapPoints.MaxCosParallax: 0.9998
 LocalMapping.CreateNewMapPoints.ScaleConsistencyFactor: 1.5
 
-# SearchInNeighbors: fuse duplicates and propagate map points
 LocalMapping.SearchInNeighbors.NumNeighborKFs: 30
 LocalMapping.SearchInNeighbors.NumSecondNeighbors: 20
 LocalMapping.SearchInNeighbors.MaxTemporalNeighbors: 20
 
-# KeyFrame culling: remove redundant keyframes
 LocalMapping.KeyFrameCulling.RedundantObservationRatio: 0.9
 LocalMapping.KeyFrameCulling.MinObservationsInOthers: 3
 LocalMapping.KeyFrameCulling.MaxKeyframesToCheck: 100

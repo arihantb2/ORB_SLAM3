@@ -29,8 +29,6 @@ public:
     // minThFAST   : fallback FAST threshold for cells with no detections
     GridBasedORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels, int iniThFAST, int minThFAST);
 
-    DescriptorType getDescriptorType() const override { return DescriptorType::BINARY; }
-
 protected:
     // FAST detection in 35×35 cells with iniThFAST / minThFAST fallback,
     // followed by distributeOctTree() for uniform spatial coverage.

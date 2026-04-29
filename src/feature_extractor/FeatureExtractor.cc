@@ -218,13 +218,8 @@ int FeatureExtractor::operator()(cv::InputArray _image, cv::InputArray /*_mask*/
     cv::Mat descriptors = _descriptors.getMat();
     _keypoints.resize(nkeypoints);
 
-    // 6. Scale keypoint coordinates to level-0 and interleave stereo reordering.
-    // Keypoints in the stereo lapping area go to the back of the output
-    // (stereoIndex counts down); mono keypoints fill from the front (monoIndex
-    // counts up). This matches the original ORBextractor::operator() exactly.
-    int monoIndex = 0;
-    int stereoIndex = nkeypoints - 1;
-
+    // 6. Collect keypoints into flat output, scaling coordinates to level-0.
+    int idx = 0;
     for (int level = 0; level < mnLevels; ++level)
     {
         std::vector<cv::KeyPoint>& keypoints = allKeypoints[level];
@@ -237,24 +232,15 @@ int FeatureExtractor::operator()(cv::InputArray _image, cv::InputArray /*_mask*/
         {
             if (level != 0)
                 kp.pt *= scale;
-
-            if (kp.pt.x >= vLappingArea[0] && kp.pt.x <= vLappingArea[1])
-            {
-                _keypoints.at(stereoIndex) = kp;
-                perLevelDescs[level].row(i).copyTo(descriptors.row(stereoIndex));
-                stereoIndex--;
-            }
-            else
-            {
-                _keypoints.at(monoIndex) = kp;
-                perLevelDescs[level].row(i).copyTo(descriptors.row(monoIndex));
-                monoIndex++;
-            }
-            i++;
+            _keypoints[idx] = kp;
+            perLevelDescs[level].row(i).copyTo(descriptors.row(idx));
+            ++idx;
+            ++i;
         }
     }
 
-    return monoIndex;
+    // 7. Stereo reordering: mono keypoints to front, stereo to back.
+    return reorderForStereo(_keypoints, descriptors, vLappingArea);
 }
 
 // ============================================================================
@@ -410,6 +396,38 @@ std::vector<cv::KeyPoint> FeatureExtractor::distributeOctTree(const std::vector<
         vResultKeys.push_back(*pBest);
     }
     return vResultKeys;
+}
+
+int FeatureExtractor::reorderForStereo(std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors,
+                                       const std::vector<int>& vLappingArea) const
+{
+    const int n = static_cast<int>(keypoints.size());
+    std::vector<cv::KeyPoint> reordered(n);
+    cv::Mat reorderedDescs(n, descriptors.cols, descriptors.type());
+
+    int monoIndex = 0;
+    int stereoIndex = n - 1;
+
+    for (int i = 0; i < n; ++i)
+    {
+        const cv::KeyPoint& kp = keypoints[i];
+        if (kp.pt.x >= vLappingArea[0] && kp.pt.x <= vLappingArea[1])
+        {
+            reordered[stereoIndex] = kp;
+            descriptors.row(i).copyTo(reorderedDescs.row(stereoIndex));
+            --stereoIndex;
+        }
+        else
+        {
+            reordered[monoIndex] = kp;
+            descriptors.row(i).copyTo(reorderedDescs.row(monoIndex));
+            ++monoIndex;
+        }
+    }
+
+    keypoints = std::move(reordered);
+    reorderedDescs.copyTo(descriptors);
+    return monoIndex;
 }
 
 }  // namespace ORB_SLAM3

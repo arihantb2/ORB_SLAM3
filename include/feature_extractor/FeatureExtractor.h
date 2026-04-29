@@ -1,7 +1,5 @@
 #pragma once
 
-#include "feature_extractor/FeatureTypes.h"
-
 #include <list>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -53,8 +51,8 @@ public:
     // mask is currently ignored (mirrors original behaviour).
     // vLappingArea = {x0, x1} stereo overlap column range; pass {0,0} for mono.
     // Returns monoCount — same semantics as the original ORBextractor.
-    int operator()(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints,
-                   cv::OutputArray descriptors, std::vector<int>& vLappingArea);
+    virtual int operator()(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints,
+                           cv::OutputArray descriptors, std::vector<int>& vLappingArea);
 
     // -----------------------------------------------------------------------
     // Scale info accessors — identical names to ORBextractor
@@ -66,8 +64,10 @@ public:
     const std::vector<float>& GetScaleSigmaSquares() const { return mvLevelSigma2; }
     const std::vector<float>& GetInverseScaleSigmaSquares() const { return mvInvLevelSigma2; }
 
-    // Descriptor format — used by matching code to select the distance metric.
-    virtual DescriptorType getDescriptorType() const = 0;
+    // Matching distance thresholds appropriate for this descriptor type.
+    // Subclasses override when the descriptor width differs from ORB's 256 bits.
+    virtual int matchThLow()  const { return 50; }
+    virtual int matchThHigh() const { return 100; }
 
     // -----------------------------------------------------------------------
     // Public image pyramid
@@ -118,6 +118,12 @@ protected:
 
     // Fills mnFeaturesPerLevel via geometric series sum.
     void computeFeaturesPerLevel();
+
+    // Reorders keypoints/descriptors so mono keypoints (outside the stereo
+    // lapping area) come first and stereo keypoints come last. Both vectors
+    // must be in correspondence. Returns monoIndex (count of mono keypoints).
+    int reorderForStereo(std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors,
+                         const std::vector<int>& vLappingArea) const;
 
     // -----------------------------------------------------------------------
     // Base class state

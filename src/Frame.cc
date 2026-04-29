@@ -25,7 +25,6 @@
 #include "MapPoint.h"
 #include "Verbose.h"
 #include "feature_extractor/FeatureExtractor.h"
-#include "feature_extractor/FeatureTypes.h"
 
 #include <CameraModels/Pinhole.h>
 #include <chrono>
@@ -657,7 +656,7 @@ void Frame::ComputeBoW()
 {
     if (mBowVec.empty())
     {
-        if (!mpORBvocabulary || !mpORBvocabulary->supportsDescriptorType(mDescriptors.type()))
+        if (!mpORBvocabulary)
         {
             return;
         }
@@ -738,10 +737,8 @@ void Frame::ComputeStereoMatches()
     mvDepth = std::vector<float>(N, -1.0f);
     vDescIndex = std::vector<int>(N, -1);
 
-    const DescriptorType descriptorType =
-        (mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
-    const int thLow = FeatureMatcher::DefaultThLow(descriptorType);
-    const int thHigh = FeatureMatcher::DefaultThHigh(descriptorType);
+    const int thLow = mpFeatureExtractorLeft->matchThLow();
+    const int thHigh = mpFeatureExtractorLeft->matchThHigh();
     const int thDescDist = (thHigh + thLow) / 2;
 
     const int nRows = mpFeatureExtractorLeft->mvImagePyramid[0].rows;

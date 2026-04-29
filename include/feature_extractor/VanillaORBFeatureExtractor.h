@@ -1,7 +1,6 @@
 #pragma once
 
 #include "feature_extractor/FeatureExtractor.h"
-#include "feature_extractor/FeatureTypes.h"
 
 #include <opencv2/features2d.hpp>
 
@@ -31,8 +30,6 @@ public:
     //   FAST_SCORE   — ranks by raw FAST response; slightly faster, less stable
     VanillaORBFeatureExtractor(int nfeatures, float scaleFactor, int nlevels, int fastThreshold = 20,
                                cv::ORB::ScoreType scoreType = cv::ORB::HARRIS_SCORE);
-
-    DescriptorType getDescriptorType() const override { return DescriptorType::BINARY; }
 
 protected:
     // buildPyramid() is inherited — Gaussian pyramid with EDGE_THRESHOLD=19 border.

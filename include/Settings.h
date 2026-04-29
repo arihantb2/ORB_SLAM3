@@ -108,12 +108,11 @@ public:
     float initThFAST() { return initThFAST_; }
     float minThFAST() { return minThFAST_; }
     int orbScoreType() { return orbScoreType_; }  // cv::ORB::HARRIS_SCORE or cv::ORB::FAST_SCORE
-    // SIFT-specific
-    int siftNOctaveLayers() { return siftNOctaveLayers_; }
-    double siftContrastThreshold() { return siftContrastThreshold_; }
-    double siftEdgeThreshold() { return siftEdgeThreshold_; }
-    double siftSigma() { return siftSigma_; }
-
+    // BRISK-specific
+    int briskThreshold() { return briskThreshold_; }
+    // Matching thresholds (descriptor-type-specific defaults set by each readXXX())
+    int matchThLow()  { return matchThLow_; }
+    int matchThHigh() { return matchThHigh_; }
     float thFarPoints() { return thFarPoints_; }
     float localMappingOptimizeEveryTSeconds() { return localMappingOptimizeEveryTSeconds_; }
     int localMappingMinKeyframesForLBA() { return localMappingMinKeyframesForLBA_; }
@@ -214,7 +213,7 @@ private:
 
     void readGridORB(cv::FileStorage& fSettings);
     void readORB(cv::FileStorage& fSettings);
-    void readSIFT(cv::FileStorage& fSettings);
+    void readBRISK(cv::FileStorage& fSettings);
     void readOtherParameters(cv::FileStorage& fSettings);
 
     void precomputeRectificationMaps();
@@ -260,12 +259,11 @@ private:
     // ORB-specific
     int initThFAST_, minThFAST_;
     int orbScoreType_;  // cv::ORB::HARRIS_SCORE or cv::ORB::FAST_SCORE (VanillaORB only)
-    // SIFT-specific
-    int siftNOctaveLayers_;
-    double siftContrastThreshold_;
-    double siftEdgeThreshold_;
-    double siftSigma_;
-
+    // BRISK-specific
+    int briskThreshold_ = 30;
+    // Matching thresholds (set per extractor type in readXXX())
+    int matchThLow_  = 50;
+    int matchThHigh_ = 100;
     /*
          * Other stuff
          */

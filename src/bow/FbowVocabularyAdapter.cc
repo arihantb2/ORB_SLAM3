@@ -69,16 +69,7 @@ size_t FbowVocabularyAdapter::size() const
 
 bool FbowVocabularyAdapter::supportsDescriptorType(int cvType) const
 {
-    // If the vocabulary isn't loaded yet, stay permissive to avoid disabling BoW
-    // computations too early. Once loaded, we restrict to the vocab's descriptor type.
-    if (vocab_.size() == 0)
-    {
-        return cvType == CV_8UC1 || cvType == CV_32FC1;
-    }
-
-    // fbow::Vocabulary stores the descriptor OpenCV type (e.g. CV_8UC1 or CV_32FC1)
-    // inside the loaded vocabulary file parameters.
-    return cvType == static_cast<int>(vocab_.getDescType());
+    return cvType == CV_8UC1;
 }
 
 void FbowVocabularyAdapter::transform(const std::vector<cv::Mat>& descriptors, BowVector& bowVec,

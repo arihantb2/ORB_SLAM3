@@ -5,13 +5,8 @@ File.version: "1.0"
 # Feature extractor selection. Options:
 #   "GridORB"  — custom FAST dual-threshold + quadtree distribution (default, best accuracy)
 #   "ORB"      — cv::ORB per pyramid level + quadtree (see stereo_orb.yaml)
-#   "SIFT"     — cv::SIFT + quadtree, float descriptors (see stereo_sift.yaml)
+#   "BRISK"    — BRISK with native scale space (see stereo_brisk.yaml)
 FeatureExtractor.type: "ORB"
-
-# Vocabulary type. Options:
-#   "dbow2"    — custom DBoW2 vocabulary (default, best accuracy)
-#   "fbow"     — custom FBoW vocabulary (see stereo_fbow.yaml)
-Vocabulary.type: "fbow"
 
 # Camera frames per second
 Camera.fps: 2

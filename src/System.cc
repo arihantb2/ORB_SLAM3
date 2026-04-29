@@ -97,25 +97,18 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
     Verbose::Print(Verbose::VERBOSITY_DEBUG) << "Atlas new maps status: " << (newMaps ? "ON" : "OFF") << std::endl;
 
     mStrVocabularyFilePath = strVocFile;
-    mVocabularyType = "dbow2";
-    cv::FileNode vocabTypeNode = fsSettings["Vocabulary.type"];
-    if (!vocabTypeNode.empty() && vocabTypeNode.isString())
-    {
-        mVocabularyType = vocabTypeNode.string();
-    }
     cv::FileNode vocabPathNode = fsSettings["Vocabulary.path"];
     if (!vocabPathNode.empty() && vocabPathNode.isString())
     {
         mStrVocabularyFilePath = vocabPathNode.string();
     }
 
-    //Load ORB Vocabulary
     Verbose::Print(Verbose::VERBOSITY_DEBUG)
         << std::endl
-        << "Loading Vocabulary of type (" << mVocabularyType << ") from file: " << mStrVocabularyFilePath
+        << "Loading vocabulary from: " << mStrVocabularyFilePath
         << ". This could take a while..." << std::endl;
 
-    mpVocabulary = CreateBowVocabulary(mVocabularyType);
+    mpVocabulary = CreateBowVocabulary();
     bool bVocLoad = mpVocabulary->load(mStrVocabularyFilePath);
     if (!bVocLoad)
     {

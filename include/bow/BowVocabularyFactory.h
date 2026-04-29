@@ -4,12 +4,11 @@
 #include "bow/IBowVocabulary.h"
 
 #include <memory>
-#include <string>
 
 namespace ORB_SLAM3
 {
 
-std::unique_ptr<IBowVocabulary> CreateBowVocabulary(const std::string& vocabularyType);
+std::unique_ptr<IBowVocabulary> CreateBowVocabulary();
 
 }  // namespace ORB_SLAM3
 

@@ -27,8 +27,8 @@
 #include "Optimizer.h"
 #include "Settings.h"
 #include "System.h"
+#include "feature_extractor/BRISKFeatureExtractor.h"
 #include "feature_extractor/GridBasedORBFeatureExtractor.h"
-#include "feature_extractor/SIFTFeatureExtractor.h"
 #include "feature_extractor/VanillaORBFeatureExtractor.h"
 
 #include <algorithm>
@@ -120,26 +120,7 @@ void Tracking::loadFromSettings(Settings* settings)
 
     const std::string extractorType = settings->featureExtractorType();
 
-    if (extractorType == "SIFT")
-    {
-        const int nOctaveLayers = settings->siftNOctaveLayers();
-        const double contrastTh = settings->siftContrastThreshold();
-        const double edgeTh = settings->siftEdgeThreshold();
-        const double sigma = settings->siftSigma();
-
-        mpFeatureExtractorLeft = new SIFTFeatureExtractor(nFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
-        if (mSensor == System::STEREO)
-        {
-            mpFeatureextractorRight =
-                new SIFTFeatureExtractor(nFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
-        }
-        if (mSensor == System::MONOCULAR)
-        {
-            mpIniFeatureExtractor =
-                new SIFTFeatureExtractor(nInitFeatures, nOctaveLayers, contrastTh, edgeTh, sigma, nLevels);
-        }
-    }
-    else if (extractorType == "ORB")
+    if (extractorType == "ORB")
     {
         const float fScaleFactor = settings->scaleFactor();
         const int fastThreshold = settings->initThFAST();
@@ -156,6 +137,19 @@ void Tracking::loadFromSettings(Settings* settings)
         {
             mpIniFeatureExtractor =
                 new VanillaORBFeatureExtractor(nInitFeatures, fScaleFactor, nLevels, fastThreshold, scoreType);
+        }
+    }
+    else if (extractorType == "BRISK")
+    {
+        const int threshold = settings->briskThreshold();
+        mpFeatureExtractorLeft = new BRISKFeatureExtractor(nFeatures, nLevels, threshold);
+        if (mSensor == System::STEREO)
+        {
+            mpFeatureextractorRight = new BRISKFeatureExtractor(nFeatures, nLevels, threshold);
+        }
+        if (mSensor == System::MONOCULAR)
+        {
+            mpIniFeatureExtractor = new BRISKFeatureExtractor(nInitFeatures, nLevels, threshold);
         }
     }
     else  // "GridORB" (default)
@@ -178,6 +172,9 @@ void Tracking::loadFromSettings(Settings* settings)
         }
     }
 
+    mMatchThLow  = mpFeatureExtractorLeft->matchThLow();
+    mMatchThHigh = mpFeatureExtractorLeft->matchThHigh();
+
     // Monocular initialization thresholds
     mMonocularInitSearchWindowSize = settings->monocularInitSearchWindowSize();
     mMonocularInitMinKeypoints = settings->monocularInitMinKeypoints();
@@ -192,9 +189,6 @@ void Tracking::loadFromSettings(Settings* settings)
     mReferenceKeyframeNNRatio = settings->referenceKeyframeNNRatio();
     mReferenceKeyframeMinBoWMatches = settings->referenceKeyframeMinBoWMatches();
     mReferenceKeyframeMinOptimizedMapMatches = settings->referenceKeyframeMinOptimizedMapMatches();
-    // SIFT mode: disable BoW-based reference keyframe tracking.
-    mUseBoWReferenceKeyframeTracking = (extractorType != "SIFT");
-
     // Motion model tracking thresholds
     mMotionModelNNRatio = settings->motionModelNNRatio();
     mMotionModelProjectionSearchTh = settings->motionModelProjectionSearchTh();
@@ -586,15 +580,8 @@ TrackingResult Tracking::Track()
         Map* pCurrentMap = mpAtlas->GetCurrentMap();
         auto trackReferenceKF = [&]() -> RefKeyFrameTrackingResult
         {
-            if (mUseBoWReferenceKeyframeTracking)
-            {
-                mCurrentFrame.ComputeBoW();
-                if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
-                {
-                    return TrackReferenceKeyFrameNoBoW();
-                }
-            }
-            return mUseBoWReferenceKeyframeTracking ? TrackReferenceKeyFrameWithBoW() : TrackReferenceKeyFrameNoBoW();
+            mCurrentFrame.ComputeBoW();
+            return TrackReferenceKeyFrameWithBoW();
         };
         if (!mbVelocity)
         {
@@ -905,9 +892,7 @@ void Tracking::MonocularInitialization()
             << std::endl;
 
         // Find correspondences
-        const DescriptorType descriptorType =
-            (mInitialFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
-        FeatureMatcher matcher(mMonocularInitNNRatio, true, descriptorType);
+        FeatureMatcher matcher(mMonocularInitNNRatio, true, mMatchThLow, mMatchThHigh);
         int nmatches = matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, mvbPrevMatched, mvIniMatches,
                                                        mMonocularInitSearchWindowSize);
 
@@ -1228,17 +1213,9 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
 {
     RefKeyFrameTrackingResult result;
 
-    // Compute Bag of Words vector
-    mCurrentFrame.ComputeBoW();
-    if (mCurrentFrame.mFeatVec.empty() || !mpReferenceKF || mpReferenceKF->mFeatVec.empty())
-    {
-        return TrackReferenceKeyFrameNoBoW();
-    }
-
     // We perform first an ORB matching with the reference keyframe
     // If enough matches are found we setup a PnP solver
-    // BoW matching is only valid for ORB/binary descriptors in this codebase.
-    FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, DescriptorType::BINARY);
+    FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, mMatchThLow, mMatchThHigh);
     std::vector<MapPoint*> vpMapPointMatches;
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
@@ -1330,97 +1307,9 @@ RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameWithBoW()
     return result;
 }
 
-RefKeyFrameTrackingResult Tracking::TrackReferenceKeyFrameNoBoW()
-{
-    RefKeyFrameTrackingResult result;
-
-    const DescriptorType descriptorType =
-        (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
-    FeatureMatcher matcher(mReferenceKeyframeNNRatio, true, descriptorType);
-
-    const int nmatches = matcher.SearchByBruteForce(mpReferenceKF, mCurrentFrame);
-    result.num_matches = nmatches;
-
-    // Build match list for introspection (best-effort; source index resolved via MapPoint observations).
-    for (int i = 0; i < mCurrentFrame.N; i++)
-    {
-        MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-        if (!pMP || pMP->isBad())
-        {
-            continue;
-        }
-
-        MatchedKeypoint m;
-        m.current_kp_idx = i;
-        m.current_kp = mCurrentFrame.mvKeysUn[i];
-
-        auto obs = pMP->GetObservations();
-        auto it = obs.find(mpReferenceKF);
-        if (it != obs.end())
-        {
-            const int refIdx = std::get<0>(it->second);
-            if (refIdx >= 0 && refIdx < static_cast<int>(mpReferenceKF->mvKeysUn.size()))
-            {
-                m.source_kp_idx = refIdx;
-                m.source_kp = mpReferenceKF->mvKeysUn[refIdx];
-            }
-        }
-
-        result.kf_matches.push_back(m);
-        result.keypoints_matches.push_back({m.current_kp, m.source_kp});
-    }
-
-    Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatches=" << nmatches << std::endl;
-
-    if (nmatches < mReferenceKeyframeMinBoWMatches)
-    {
-        Verbose::Print(Verbose::VERBOSITY_DEBUG)
-            << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF failed: nmatches=" << nmatches
-            << " < MinMatches=" << mReferenceKeyframeMinBoWMatches << std::endl;
-        return result;
-    }
-
-    mCurrentFrame.SetPose(mLastFrame.GetPose());
-    Optimizer::PoseOptimization(&mCurrentFrame);
-
-    int nmatchesMap = result.num_matches;
-    nmatchesMap = DiscardOutliersAndCountInliers(mCurrentFrame, nmatchesMap, true);
-
-    for (auto& m : result.kf_matches)
-    {
-        m.is_inlier = (m.current_kp_idx >= 0 && m.current_kp_idx < mCurrentFrame.N &&
-                       mCurrentFrame.mvpMapPoints[m.current_kp_idx] != nullptr);
-        if (m.is_inlier)
-        {
-            result.kf_matches_optimized.push_back(m);
-            result.keypoints_inliers_optimized.push_back(m.current_kp);
-            result.keypoints_matches_optimized.push_back({m.current_kp, m.source_kp});
-        }
-        else
-        {
-            result.keypoints_outliers_optimized.push_back(m.current_kp);
-        }
-    }
-
-    result.num_matches_optimized = nmatchesMap;
-    result.pose = mCurrentFrame.GetPose().inverse();
-
-    Verbose::Print(Verbose::VERBOSITY_DEBUG)
-        << "[" << mCurrentFrame.mnId << "] TRACK_REF_KF_NO_BOW: nmatchesMap=" << nmatchesMap << std::endl;
-
-    if (nmatchesMap >= mReferenceKeyframeMinOptimizedMapMatches)
-    {
-        result.success = true;
-    }
-    return result;
-}
-
 MotionModelTrackingResult Tracking::TrackWithMotionModel()
 {
-    const DescriptorType descriptorType =
-        (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
-    FeatureMatcher matcher(mMotionModelNNRatio, true, descriptorType);
+    FeatureMatcher matcher(mMotionModelNNRatio, true, mMatchThLow, mMatchThHigh);
 
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
@@ -1944,9 +1833,7 @@ void Tracking::SearchLocalPoints()
 
     if (nToMatch > 0)
     {
-        const DescriptorType descriptorType =
-            (mCurrentFrame.mDescriptors.type() == CV_32FC1) ? DescriptorType::FLOAT32 : DescriptorType::BINARY;
-        FeatureMatcher matcher(0.8, true, descriptorType);
+        FeatureMatcher matcher(0.8, true, mMatchThLow, mMatchThHigh);
         int th = 1;
 
         if (mState == LOST)

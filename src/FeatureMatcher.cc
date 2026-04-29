@@ -259,38 +259,11 @@ const int FeatureMatcher::TH_HIGH = 100;
 const int FeatureMatcher::TH_LOW = 50;
 const int FeatureMatcher::HISTO_LENGTH = 30;
 
-int FeatureMatcher::DefaultThLow(DescriptorType descriptorType)
-{
-    switch (descriptorType)
-    {
-        case DescriptorType::BINARY:
-            return TH_LOW;
-        case DescriptorType::FLOAT32:
-            // Empirical defaults for OpenCV SIFT descriptors (tune per dataset).
-            return 200;
-    }
-    return TH_LOW;
-}
-
-int FeatureMatcher::DefaultThHigh(DescriptorType descriptorType)
-{
-    switch (descriptorType)
-    {
-        case DescriptorType::BINARY:
-            return TH_HIGH;
-        case DescriptorType::FLOAT32:
-            // Empirical defaults for OpenCV SIFT descriptors (tune per dataset).
-            return 400;
-    }
-    return TH_HIGH;
-}
-
-FeatureMatcher::FeatureMatcher(float nnratio, bool checkOri, DescriptorType descriptorType)
+FeatureMatcher::FeatureMatcher(float nnratio, bool checkOri, int thLow, int thHigh)
     : mfNNratio(nnratio),
       mbCheckOrientation(checkOri),
-      mDescriptorType(descriptorType),
-      mThLow(DefaultThLow(descriptorType)),
-      mThHigh(DefaultThHigh(descriptorType))
+      mThLow(thLow),
+      mThHigh(thHigh)
 {
 }
 
@@ -975,7 +948,7 @@ int FeatureMatcher::SearchByBruteForce(KeyFrame* pKF, Frame& F)
 {
     std::fill(F.mvpMapPoints.begin(), F.mvpMapPoints.end(), static_cast<MapPoint*>(NULL));
     const std::vector<MapPoint*> vpRefMapPoints = pKF->GetMapPointMatches();
-    const int distThreshold = (mDescriptorType == DescriptorType::FLOAT32) ? mThHigh : mThLow;
+    const int distThreshold = mThLow;
 
     int nmatches = 0;
     for (size_t idx1 = 0; idx1 < vpRefMapPoints.size(); ++idx1)
@@ -1028,168 +1001,10 @@ int FeatureMatcher::SearchByBruteForce(KeyFrame* pKF, Frame& F)
     return nmatches;
 }
 
-int FeatureMatcher::SearchForTriangulationNoBoW(KeyFrame* pKF1, KeyFrame* pKF2,
-                                                std::vector<std::pair<size_t, size_t>>& vMatchedPairs,
-                                                const bool bOnlyStereo, const bool bCoarse)
-{
-    Sophus::SE3f T1w = pKF1->GetPose();
-    Sophus::SE3f T2w = pKF2->GetPose();
-    Sophus::SE3f Tw2 = pKF2->GetPoseInverse();
-    Eigen::Vector3f Cw = pKF1->GetCameraCenter();
-    Eigen::Vector3f C2 = T2w * Cw;
-
-    Eigen::Vector2f ep = pKF2->mpCamera->project(C2);
-    Sophus::SE3f T12;
-    Eigen::Matrix3f R12;
-    Eigen::Vector3f t12;
-
-    GeometricCamera* pCamera1 = pKF1->mpCamera;
-    GeometricCamera* pCamera2 = pKF2->mpCamera;
-
-    T12 = T1w * Tw2;
-    R12 = T12.rotationMatrix();
-    t12 = T12.translation();
-
-    int nmatches = 0;
-    std::vector<bool> vbMatched2(pKF2->N, false);
-    std::vector<int> vMatches12(pKF1->N, -1);
-
-    std::vector<int> rotHist[HISTO_LENGTH];
-    const float factor = InitRotationHistogram(rotHist, HISTO_LENGTH);
-
-    for (size_t idx1 = 0; idx1 < pKF1->N; ++idx1)
-    {
-        MapPoint* pMP1 = pKF1->GetMapPoint(idx1);
-        if (pMP1)
-        {
-            continue;
-        }
-
-        const bool bStereo1 = (pKF1->mvuRight[idx1] >= 0);
-        if (bOnlyStereo && !bStereo1)
-        {
-            continue;
-        }
-
-        const cv::KeyPoint& kp1 = (pKF1->NLeft == -1)    ? pKF1->mvKeysUn[idx1]
-                                  : (idx1 < pKF1->NLeft) ? pKF1->mvKeys[idx1]
-                                                         : pKF1->mvKeysRight[idx1 - pKF1->NLeft];
-
-        const cv::Mat& d1 = pKF1->mDescriptors.row(idx1);
-
-        const int distThreshold = (mDescriptorType == DescriptorType::FLOAT32) ? mThHigh : mThLow;
-        int bestDist = distThreshold;
-        int bestDist2 = std::numeric_limits<int>::max();
-        int bestIdx2 = -1;
-
-        for (size_t idx2 = 0; idx2 < pKF2->N; ++idx2)
-        {
-            MapPoint* pMP2 = pKF2->GetMapPoint(idx2);
-            if (vbMatched2[idx2] || pMP2)
-            {
-                continue;
-            }
-            const bool bStereo2 = (pKF2->mvuRight[idx2] >= 0);
-            if (bOnlyStereo && !bStereo2)
-            {
-                continue;
-            }
-
-            const cv::KeyPoint& kp2 = (pKF2->NLeft == -1)    ? pKF2->mvKeysUn[idx2]
-                                      : (idx2 < pKF2->NLeft) ? pKF2->mvKeys[idx2]
-                                                             : pKF2->mvKeysRight[idx2 - pKF2->NLeft];
-
-            if (std::abs(kp1.octave - kp2.octave) > 1)
-            {
-                continue;
-            }
-
-            const cv::Mat& d2 = pKF2->mDescriptors.row(idx2);
-            const int dist = DescriptorDistance(d1, d2);
-
-            if (dist > distThreshold || dist > bestDist)
-            {
-                continue;
-            }
-            if (!bStereo1 && !bStereo2)
-            {
-                const float distex = ep(0) - kp2.pt.x;
-                const float distey = ep(1) - kp2.pt.y;
-                if (distex * distex + distey * distey < 100 * pKF2->mvScaleFactors[kp2.octave])
-                {
-                    continue;
-                }
-            }
-
-            if (bCoarse || pCamera1->epipolarConstrain(pCamera2, kp1, kp2, R12, t12, pKF1->mvLevelSigma2[kp1.octave],
-                                                       pKF2->mvLevelSigma2[kp2.octave]))
-            {
-                UpdateBestAndSecond(dist, static_cast<int>(idx2), bestDist, bestIdx2, bestDist2);
-            }
-            else
-            {
-                continue;
-            }
-        }
-
-        if (bestIdx2 >= 0)
-        {
-            // Reject ambiguous matches in no-BoW mode.
-            if (!PassesBestSecondRatio(bestDist, bestDist2, mfNNratio))
-            {
-                continue;
-            }
-            const cv::KeyPoint& kp2 = (pKF2->NLeft == -1)        ? pKF2->mvKeysUn[bestIdx2]
-                                      : (bestIdx2 < pKF2->NLeft) ? pKF2->mvKeys[bestIdx2]
-                                                                 : pKF2->mvKeysRight[bestIdx2 - pKF2->NLeft];
-            vMatches12[idx1] = bestIdx2;
-            nmatches++;
-
-            if (mbCheckOrientation)
-            {
-                AddRotationToHistogram(rotHist, HISTO_LENGTH, factor, kp1.angle, kp2.angle, static_cast<int>(idx1));
-            }
-        }
-    }
-
-    if (mbCheckOrientation)
-    {
-        ApplyRotationConsistency(
-            rotHist, HISTO_LENGTH,
-            [&](int& ind1, int& ind2, int& ind3) { ComputeThreeMaxima(rotHist, HISTO_LENGTH, ind1, ind2, ind3); },
-            [&](int idx)
-            {
-                vMatches12[idx] = -1;
-                nmatches--;
-            });
-    }
-
-    vMatchedPairs.clear();
-    vMatchedPairs.reserve(static_cast<size_t>(nmatches));
-
-    for (size_t i = 0, iend = vMatches12.size(); i < iend; i++)
-    {
-        if (vMatches12[i] < 0)
-        {
-            continue;
-        }
-        vMatchedPairs.push_back(std::make_pair(i, static_cast<size_t>(vMatches12[i])));
-    }
-
-    return nmatches;
-}
-
 int FeatureMatcher::SearchForTriangulation(KeyFrame* pKF1, KeyFrame* pKF2,
                                            std::vector<std::pair<size_t, size_t>>& vMatchedPairs,
                                            const bool bOnlyStereo, const bool bCoarse)
 {
-    // BoW-guided search requires mFeatVec from the binary ORB vocabulary. Float descriptors (SIFT)
-    // skip ComputeBoW(), leaving mFeatVec empty — use a non-BoW fallback or triangulation adds 0 points.
-    if (pKF1->mFeatVec.empty() || pKF2->mFeatVec.empty())
-    {
-        return SearchForTriangulationNoBoW(pKF1, pKF2, vMatchedPairs, bOnlyStereo, bCoarse);
-    }
-
     const FeatureVector& vFeatVec1 = pKF1->mFeatVec;
     const FeatureVector& vFeatVec2 = pKF2->mFeatVec;
 
@@ -2182,28 +1997,19 @@ void FeatureMatcher::ComputeThreeMaxima(std::vector<int>* histo, const int L, in
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 int FeatureMatcher::DescriptorDistance(const cv::Mat& a, const cv::Mat& b)
 {
-    // Binary ORB descriptor: 32 bytes = 8x int32_t words.
-    if (a.type() == CV_8UC1 && b.type() == CV_8UC1)
+    const int* pa = a.ptr<int32_t>();
+    const int* pb = b.ptr<int32_t>();
+    const int nWords = a.cols / 4;
+
+    int dist = 0;
+    for (int i = 0; i < nWords; i++, pa++, pb++)
     {
-        const int* pa = a.ptr<int32_t>();
-        const int* pb = b.ptr<int32_t>();
-
-        int dist = 0;
-
-        for (int i = 0; i < 8; i++, pa++, pb++)
-        {
-            unsigned int v = *pa ^ *pb;
-            v = v - ((v >> 1) & 0x55555555);
-            v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-            dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-        }
-
-        return dist;
+        unsigned int v = *pa ^ *pb;
+        v = v - ((v >> 1) & 0x55555555);
+        v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+        dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
     }
-
-    // Float32 descriptors (e.g., SIFT): use L2 distance.
-    // Return an int for compatibility with existing thresholding code.
-    return cvRound(cv::norm(a, b, cv::NORM_L2));
+    return dist;
 }
 
 }  // namespace ORB_SLAM3

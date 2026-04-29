@@ -1,9 +1,8 @@
 #
-# bow — vocabulary factory + adapters (DBoW2/fbow)
+# bow — vocabulary factory + fbow adapter
 #
 add_library(${PROJECT_NAME}_bow STATIC
     BowVocabularyFactory.cc
-    Dbow2VocabularyAdapter.cc
     FbowVocabularyAdapter.cc
 )
 
@@ -20,7 +19,6 @@ target_include_directories(${PROJECT_NAME}_bow PRIVATE
 target_link_libraries(${PROJECT_NAME}_bow
     PUBLIC
         ${OpenCV_LIBS}
-        DBoW2::DBoW2
         ${fbow_LIBS}
 )
 

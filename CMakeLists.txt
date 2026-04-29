@@ -48,7 +48,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.4.0 REQUIRED NO_MODULE)
 find_package(Sophus 1.22 REQUIRED)
-find_package(DBoW2 REQUIRED)
 find_package(fbow REQUIRED)
 find_package(GTSAM REQUIRED)
 
@@ -62,6 +61,7 @@ add_subdirectory(orb_slam3_wrapper)
 enable_testing()
 add_subdirectory(src/CameraModels/tests)
 add_subdirectory(src/tests)
+add_subdirectory(src/feature_extractor/tests)
 
 # ---------------
 # Installation instructions.

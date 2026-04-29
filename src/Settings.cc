@@ -196,15 +196,15 @@ Settings::Settings(const std::string& algorithmConfigPath, const int& sensor, co
     {
         featureExtractorType_ = "GridORB";
     }
-    if (featureExtractorType_ == "SIFT")
-    {
-        readSIFT(fSettings);
-        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded SIFT settings" << std::endl;
-    }
-    else if (featureExtractorType_ == "ORB")
+    if (featureExtractorType_ == "ORB")
     {
         readORB(fSettings);
         Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded ORB settings" << std::endl;
+    }
+    else if (featureExtractorType_ == "BRISK")
+    {
+        readBRISK(fSettings);
+        Verbose::Print(Verbose::VERBOSITY_DEBUG) << "\t-Loaded BRISK settings" << std::endl;
     }
     else  // "GridORB" (default)
     {
@@ -237,6 +237,8 @@ void Settings::readGridORB(cv::FileStorage& fSettings)
     nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.nLevels", found);
     initThFAST_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.iniThFAST", found);
     minThFAST_ = readParameter<int>(fSettings, "FeatureExtractor.GridORB.minThFAST", found);
+    matchThLow_  = readParameter<int>(fSettings, "FeatureMatcher.thLow",  found, 50,  false);
+    matchThHigh_ = readParameter<int>(fSettings, "FeatureMatcher.thHigh", found, 100, false);
 }
 
 void Settings::readORB(cv::FileStorage& fSettings)
@@ -268,48 +270,36 @@ void Settings::readORB(cv::FileStorage& fSettings)
     {
         throw std::runtime_error("FeatureExtractor.ORB.scoreType must be \"HARRIS\" or \"FAST\"");
     }
+    matchThLow_  = readParameter<int>(fSettings, "FeatureMatcher.thLow",  found, 50,  false);
+    matchThHigh_ = readParameter<int>(fSettings, "FeatureMatcher.thHigh", found, 100, false);
 }
 
-void Settings::readSIFT(cv::FileStorage& fSettings)
+void Settings::readBRISK(cv::FileStorage& fSettings)
 {
     bool found;
 
-    nFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nFeatures", found);
-    nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nInitFeatures", found, false);
+    nFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.BRISK.nFeatures", found);
+    nInitFeatures_ = readParameter<int>(fSettings, "FeatureExtractor.BRISK.nInitFeatures", found, false);
     if (!found)
     {
-        // Match ORB / GridORB: denser features during NOT_INITIALIZED / short post-init window.
         nInitFeatures_ = static_cast<int>(2.5f * nFeatures_);
     }
-    nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nLevels", found, false);
-    if (!found)
-    {
-        nLevels_ = 4;
-    }
-    scaleFactor_ = 2.0f;  // SIFT hardcodes 2x octave downscaling
+    nLevels_ = readParameter<int>(fSettings, "FeatureExtractor.BRISK.nLevels", found, 4, false);
+    briskThreshold_ = readParameter<int>(fSettings, "FeatureExtractor.BRISK.threshold", found, 30, false);
 
-    siftNOctaveLayers_ = readParameter<int>(fSettings, "FeatureExtractor.SIFT.nOctaveLayers", found, false);
-    if (!found)
+    // BRISK's octave scale is always 2x — scaleFactor_ is set here only for
+    // consistency with code that reads it (e.g. pyramid allocation).
+    scaleFactor_ = 2.0f;
+    bool scaleFound;
+    readParameter<float>(fSettings, "FeatureExtractor.BRISK.scaleFactor", scaleFound, 2.0f, false);
+    if (scaleFound)
     {
-        siftNOctaveLayers_ = 3;
+        Verbose::Print(Verbose::VERBOSITY_NORMAL)
+            << "[WARN] FeatureExtractor.BRISK.scaleFactor is ignored; BRISK uses 2.0" << std::endl;
     }
-    siftContrastThreshold_ =
-        static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.contrastThreshold", found, false));
-    if (!found)
-    {
-        siftContrastThreshold_ = 0.03;
-    }
-    siftEdgeThreshold_ =
-        static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.edgeThreshold", found, false));
-    if (!found)
-    {
-        siftEdgeThreshold_ = 10.0;
-    }
-    siftSigma_ = static_cast<double>(readParameter<float>(fSettings, "FeatureExtractor.SIFT.sigma", found, false));
-    if (!found)
-    {
-        siftSigma_ = 1.6;
-    }
+
+    matchThLow_  = readParameter<int>(fSettings, "FeatureMatcher.thLow",  found, 100, false);
+    matchThHigh_ = readParameter<int>(fSettings, "FeatureMatcher.thHigh", found, 200, false);
 }
 
 void Settings::readOtherParameters(cv::FileStorage& fSettings)

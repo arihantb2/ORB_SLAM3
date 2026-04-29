@@ -127,9 +127,8 @@ private:
     // Input sensor
     eSensor mSensor;
 
-    // ORB vocabulary used for place recognition and feature matching.
+    // Vocabulary used for place recognition and feature matching.
     std::unique_ptr<IBowVocabulary> mpVocabulary;
-    std::string mVocabularyType;
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Atlas* mpAtlas;

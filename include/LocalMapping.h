@@ -108,6 +108,10 @@ public:
     bool mbFarPoints;
     float mThFarPoints;
 
+    // Descriptor-type-appropriate matching thresholds (read from Settings)
+    int mMatchThLow  = 50;
+    int mMatchThHigh = 100;
+
     // LBA throttling: min interval between optimizations
     double mOptimizeEveryTSeconds = 0.0;
 
