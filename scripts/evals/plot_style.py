@@ -1,6 +1,9 @@
 """Shared matplotlib style for research-paper quality figures."""
 
+import warnings
 import matplotlib.pyplot as plt
+
+warnings.filterwarnings("ignore", message="Unable to import Axes3D")
 
 
 def apply_paper_style() -> None:

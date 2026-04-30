@@ -54,14 +54,18 @@ def compute_motion_stats(df: pd.DataFrame) -> dict:
     quats = df[["qx", "qy", "qz", "qw"]].to_numpy()   # scipy: x,y,z,w order
     timestamps = df["timestamp"].to_numpy()
 
-    dpos = np.diff(pos, axis=0)
+    rots = Rotation.from_quat(quats)
+
+    dpos_nav = np.diff(pos, axis=0)
     dt = np.diff(timestamps)
     dt = np.where(dt > 0, dt, np.nan)   # guard duplicate timestamps
+
+    # rotate translation increments into the body frame at each step
+    dpos = rots[:-1].inv().apply(dpos_nav)
 
     step = np.linalg.norm(dpos, axis=1)
     speed = step / dt
 
-    rots = Rotation.from_quat(quats)
     r_delta = rots[:-1].inv() * rots[1:]
     rot_step = np.linalg.norm(r_delta.as_rotvec(), axis=1) * (180.0 / np.pi)
     ang_rate = rot_step / dt
@@ -178,6 +182,9 @@ def _rose(ax, dyaw_list, labels, colors, title):
                label=label, align="center")
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks)
+    ax.set_yticklabels([str(int(t)) if i % 4 == 0 else "" for i, t in enumerate(yticks)])
     ax.set_xlabel("Count", labelpad=20)
     ax.set_title(title, pad=14)
     ax.legend(loc="lower left", bbox_to_anchor=(-0.25, -0.15))
