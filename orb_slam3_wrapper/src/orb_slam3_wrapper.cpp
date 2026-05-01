@@ -208,53 +208,6 @@ VOResult build_vo_result(const Eigen::Matrix4f& pose_matrix, bool tracking_ok, b
 
 }  // namespace
 
-ORBSLAM3Wrapper::LocalMappingResultQueue::LocalMappingResultQueue(size_t capacity)
-    : buffer_(capacity + 1), capacity_(capacity + 1), head_(0), tail_(0)
-{
-}
-
-bool ORBSLAM3Wrapper::LocalMappingResultQueue::try_push(const ORB_SLAM3::LocalMappingResult& result)
-{
-    const size_t head = head_.load(std::memory_order_relaxed);
-    const size_t next_head = (head + 1) % capacity_;
-    if (next_head == tail_.load(std::memory_order_acquire))
-    {
-        return false;
-    }
-
-    buffer_[head].is_reset = false;
-    buffer_[head].result = result;
-    head_.store(next_head, std::memory_order_release);
-    return true;
-}
-
-bool ORBSLAM3Wrapper::LocalMappingResultQueue::try_push_reset()
-{
-    const size_t head = head_.load(std::memory_order_relaxed);
-    const size_t next_head = (head + 1) % capacity_;
-    if (next_head == tail_.load(std::memory_order_acquire))
-    {
-        return false;
-    }
-
-    buffer_[head].is_reset = true;
-    head_.store(next_head, std::memory_order_release);
-    return true;
-}
-
-bool ORBSLAM3Wrapper::LocalMappingResultQueue::try_pop(Entry& entry)
-{
-    const size_t tail = tail_.load(std::memory_order_relaxed);
-    if (tail == head_.load(std::memory_order_acquire))
-    {
-        return false;
-    }
-
-    entry = buffer_[tail];
-    tail_.store((tail + 1) % capacity_, std::memory_order_release);
-    return true;
-}
-
 inline Sophus::SE3f to_se3f(const Eigen::Matrix4f& matrix)
 {
     return Sophus::SE3f(Eigen::Quaternionf(matrix.block<3, 3>(0, 0)).normalized(), matrix.block<3, 1>(0, 3));
@@ -277,7 +230,6 @@ ORBSLAM3Wrapper::ORBSLAM3Wrapper(const static_tf::StaticTfTree& platform_tree, c
         const Eigen::Isometry3d T_left_right = platform_tree.lookup(left_frame, right_frame);
         const Eigen::Matrix4f M = T_left_right.matrix().cast<float>();
         calib_.T_c1_c2 = Sophus::SE3f(Eigen::Quaternionf(M.block<3, 3>(0, 0)).normalized(), M.block<3, 1>(0, 3));
-        // Print only the translation component and clearly mention the frame ids
         const Eigen::Vector3f& t_left_right = calib_.T_c1_c2.translation();
         std::cout << std::fixed << std::setprecision(6) << "[ORBSLAM3Wrapper] static_tf translation: T_" << left_frame
                   << "_" << right_frame << " (" << left_frame << " <- " << right_frame << ") = ["
@@ -311,10 +263,8 @@ ORBSLAM3Wrapper::ORBSLAM3Wrapper(const static_tf::StaticTfTree& platform_tree, c
     system_->SetLocalMappingCallback(
         [this](const ORB_SLAM3::LocalMappingResult& result)
         {
-            if (!local_mapping_queue_.try_push(result))
-            {
-                dropped_local_mapping_results_.fetch_add(1, std::memory_order_relaxed);
-            }
+            std::lock_guard<std::mutex> lock(local_mapping_mutex_);
+            local_mapping_queue_.push(result);
         });
     local_mapping_worker_running_.store(true, std::memory_order_relaxed);
     local_mapping_worker_thread_ = std::thread(&ORBSLAM3Wrapper::local_mapping_worker_loop, this);
@@ -330,8 +280,8 @@ ORBSLAM3Wrapper::~ORBSLAM3Wrapper()
     system_->Shutdown();
 }
 
-void ORBSLAM3Wrapper::set_publishers(std::shared_ptr<TrackingRosPublisher> tracking,
-                                      std::shared_ptr<LocalMappingRosPublisher> local_mapping)
+void ORBSLAM3Wrapper::set_publishers(const std::shared_ptr<TrackingRosPublisher>& tracking,
+                                      const std::shared_ptr<LocalMappingPublisher>& local_mapping)
 {
     {
         std::lock_guard<std::mutex> lock(ros_publisher_mutex_);
@@ -397,10 +347,7 @@ VOResult ORBSLAM3Wrapper::post_process_tracking_result(const ORB_SLAM3::Tracking
     const bool is_keyframe = system_->GetTracker()->isLastFrameKeyframe();
     if (!tracking_ok && was_tracking_ok_)
     {
-        if (!local_mapping_queue_.try_push_reset())
-        {
-            dropped_local_mapping_results_.fetch_add(1, std::memory_order_relaxed);
-        }
+        local_mapping_reset_.store(true, std::memory_order_relaxed);
     }
     was_tracking_ok_ = tracking_ok;
 
@@ -409,14 +356,12 @@ VOResult ORBSLAM3Wrapper::post_process_tracking_result(const ORB_SLAM3::Tracking
         const int marker_thickness = std::max(1, static_cast<int>(std::round(2.0f * scaling_factor_)));
         const int text_margin = static_cast<int>(std::round(80.0f * scaling_factor_));
 
-        // Draw detected keypoints in the current frame.
         for (const auto& kp : result.keypoint_data.left_keypoints)
         {
             cv::circle(debug_left, kp.pt, static_cast<int>(std::round(8.0f * scaling_factor_)), cv::Scalar(0, 0, 255),
                        marker_thickness);
         }
 
-        // Draw motion-model matches as squares at the current keypoint position.
         const auto& mm_matches = result.motion_model_result.frame_matches_optimized;
         for (const auto& m : mm_matches)
         {
@@ -523,44 +468,33 @@ VOResult ORBSLAM3Wrapper::process_stereo_image_impl(const cv::Mat& left_image, c
 void ORBSLAM3Wrapper::local_mapping_worker_loop()
 {
     std::vector<ORB_SLAM3::LocalMappingResult> batch;
-    batch.reserve(64);
-    bool reset_requested = false;
 
     while (local_mapping_worker_running_.load(std::memory_order_relaxed))
     {
-        LocalMappingResultQueue::Entry entry;
         batch.clear();
-        while (local_mapping_queue_.try_pop(entry))
         {
-            if (entry.is_reset)
+            std::lock_guard<std::mutex> lock(local_mapping_mutex_);
+            while (!local_mapping_queue_.empty())
             {
-                reset_requested = true;
-            }
-            else
-            {
-                batch.push_back(entry.result);
-            }
-            if (batch.size() >= 64)
-            {
-                break;
+                batch.push_back(std::move(local_mapping_queue_.front()));
+                local_mapping_queue_.pop();
             }
         }
 
-        std::shared_ptr<LocalMappingRosPublisher> local_mapping_pub;
+        std::shared_ptr<LocalMappingPublisher> local_mapping_pub;
         {
             std::lock_guard<std::mutex> lock(ros_publisher_mutex_);
             local_mapping_pub = local_mapping_publisher_;
         }
 
-        if (local_mapping_pub && reset_requested)
+        if (local_mapping_pub && local_mapping_reset_.exchange(false, std::memory_order_relaxed))
         {
-            local_mapping_pub->reset_visualization();
-            reset_requested = false;
+            local_mapping_pub->reset();
         }
 
         if (local_mapping_pub && !batch.empty())
         {
-            local_mapping_pub->publish_batch(batch, dropped_local_mapping_results_.load());
+            local_mapping_pub->publish_batch(batch);
         }
         else if (batch.empty())
         {

@@ -80,25 +80,6 @@ void finalize_tracking_step(double timestamp, const VOResult& vo_result, const u
 
     prev_vo_result = vo_result;
 }
-
-static NavInterpolationResult nav_interpolate(const PoseStamped& lower, const PoseStamped& upper, double alpha,
-                                              double dt)
-{
-    NavInterpolationResult result;
-    result.bracketing_dt = dt;
-    const Eigen::Vector3f p0 = lower.second.block<3, 1>(0, 3);
-    const Eigen::Vector3f p1 = upper.second.block<3, 1>(0, 3);
-    const Eigen::Vector3f p = (1.0f - static_cast<float>(alpha)) * p0 + static_cast<float>(alpha) * p1;
-    Eigen::Quaternionf q0(lower.second.block<3, 3>(0, 0));
-    Eigen::Quaternionf q1(upper.second.block<3, 3>(0, 0));
-    q0.normalize();
-    q1.normalize();
-    const Eigen::Quaternionf q = q0.slerp(static_cast<float>(alpha), q1).normalized();
-    result.pose = Eigen::Matrix4f::Identity();
-    result.pose.block<3, 3>(0, 0) = q.toRotationMatrix();
-    result.pose.block<3, 1>(0, 3) = p;
-    return result;
-}
 }  // namespace
 
 Eigen::Matrix4f acfr_nav_to_eigen_matrix(const acfrlcm::auv_acfr_nav_t& nav)
@@ -129,12 +110,8 @@ VisualOdometry::VisualOdometry(const static_tf::StaticTfTree& platform_tree, con
         clahe_ = cv::createCLAHE(2.0, cv::Size(16, 16));
     }
 
-    auto get_ts = [](const PoseStamped& p)
-    {
-        return p.first;
-    };
-    nav_prediction_data_ = std::make_unique<NavPredictionData>(get_ts, nav_interpolate);
-    dispatch_sync_ = std::make_unique<ImageDispatchSync<NavPredictionData>>();
+    nav_prediction_data_ = std::make_unique<NavPredictionBuffer>();
+    dispatch_sync_ = std::make_unique<ImageDispatchSync>();
     dispatch_sync_->set_nav(nav_prediction_data_.get());
     dispatch_sync_->set_mono_callback(
         [this](const PendingMonoFrame& f, const DispatchContext& c)
@@ -219,7 +196,6 @@ void VisualOdometry::dispatch_mono_with_context(const PendingMonoFrame& frame, c
     cv::Mat grayscale_image;
     cv::cvtColor(rgb_image, grayscale_image, cv::COLOR_BGR2GRAY);
 
-    // apply CLAHE to the grayscale image
     if (options_.apply_clahe)
     {
         clahe_->apply(grayscale_image, grayscale_image);
@@ -270,7 +246,6 @@ void VisualOdometry::dispatch_stereo_with_context(const PendingStereoFrame& fram
     cv::cvtColor(left_rgb_image, left_grayscale_image, cv::COLOR_BGR2GRAY);
     cv::cvtColor(right_rgb_image, right_grayscale_image, cv::COLOR_BGR2GRAY);
 
-    // apply CLAHE to the grayscale images
     if (options_.apply_clahe)
     {
         clahe_->apply(left_grayscale_image, left_grayscale_image);

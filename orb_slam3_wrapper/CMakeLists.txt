@@ -69,7 +69,6 @@ set(WRAPPER_SOURCES
     src/main.cpp
     src/orb_slam3_wrapper.cpp
     src/tracking_ros_publisher.cpp
-    src/local_mapping_ros_publisher.cpp
     src/local_mapping_visualization_publisher.cpp
 )
 

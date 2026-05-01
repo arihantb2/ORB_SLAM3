@@ -16,11 +16,11 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <string>
 #include <thread>
-#include <vector>
 
-#include "local_mapping_ros_publisher.h"
+#include "local_mapping_visualization_publisher.h"
 #include "tracking_ros_publisher.h"
 
 namespace visual_odometry
@@ -31,54 +31,32 @@ public:
     ORBSLAM3Wrapper(const static_tf::StaticTfTree& platform_tree, const std::string& vocab_file,
                     const std::string& camera_calib_file, const std::string& config_file, const bool verbose,
                     const bool synchronous_local_mapping, const cli::CommonOptions& common_options);
-    ~ORBSLAM3Wrapper();
+    ~ORBSLAM3Wrapper() override;
 
-    void set_publishers(std::shared_ptr<TrackingRosPublisher> tracking,
-                        std::shared_ptr<LocalMappingRosPublisher> local_mapping);
+    void set_publishers(const std::shared_ptr<TrackingRosPublisher>& tracking,
+                        const std::shared_ptr<LocalMappingPublisher>& local_mapping);
 
 private:
-    class LocalMappingResultQueue
-    {
-    public:
-        struct Entry
-        {
-            bool is_reset = false;
-            ORB_SLAM3::LocalMappingResult result;
-        };
-
-        explicit LocalMappingResultQueue(size_t capacity);
-        bool try_push(const ORB_SLAM3::LocalMappingResult& result);
-        bool try_push_reset();
-        bool try_pop(Entry& entry);
-
-    private:
-        std::vector<Entry> buffer_;
-        const size_t capacity_;
-        std::atomic<size_t> head_;
-        std::atomic<size_t> tail_;
-    };
-
     void local_mapping_worker_loop();
 
     ORB_SLAM3::CameraCalibrationInput calib_;
     std::unique_ptr<ORB_SLAM3::System> system_;
 
     std::shared_ptr<TrackingRosPublisher> tracking_publisher_;
-    std::shared_ptr<LocalMappingRosPublisher> local_mapping_publisher_;
+    std::shared_ptr<LocalMappingPublisher> local_mapping_publisher_;
     mutable std::mutex ros_publisher_mutex_;
 
-    LocalMappingResultQueue local_mapping_queue_{512};
+    std::queue<ORB_SLAM3::LocalMappingResult> local_mapping_queue_;
+    std::mutex local_mapping_mutex_;
+    std::atomic<bool> local_mapping_reset_{false};
     std::atomic<bool> local_mapping_worker_running_{false};
     std::thread local_mapping_worker_thread_;
-    std::atomic<uint64_t> dropped_local_mapping_results_{0};
     bool was_tracking_ok_{false};
 
     VOResult process_mono_image_impl(const cv::Mat& image, const DispatchContext& context, double timestamp) override;
     VOResult process_stereo_image_impl(const cv::Mat& left_image, const cv::Mat& right_image,
                                        const DispatchContext& context, double timestamp) override;
 
-    // Shared post-tracking logic: state update, debug drawing, publishing, result construction.
-    // Pass an empty cv::Mat{} for debug_right in monocular mode.
     VOResult post_process_tracking_result(const ORB_SLAM3::TrackingResult& result, double timestamp,
                                           double tracking_duration_ms, cv::Mat debug_left, const cv::Mat& debug_right);
 

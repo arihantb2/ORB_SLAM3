@@ -1,4 +1,4 @@
-#include "local_mapping_ros_publisher.h"
+#include "local_mapping_visualization_publisher.h"
 #include "orb_slam3_wrapper.h"
 #include "tracking_ros_publisher.h"
 
@@ -80,10 +80,10 @@ int main(int argc, char** argv)
     auto node = std::make_shared<rclcpp::Node>("orb_slam3_vo");
 
     visual_odometry::TrackingRosPublisher::Options tracking_options;
-    visual_odometry::LocalMappingRosPublisher::Options local_mapping_options;
+    visual_odometry::LocalMappingPublisher::Options local_mapping_options;
     local_mapping_options.map_frame_id = tracking_options.map_frame_id;
     auto tracking_pub = std::make_shared<visual_odometry::TrackingRosPublisher>(node, tracking_options);
-    auto local_mapping_pub = std::make_shared<visual_odometry::LocalMappingRosPublisher>(node, local_mapping_options);
+    auto local_mapping_pub = std::make_shared<visual_odometry::LocalMappingPublisher>(node, local_mapping_options);
 
     visual_odometry::ORBSLAM3Wrapper visual_odometry(platform_tree, vocab_file, camera_calib_file, config_file, verbose,
                                                      synchronous_local_mapping, common_options);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vo/dispatch_types.h>
-#include <vo/prediction_data.h>
+#include <vo/nav_prediction_buffer.h>
 
 #include <algorithm>
 #include <cmath>
@@ -14,24 +14,13 @@
 namespace visual_odometry
 {
 
-/**
- * Holds pending mono/stereo frames and one required prediction stream (Phase 1: Nav).
- * When the stream has bracketing data at a frame's timestamp, drains that frame and
- * invokes the registered callback with the frame and DispatchContext.
- *
- * NavPredictionDataT must provide:
- *   bool try_get_interpolated(double timestamp, NavInterpolationResult& out) const;
- *   bool get_oldest_timestamp(double& out) const;
- *   void prune_before(double timestamp);
- */
-template <typename NavPredictionDataT>
 class ImageDispatchSync
 {
 public:
     using MonoCallback = std::function<void(const PendingMonoFrame&, const DispatchContext&)>;
     using StereoCallback = std::function<void(const PendingStereoFrame&, const DispatchContext&)>;
 
-    void set_nav(NavPredictionDataT* nav) { nav_ = nav; }
+    void set_nav(NavPredictionBuffer* nav) { nav_ = nav; }
 
     void set_mono_callback(MonoCallback cb) { mono_callback_ = std::move(cb); }
     void set_stereo_callback(StereoCallback cb) { stereo_callback_ = std::move(cb); }
@@ -60,7 +49,6 @@ public:
         invoke_callbacks(std::move(to_process));
     }
 
-    /** Call after pushing a new message into the nav prediction data to run drain. */
     void on_nav_updated()
     {
         DrainResult to_process;
@@ -186,7 +174,7 @@ private:
         }
     }
 
-    NavPredictionDataT* nav_ = nullptr;
+    NavPredictionBuffer* nav_ = nullptr;
     std::deque<PendingMonoFrame> pending_mono_;
     std::deque<PendingStereoFrame> pending_stereo_;
     MonoCallback mono_callback_;

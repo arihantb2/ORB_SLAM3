@@ -5,7 +5,7 @@
 #include <vo/csv_pose_prior.h>
 #include <vo/dispatch_types.h>
 #include <vo/image_dispatch_sync.h>
-#include <vo/prediction_data.h>
+#include <vo/nav_prediction_buffer.h>
 
 #include <static_tf/static_tf_tree.hpp>
 
@@ -18,7 +18,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -100,14 +99,10 @@ protected:
     void write_debug_video_frame(const cv::Mat& frame);
 
 private:
-    using NavPredictionData =
-        PredictionData<PoseStamped, NavInterpolationResult, std::function<double(const PoseStamped&)>,
-                       std::function<NavInterpolationResult(const PoseStamped&, const PoseStamped&, double, double)>>;
-
     static constexpr double kDebugVideoFps = 10.0;
 
-    std::unique_ptr<NavPredictionData> nav_prediction_data_;
-    std::unique_ptr<ImageDispatchSync<NavPredictionData>> dispatch_sync_;
+    std::unique_ptr<NavPredictionBuffer> nav_prediction_data_;
+    std::unique_ptr<ImageDispatchSync> dispatch_sync_;
     mutable std::mutex processing_mutex_;
 
     void dispatch_mono_with_context(const PendingMonoFrame& frame, const DispatchContext& ctx);
