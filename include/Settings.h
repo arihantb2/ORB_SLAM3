@@ -168,6 +168,7 @@ public:
     float newKFWeakTrackingRatio() { return newKFWeakTrackingRatio_; }
     int newKFMinInliers() { return newKFMinInliers_; }
     int newKFMaxKFsInQueue() { return newKFMaxKFsInQueue_; }
+    bool forceEveryFrameKeyframe() { return forceEveryFrameKeyframe_; }
 
     int lostResetMinKFs() { return lostResetMinKFs_; }
 
@@ -313,6 +314,7 @@ private:
     float newKFWeakTrackingRatio_;
     int newKFMinInliers_;
     int newKFMaxKFsInQueue_;
+    bool forceEveryFrameKeyframe_ = false;
 
     int lostResetMinKFs_;
 };

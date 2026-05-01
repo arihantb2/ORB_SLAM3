@@ -423,6 +423,7 @@ protected:
     float mNewKFWeakTrackingRatio;
     int mNewKFMinInliers;
     int mNewKFMaxKFsInQueue;
+    bool mForceEveryFrameKeyframe = false;
 
     // Minimum KFs in map before LOST triggers reset (instead of reusing map)
     int mLostResetMinKFs;

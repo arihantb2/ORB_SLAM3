@@ -73,6 +73,8 @@ Tracking.LocalMap.VisualMinInliers: 30
 # New keyframe decision thresholds (monocular)
 Tracking.NewKF.RefRatioMono: 0.9
 Tracking.NewKF.MinInliers: 15
+# Force every tracked input frame to become a keyframe (0 = false, 1 = true)
+Tracking.NewKF.ForceEveryFrame: 1
 
 # Min KFs in map before LOST triggers a map reset (high value = never reset, reuse map)
 Tracking.LostResetMinKFs: 999999

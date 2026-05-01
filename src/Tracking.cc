@@ -211,6 +211,7 @@ void Tracking::loadFromSettings(Settings* settings)
     mNewKFMinInliers = settings->newKFMinInliers();
     mNewKFMaxKFsInQueue = settings->newKFMaxKFsInQueue();
     mLostResetMinKFs = settings->lostResetMinKFs();
+    mForceEveryFrameKeyframe = settings->forceEveryFrameKeyframe();
 }
 
 void Tracking::SetLocalMapper(LocalMapping* pLocalMapper)
@@ -1574,6 +1575,10 @@ bool Tracking::NeedNewKeyFrame()
     if (mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
     {
         return false;
+    }
+    if (mForceEveryFrameKeyframe)
+    {
+        return true;
     }
 
     const int nKFs = mpAtlas->KeyFramesInMap();

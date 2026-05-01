@@ -109,6 +109,8 @@ Tracking.NewKF.WeakTrackingRatio: 0.25
 # inserted unless we have at least this many inliers. Prevents inserting KFs when
 # tracking is too weak to produce useful observations.
 Tracking.NewKF.MinInliers: 15
+# Force every tracked input frame to become a keyframe (0 = false, 1 = true)
+Tracking.NewKF.ForceEveryFrame: 0
 # [NeedNewKeyFrame()] — backpressure from local mapper. If the mapper's KF queue already
 # has this many pending KFs, new insertions are suppressed. Prevents tracking from
 # flooding the mapper during slow optimization.

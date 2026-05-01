@@ -98,7 +98,7 @@ System::System(const std::string& strVocFile, const std::string& strConfigFile, 
 
     mStrVocabularyFilePath = strVocFile;
     cv::FileNode vocabPathNode = fsSettings["Vocabulary.path"];
-    if (!vocabPathNode.empty() && vocabPathNode.isString())
+    if (mStrVocabularyFilePath.empty() && !vocabPathNode.empty() && vocabPathNode.isString())
     {
         mStrVocabularyFilePath = vocabPathNode.string();
     }

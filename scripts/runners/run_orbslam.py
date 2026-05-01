@@ -112,7 +112,7 @@ def main():
     parser.add_argument(
         "--orbslam3-extractor-type",
         default="gridorb",
-        choices=["orb", "sift", "gridorb"],
+        choices=["orb", "brisk", "gridorb"],
         help="Feature extractor type (default: gridorb)",
     )
     parser.add_argument(

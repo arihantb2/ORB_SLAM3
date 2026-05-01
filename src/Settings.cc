@@ -410,6 +410,7 @@ void Settings::readOtherParameters(cv::FileStorage& fSettings)
     newKFWeakTrackingRatio_ = readParameter<float>(fSettings, "Tracking.NewKF.WeakTrackingRatio", found, 0.25f, false);
     newKFMinInliers_ = readParameter<int>(fSettings, "Tracking.NewKF.MinInliers", found, 15, false);
     newKFMaxKFsInQueue_ = readParameter<int>(fSettings, "Tracking.NewKF.MaxKFsInQueue", found, 3, false);
+    forceEveryFrameKeyframe_ = (readParameter<int>(fSettings, "Tracking.NewKF.ForceEveryFrame", found, 0, false) != 0);
 
     lostResetMinKFs_ = readParameter<int>(fSettings, "Tracking.LostResetMinKFs", found, 999999, false);
 }
