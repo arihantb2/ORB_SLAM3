@@ -1,48 +1,204 @@
 # ORB-SLAM3 (Fork)
 
-A stripped-down fork of [ORB-SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3/) packaged as a CMake library for use in a ROS 2 workspace.
+Heavily modified fork of [UZ-SLAMLab/ORB\_SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3), packaged as a CMake library for ROS 2. Designed for AUV stereo/monocular visual odometry via LCM log replay.
 
-**Removed from upstream:**
-
-- RGB-D sensor support
-- Fisheye / KannalaBrandt8 lens model
-- `RECENTLY_LOST` relocalization — tracking loss resets the map immediately
-- Loop closing / loop closure
-- Map merging
-- Multi-map Atlas (system always maintains exactly one map)
-- Dataset example executables (`Examples/`)
-- Python bindings
-
-**Camera models supported:** `PinHole`, `Rectified`, `Metashape`  
-**Sensor modes supported:** `MONOCULAR`, `STEREO`
+**Camera models:** `PinHole`, `Rectified`, `Metashape`  
+**Sensor modes:** `MONOCULAR`, `STEREO`
 
 ---
 
-## Prerequisites
+## Divergence from Upstream
+
+### Changes and additions
+
+**GTSAM replaces g2o as the backend solver.**
+All bundle adjustment and pose graph optimization uses GTSAM factor graphs. g2o has been removed entirely.
+
+**fbow replaces DBoW2 as the default BoW backend.**
+fbow is faster to query and supports float descriptors (required for SIFT vocabularies). DBoW2 is retained as a fallback. Configure via `Vocabulary.type` in the algorithm YAML — see [Config Files](#config-files).
+
+**Navigation pose priors in monocular initialization and local bundle adjustment.**
+External navigation poses (e.g. from DVL/INS) can be injected as absolute pose constraints or odometric between-factors into the local BA factor graph. Configured per-run via `--nav-csv` and per-config via `Optimizer.LocalBundleAdjustment.*` in the algorithm YAML. This substantially improves monocular scale observability in low-texture underwater scenes.
+
+**Pluggable feature extractor API supporting OpenCV ORB and BRISK.**
+The extractor is selected at runtime via `FeatureExtractor.type`. Three options are available: `GridORB` (custom FAST dual-threshold + quadtree distribution, default), `ORB` (cv::ORB per pyramid level), and `BRISK` (BRISK with native scale space). All share a common descriptor interface; the rest of the pipeline is extractor-agnostic.
+
+**Metashape pinhole camera model.**
+Supports calibrations exported directly from Agisoft Metashape (`Camera.type: "Metashape"` in the camera calibration YAML), in addition to the standard `PinHole` and `Rectified` models.
+
+**Map memory management overhaul and upstream leak fixes.**
+Map points and keyframes use explicit ownership semantics with deferred deletion. Several upstream memory leaks — including dangling map point references and unreleased keyframe observations — have been resolved.
+
+### Removed
+
+| Feature | Notes |
+|---------|-------|
+| Fisheye / KannalaBrandt8 lens model | Not required for AUV cameras |
+| IMU / inertial tracking | Replaced by external navigation pose priors |
+| Loop closing and loop closure thread | Not needed for visual odometry use case |
+| Map merging | Removed along with multi-map support |
+| Multi-map Atlas | System maintains exactly one map at all times |
+| `RECENTLY_LOST` relocalization | Tracking loss triggers an immediate map reset |
+| Dataset example executables (`Examples/`) | Superseded by the ROS 2 wrapper |
+| Python bindings | Removed |
+
+---
+
+## Dependencies
 
 - C++17, CMake ≥ 3.10
-- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, DBoW2, fbow, GTSAM
-- `Vocabulary/ORBvoc.txt` (or its `.tar.gz` — CMake extracts it automatically)
+- OpenCV ≥ 4.2, Eigen3 ≥ 3.3.7, Sophus, DBoW2, fbow, GTSAM
+- ROS 2 (rclcpp, tf2, nav_msgs, sensor_msgs, visualization_msgs)
+- `lcm_log_player`, `acfr_lcm_types`, `static_tf` (internal packages)
 
 ---
 
 ## Building
 
-**Standalone:**
-
 ```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+wsman build -p orbslam3 --deps
 ```
 
-**ROS 2 / colcon:**
+The build extracts `Vocabulary/ORBvoc.txt` from its `.tar.gz` automatically.
 
-```bash
-colcon build --packages-select orbslam3
+---
+
+## Repository Layout
+
+```
+config/
+  camera/          # Per-platform camera calibration YAMLs
+  platform/        # Per-platform sensor frame YAMLs
+  stereo_orb.yaml  # Algorithm configs (stereo_{orb,gridorb,brisk}.yaml, mono_*)
+orb_slam3_wrapper/ # ROS 2 node that drives the library (see below)
+scripts/runners/   # Python launch helper
+src/ include/      # ORB-SLAM3 library
+Vocabulary/        # ORBvoc.txt / fbow vocabulary files
 ```
 
-Downstream packages:
+---
+
+## The Wrapper (`orb_slam3_wrapper`)
+
+`orb_slam3_wrapper_main` is the ROS 2 node that wires ORB-SLAM3 to LCM log data. It:
+
+1. Reads a camera calibration YAML (`config/camera/`) and injects it into `ORB_SLAM3::System` — the library itself has no file-based camera loading.
+2. Replays a `.lcm` log file, feeding stereo or monocular frames to the tracker.
+3. Publishes pose, map points, and TF over ROS 2 topics.
+4. Writes trajectory CSVs to the output directory (see **Output Files** below).
+
+**ROS topics published:**
+
+| Topic | Type | Description |
+|-------|------|-------------|
+| `/orb_slam3/tracking/pose` | `geometry_msgs/PoseStamped` | Per-frame camera pose |
+| `/orb_slam3/tracking/odometry` | `nav_msgs/Odometry` | Per-frame odometry |
+| `/orb_slam3/tracking/keyframe_path` | `nav_msgs/Path` | All keyframe poses |
+| `/orb_slam3/tracking/map_points/inlier_all` | `sensor_msgs/PointCloud2` | All inlier map points |
+| `/orb_slam3/tracking/map_points/local_inliers` | `sensor_msgs/PointCloud2` | Local map inliers |
+| `/orb_slam3/tracking/map_points/local_outliers` | `sensor_msgs/PointCloud2` | Local map outliers |
+| `/orb_slam3/tracking/diagnostics` | `diagnostic_msgs/DiagnosticArray` | Tracking health |
+| `/orb_slam3/tracking/debug/left` | `sensor_msgs/Image` + `CameraInfo` | Debug images (if enabled) |
+
+**Key flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--vocab-file` | Path to vocabulary (`.fbow` or `ORBvoc.txt`) |
+| `--camera-calib-file` | Camera calibration YAML |
+| `--config-file` | Algorithm config YAML (tracking / feature params) |
+| `--lcm-file` | Path to `.lcm` log |
+| `--mono` | Monocular mode (default: stereo) |
+| `--use-priors` | Navigation priors for monocular tracking |
+| `--synchronous-local-mapping` | Single-threaded tracking+mapping (debug) |
+| `--verbose` | ORB-SLAM3 console output |
+
+---
+
+## Running via the Python Launcher
+
+The launcher at `scripts/runners/run_orbslam.py` resolves paths, picks the right config, and calls `orb_slam3_wrapper_main`. Activate the Python env first:
+
+```bash
+source ~/.pyenv/bin/activate
+```
+
+**Minimal stereo run:**
+
+```bash
+python scripts/runners/run_orbslam.py \
+  --dataset /path/to/dataset \
+  --vocab-path /path/to/orb_voc.fbow \
+  --platform-config seeker_cheryl_samoa.yaml \
+  --camera-calib-file cheryl_solomon2025/stereo.yaml
+```
+
+**Monocular run:**
+
+```bash
+python scripts/runners/run_orbslam.py \
+  --dataset /path/to/dataset \
+  --vocab-path /path/to/orb_voc.fbow \
+  --platform-config seeker_cheryl_samoa.yaml \
+  --camera-calib-file cheryl_solomon2025/mono.yaml \
+  --mono --image-filter left
+```
+
+**Feature extractor** (`--orbslam3-extractor-type`): `gridorb` (default), `orb`, `brisk`.
+
+Use `--dry-run` to print the full command without executing. Use `--gdb` to attach a debugger.
+
+---
+
+## Output Files
+
+When `--output-dir` is set (or auto-derived by the launcher), the wrapper writes:
+
+| File | Contents |
+|------|----------|
+| `trajectory_frames.csv` | Per-frame pose: `timestamp, tx, ty, tz, qw, qx, qy, qz` in `vo_map → vo_camera` |
+| `trajectory_keyframes.csv` | Keyframe-only pose log |
+| `trajectory_nav.csv` | Navigation prior poses (if `--nav-csv` supplied) |
+| `trajectory_frame_stats.csv` | Per-frame tracking stats (inlier counts, tracking state, etc.) |
+| `orbslam3.log` | Full ORB-SLAM3 console log |
+| `command.txt` | The exact command used to produce this run |
+
+The launcher auto-derives the output path as `<dataset>/../PROCESSED_DATA/<dataset_name>/orb_slam3/stereo` (or `mono`). Override with `--output-dir` or suppress with `--no-output`.
+
+---
+
+## Config Files
+
+Algorithm YAMLs (`config/stereo_gridorb.yaml`, etc.) control tracking and feature extraction only — no camera parameters. Key sections:
+
+- `FeatureExtractor.*` — extractor type and parameters
+- `Tracking.*` — keyframe insertion, motion model, local map thresholds
+- `LocalMapping.*` — BA frequency, map point culling, triangulation
+- `Vocabulary.*` — BoW backend (`dbow2` or `fbow`) and path override
+
+Camera calibration lives separately in `config/camera/`.
+
+---
+
+## Image Format Note
+
+AUV images are Bayer BGGR16 (`uint16`). The wrapper demosaics via `COLOR_BayerBG2BGR` before passing frames to the tracker — do not pass raw Bayer frames directly.
+
+---
+
+## Using the Library Directly
+
+```cpp
+#include <CameraModels/CameraCalibrationInput.h>
+#include <ORB_SLAM3/System.h>
+
+ORB_SLAM3::CameraCalibrationInput calib = /* built via CreatePinholeCamera / CreateMetashapeCamera */;
+ORB_SLAM3::System slam("Vocabulary/ORBvoc.txt", "config/stereo_gridorb.yaml",
+                       ORB_SLAM3::System::STEREO, calib);
+
+Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
+slam.Shutdown();
+```
 
 ```cmake
 find_package(ORB_SLAM3 REQUIRED)
@@ -51,52 +207,30 @@ target_link_libraries(my_target ORB_SLAM3::ORB_SLAM3)
 
 ---
 
-## Usage
+## Evaluation Tools
 
-ORB-SLAM3 does not load camera parameters from file. Calibration is **injected** at construction: the caller (e.g. the `orb_slam3_wrapper`) loads a camera calibration file, builds one or two `GeometricCamera` objects via `CreatePinholeCamera` / `CreateMetashapeCamera`, fills a `CameraCalibrationInput`, and passes it into `System`.
+`scripts/evals/` contains offline trajectory evaluation and diagnostics tools. Activate the env first (`source ~/.pyenv/bin/activate`), then see [`scripts/evals/README.md`](scripts/evals/README.md) for full usage. Key entry points:
 
-```cpp
-#include <CameraModels/CameraCalibrationInput.h>
-#include <ORB_SLAM3/System.h>
-
-// Caller loads camera calib (e.g. from YAML), builds cameras with
-// CreateMetashapeCamera / CreatePinholeCamera, fills calib.
-ORB_SLAM3::CameraCalibrationInput calib = /* ... */;
-
-ORB_SLAM3::System slam("Vocabulary/ORBvoc.txt", "config/stereo.yaml", ORB_SLAM3::System::STEREO, calib);
-
-Sophus::SE3f pose = slam.TrackStereo(imgLeft, imgRight, timestamp);
-// or: slam.TrackMonocular(img, timestamp);
-
-slam.Shutdown();
-```
-
-**Config files:** Algorithm YAML files are **algorithm-only** (tracking, features, local mapping). Camera calibration is injected via `CameraCalibrationInput`. Tracking parameters and log messages are documented in [`TrackingLogs.md`](TrackingLogs.md).
+- `traj-eval` — align and score a trajectory against a reference (CSV or Metashape XML)
+- `traj-compare` — compare multiple runs side-by-side
+- `stereo-diagnose` — stereo calibration and rectification diagnostics
 
 ---
 
-## Vocabulary backend (DBoW2 vs fbow)
+## Further Reading
 
-ORB-SLAM3 can switch the Bag-of-Words (BoW) backend via the algorithm config YAML passed to `System`.
-
-Example snippet for using `fbow`:
-
-```yaml
-Vocabulary.type: "fbow"
-Vocabulary.path: "src/ORB_SLAM3/Vocabulary/orb_mur.fbow"
-```
-
-Notes:
-
-- If `Vocabulary.type` / `Vocabulary.path` are omitted, the system defaults to `dbow2` and uses the `--vocab-file` argument provided by the wrapper.
-- Descriptor type must match the vocabulary:
-  - `ORB` / `GridORB` (binary descriptors, `CV_8UC1`) expects an `fbow` vocabulary trained on binary descriptors.
-  - `SIFT` (float descriptors, `CV_32FC1`) requires an `fbow` vocabulary trained on float descriptors. If it doesn’t match, BoW-based reference-keyframe tracking falls back to non-BoW matching for runtime stability.
+- [`docs/TrackingResultRichData.md`](docs/TrackingResultRichData.md) — all fields in `TrackingResult` (per-frame output of `Track()`)
+- [`docs/LocalMappingRichData.md`](docs/LocalMappingRichData.md) — `LocalMappingResult` callback schema for monitoring the mapping thread
 
 ---
+
+## Credits
+
+This repo is a heavily modified fork of [UZ-SLAMLab/ORB_SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3). Original work by Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, José M. M. Montiel, and Juan D. Tardós at the University of Zaragoza.
+
+If you use this in academic work, cite the original paper:
+> Campos et al., "ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM", IEEE Transactions on Robotics, 2021. [[arXiv]](https://arxiv.org/abs/2007.11898)
 
 ## License
 
-[GPLv3](LICENSE). See [Dependencies.md](Dependencies.md) for third-party licenses.
-
-Original work by Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, José M. M. Montiel, Juan D. Tardós et al. — cite the [ORB-SLAM3 paper](https://arxiv.org/abs/2007.11898) if you use this in academic work.
+[GPLv3](LICENSE).
