@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
-#include <sstream>
 #include <stdexcept>
 
 namespace visual_odometry
@@ -20,12 +19,24 @@ static std::string trim(std::string s)
 
 static bool split_csv_line(const std::string& line, std::vector<std::string>& out_fields)
 {
+    // std::getline(stream, field, ',') in a loop silently drops a trailing
+    // empty field: once the stream is positioned right after a final comma
+    // with nothing left to extract, getline() fails instead of yielding one
+    // more empty string, so e.g. "a,b," would split to ["a","b"] instead of
+    // ["a","b",""]. Split on explicit delimiter positions instead so every
+    // comma-separated field -- including a trailing empty one -- is counted.
     out_fields.clear();
-    std::stringstream ss(line);
-    std::string field;
-    while (std::getline(ss, field, ','))
+    std::size_t start = 0;
+    while (true)
     {
-        out_fields.push_back(trim(field));
+        const std::size_t comma = line.find(',', start);
+        if (comma == std::string::npos)
+        {
+            out_fields.push_back(trim(line.substr(start)));
+            break;
+        }
+        out_fields.push_back(trim(line.substr(start, comma - start)));
+        start = comma + 1;
     }
     return !out_fields.empty();
 }
@@ -127,6 +138,14 @@ bool CsvPosePrior::try_get_interpolated(double timestamp_sec, Eigen::Matrix4f& o
     }
 
     auto upper_it = std::lower_bound(timestamps_.begin(), timestamps_.end(), timestamp_sec);
+    // A query exactly at the first sample's timestamp lower_bounds to begin(),
+    // which the "before the range" check below would otherwise reject even
+    // though the sample exists. Treat it as the lower bracket of the first
+    // interval instead.
+    if (upper_it == timestamps_.begin() && upper_it != timestamps_.end() && *upper_it == timestamp_sec)
+    {
+        ++upper_it;
+    }
     if (upper_it == timestamps_.begin() || upper_it == timestamps_.end())
     {
         return false;

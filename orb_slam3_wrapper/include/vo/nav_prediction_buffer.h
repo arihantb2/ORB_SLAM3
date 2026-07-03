@@ -40,6 +40,14 @@ public:
         }
         auto upper_it = std::lower_bound(buffer_.begin(), buffer_.end(), timestamp,
                                          [](const PoseStamped& a, double t) { return a.first < t; });
+        // A query exactly at the oldest sample's timestamp lower_bounds to
+        // begin() (since begin()->first >= timestamp), which the "before the
+        // buffer" check below would otherwise reject even though the sample
+        // exists. Treat it as the lower bracket of [begin(), begin()+1).
+        if (upper_it == buffer_.begin() && upper_it != buffer_.end() && upper_it->first == timestamp)
+        {
+            ++upper_it;
+        }
         if (upper_it == buffer_.begin() || upper_it == buffer_.end())
         {
             return false;
@@ -65,6 +73,14 @@ public:
                                    [](const PoseStamped& a, double t) { return a.first < t; });
         if (it != buffer_.begin())
         {
+            // Keep one sample at or before `timestamp`: it is the lower bracket
+            // that a future try_get_interpolated() query in (that sample's
+            // timestamp, timestamp] still needs. Erasing it (as this used to do)
+            // could leave the buffer's oldest sample newer than `timestamp`,
+            // making try_get_interpolated() and get_oldest_timestamp() report the
+            // nav horizon as having jumped forward, silently dropping any pending
+            // frame that timestamp could otherwise have bracketed.
+            --it;
             buffer_.erase(buffer_.begin(), it);
         }
     }
