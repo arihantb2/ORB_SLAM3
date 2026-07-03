@@ -14,6 +14,7 @@
 #include <opencv2/opencv.hpp>
 
 #include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -48,6 +49,7 @@ private:
 
     std::queue<ORB_SLAM3::LocalMappingResult> local_mapping_queue_;
     std::mutex local_mapping_mutex_;
+    std::condition_variable local_mapping_cv_;
     std::atomic<bool> local_mapping_reset_{false};
     std::atomic<bool> local_mapping_worker_running_{false};
     std::thread local_mapping_worker_thread_;

@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <iomanip>
-#include <thread>
 
 namespace visual_odometry
 {
@@ -210,8 +209,6 @@ void VisualOdometry::dispatch_mono_with_context(const PendingMonoFrame& frame, c
     const utils::FrameLogEntry entry = make_frame_log_entry(timestamp, image_name, vo_result);
     finalize_tracking_step(timestamp, vo_result, entry, first_frame_timestamp_sec, tracking_lost_timestamp_sec,
                            initialization_timestamp_sec, prev_vo_result_, pose_estimates_, log_writer_);
-    // Throttle to kDebugVideoFps; VideoWriter needs paced writes to produce a valid output file.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void VisualOdometry::handle_stereo_image(const cv::Mat& left_image, const cv::Mat& right_image,
@@ -261,8 +258,6 @@ void VisualOdometry::dispatch_stereo_with_context(const PendingStereoFrame& fram
     const utils::FrameLogEntry entry = make_frame_log_entry(timestamp, image_name, vo_result);
     finalize_tracking_step(timestamp, vo_result, entry, first_frame_timestamp_sec, tracking_lost_timestamp_sec,
                            initialization_timestamp_sec, prev_vo_result_, pose_estimates_, log_writer_);
-    // Throttle to kDebugVideoFps; VideoWriter needs paced writes to produce a valid output file.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void VisualOdometry::write_debug_video_frame(const cv::Mat& frame)
