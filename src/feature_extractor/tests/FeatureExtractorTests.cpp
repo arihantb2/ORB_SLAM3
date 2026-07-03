@@ -189,6 +189,42 @@ TEST(BRISKFeatureExtractor, FeatureCountCap)
         << "Output keypoints must not exceed nFeatures";
 }
 
+TEST(BRISKFeatureExtractor, DescriptorMatchesKeypointAfterCap)
+{
+    // Regression test: capping to nFeatures must permute keypoints and descriptor
+    // rows together. A low threshold on a dense checkerboard guarantees more
+    // candidates than nFeatures, so the cap path is exercised.
+    const int briskThreshold = 5;
+    const int nLevels = 4;
+    const int nFeatures = 25;
+    BRISKFeatureExtractor extractor(nFeatures, nLevels, briskThreshold);
+    const cv::Mat img = makeCheckerboard(480, 640, 8);
+
+    std::vector<cv::KeyPoint> kps;
+    cv::Mat descs;
+    std::vector<int> lap = {0, 0};
+    extractor(img, cv::noArray(), kps, descs, lap);
+    ASSERT_EQ(static_cast<int>(kps.size()), nFeatures)
+        << "test image/threshold should produce more than nFeatures candidates";
+    ASSERT_EQ(descs.rows, nFeatures);
+
+    // BRISK descriptors depend only on the local neighbourhood of a keypoint, so
+    // recomputing a descriptor for a single kept keypoint in isolation (same
+    // image, same detector parameters) must reproduce exactly the row the
+    // extractor paired with that keypoint.
+    cv::Ptr<cv::BRISK> groundTruth = cv::BRISK::create(briskThreshold, nLevels - 1);
+    for (int i = 0; i < static_cast<int>(kps.size()); ++i)
+    {
+        std::vector<cv::KeyPoint> single = {kps[i]};
+        cv::Mat singleDesc;
+        groundTruth->compute(img, single, singleDesc);
+        ASSERT_FALSE(single.empty()) << "keypoint " << i << " was dropped by BRISK::compute in isolation";
+        ASSERT_EQ(singleDesc.cols, descs.cols);
+        EXPECT_EQ(cv::countNonZero(singleDesc.row(0) != descs.row(i)), 0)
+            << "descriptor row " << i << " does not match its paired keypoint after capping";
+    }
+}
+
 TEST(BRISKFeatureExtractor, ScaleFactors)
 {
     // BRISK forces scaleFactor=2.0 — verify mvScaleFactors = [1, 2, 4, 8]

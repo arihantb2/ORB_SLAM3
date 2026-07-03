@@ -1997,6 +1997,11 @@ void FeatureMatcher::ComputeThreeMaxima(std::vector<int>* histo, const int L, in
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 int FeatureMatcher::DescriptorDistance(const cv::Mat& a, const cv::Mat& b)
 {
+    // Word-count is derived from a.cols (not hardcoded to ORB's 32 bytes) so this
+    // also works for BRISK's 64-byte descriptors. Both inputs must be continuous,
+    // 4-byte-aligned rows of equal width for the int32_t reinterpretation below.
+    CV_DbgAssert(a.cols == b.cols && a.cols % 4 == 0 && a.isContinuous() && b.isContinuous());
+
     const int* pa = a.ptr<int32_t>();
     const int* pb = b.ptr<int32_t>();
     const int nWords = a.cols / 4;
