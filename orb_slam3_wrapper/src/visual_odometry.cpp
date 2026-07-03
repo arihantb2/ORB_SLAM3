@@ -94,7 +94,11 @@ Eigen::Matrix4f acfr_nav_to_eigen_matrix(const acfrlcm::auv_acfr_nav_t& nav)
     const auto pitch_angle = Eigen::AngleAxisf(nav.pitch, Eigen::Vector3f::UnitY());
     const auto heading_angle = Eigen::AngleAxisf(nav.heading, Eigen::Vector3f::UnitZ());
 
-    matrix.block<3, 3>(0, 0) = (heading_angle * pitch_angle * roll_angle).toRotationMatrix().normalized();
+    // The product of AngleAxis rotations is already an exact orthonormal
+    // rotation matrix. Matrix::normalized() divides by the Frobenius norm
+    // (~sqrt(3) for a rotation matrix), not orthonormalization — applying it
+    // here silently scaled every live nav orientation prior by ~1/sqrt(3).
+    matrix.block<3, 3>(0, 0) = (heading_angle * pitch_angle * roll_angle).toRotationMatrix();
 
     return matrix;
 }

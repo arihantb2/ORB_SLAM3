@@ -61,6 +61,12 @@ struct VOResult
 
 namespace visual_odometry
 {
+
+// Converts an ACFR nav message (x, y, depth, roll, pitch, heading) to a
+// world_T_body pose matrix. Declared here (not just in the .cpp) so it can be
+// unit tested directly.
+Eigen::Matrix4f acfr_nav_to_eigen_matrix(const acfrlcm::auv_acfr_nav_t& nav);
+
 class VisualOdometryTestHelper;
 
 class VisualOdometry
