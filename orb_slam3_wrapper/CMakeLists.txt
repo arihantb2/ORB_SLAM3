@@ -48,6 +48,10 @@ add_executable(nav_prediction_buffer_tests src/test/nav_prediction_buffer_tests.
 target_link_libraries(nav_prediction_buffer_tests PRIVATE vo)
 add_test(NAME nav_prediction_buffer_tests COMMAND nav_prediction_buffer_tests)
 
+add_executable(vo_utils_tests src/test/vo_utils_tests.cpp)
+target_link_libraries(vo_utils_tests PRIVATE vo)
+add_test(NAME vo_utils_tests COMMAND vo_utils_tests)
+
 # At build time, ORB_SLAM3 library headers live at ${PROJECT_SOURCE_DIR}/include/Foo.h
 # (no ORB_SLAM3/ subdirectory). Create a symlink so the wrapper can use the
 # installed-style <ORB_SLAM3/Foo.h> includes unchanged.
