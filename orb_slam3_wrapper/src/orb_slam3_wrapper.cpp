@@ -263,8 +263,11 @@ ORBSLAM3Wrapper::ORBSLAM3Wrapper(const static_tf::StaticTfTree& platform_tree, c
     system_->SetLocalMappingCallback(
         [this](const ORB_SLAM3::LocalMappingResult& result)
         {
-            std::lock_guard<std::mutex> lock(local_mapping_mutex_);
-            local_mapping_queue_.push(result);
+            {
+                std::lock_guard<std::mutex> lock(local_mapping_mutex_);
+                local_mapping_queue_.push(result);
+            }
+            local_mapping_cv_.notify_one();
         });
     local_mapping_worker_running_.store(true, std::memory_order_relaxed);
     local_mapping_worker_thread_ = std::thread(&ORBSLAM3Wrapper::local_mapping_worker_loop, this);
@@ -272,12 +275,20 @@ ORBSLAM3Wrapper::ORBSLAM3Wrapper(const static_tf::StaticTfTree& platform_tree, c
 
 ORBSLAM3Wrapper::~ORBSLAM3Wrapper()
 {
+    // Shut down local mapping first: System::Shutdown() blocks until local
+    // mapping finishes draining its own queue, which fires
+    // SetLocalMappingCallback for every remaining keyframe. Stopping our
+    // worker thread before this (the previous order) meant those results
+    // were pushed into local_mapping_queue_ but never drained/published --
+    // silently dropped on every shutdown.
+    system_->Shutdown();
+
     local_mapping_worker_running_.store(false, std::memory_order_relaxed);
+    local_mapping_cv_.notify_all();
     if (local_mapping_worker_thread_.joinable())
     {
         local_mapping_worker_thread_.join();
     }
-    system_->Shutdown();
 }
 
 void ORBSLAM3Wrapper::set_publishers(const std::shared_ptr<TrackingRosPublisher>& tracking,
@@ -299,7 +310,18 @@ void ORBSLAM3Wrapper::set_publishers(const std::shared_ptr<TrackingRosPublisher>
     left_info.width = static_cast<uint32_t>(im_size.width);
     left_info.height = static_cast<uint32_t>(im_size.height);
     left_info.distortion_model = "plumb_bob";
+    // Debug/tracking images are published raw (ORB-SLAM3 undistorts keypoints,
+    // not the image), so CameraInfo.d must reflect the real lens distortion
+    // for consumers that want to undistort/rectify downstream. vPinHoleDistorsion1
+    // is stored in plumb_bob order [k1, k2, p1, p2, (k3)] -- see
+    // load_camera_calibration(). Rectified/Metashape inputs have no
+    // vPinHoleDistorsion1 (Metashape's b1/b2/skew model isn't expressible as
+    // plumb_bob), so d is left zeroed for those, same as before.
     left_info.d.assign(5, 0.0);
+    for (size_t i = 0; i < calib_.vPinHoleDistorsion1.size() && i < left_info.d.size(); ++i)
+    {
+        left_info.d[i] = static_cast<double>(calib_.vPinHoleDistorsion1[i]);
+    }
 
     if (calib_.camera1)
     {
@@ -319,6 +341,13 @@ void ORBSLAM3Wrapper::set_publishers(const std::shared_ptr<TrackingRosPublisher>
     if (stereo_ && calib_.camera2)
     {
         sensor_msgs::msg::CameraInfo right_info = left_info;
+        // right_info was copied from left_info, including left_info.d --
+        // reset to the right camera's own distortion (or zero, if none).
+        right_info.d.assign(5, 0.0);
+        for (size_t i = 0; i < calib_.vPinHoleDistorsion2.size() && i < right_info.d.size(); ++i)
+        {
+            right_info.d[i] = static_cast<double>(calib_.vPinHoleDistorsion2[i]);
+        }
         const Eigen::Matrix3f K2 = calib_.camera2->toK_();
         right_info.k[0] = K2(0, 0);
         right_info.k[2] = K2(0, 2);
@@ -473,7 +502,20 @@ void ORBSLAM3Wrapper::local_mapping_worker_loop()
     {
         batch.clear();
         {
-            std::lock_guard<std::mutex> lock(local_mapping_mutex_);
+            std::unique_lock<std::mutex> lock(local_mapping_mutex_);
+            if (local_mapping_queue_.empty())
+            {
+                // Wake immediately when SetLocalMappingCallback pushes a new
+                // result (or the destructor stops the worker). The bounded
+                // timeout is a safety net for local_mapping_reset_, which is
+                // set by the Tracking thread independently of this queue/CV.
+                local_mapping_cv_.wait_for(lock, std::chrono::milliseconds(5),
+                                           [this]
+                                           {
+                                               return !local_mapping_queue_.empty() ||
+                                                      !local_mapping_worker_running_.load(std::memory_order_relaxed);
+                                           });
+            }
             while (!local_mapping_queue_.empty())
             {
                 batch.push_back(std::move(local_mapping_queue_.front()));
@@ -495,10 +537,6 @@ void ORBSLAM3Wrapper::local_mapping_worker_loop()
         if (local_mapping_pub && !batch.empty())
         {
             local_mapping_pub->publish_batch(batch);
-        }
-        else if (batch.empty())
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
 }

@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <iomanip>
-#include <thread>
 
 namespace visual_odometry
 {
@@ -94,7 +93,11 @@ Eigen::Matrix4f acfr_nav_to_eigen_matrix(const acfrlcm::auv_acfr_nav_t& nav)
     const auto pitch_angle = Eigen::AngleAxisf(nav.pitch, Eigen::Vector3f::UnitY());
     const auto heading_angle = Eigen::AngleAxisf(nav.heading, Eigen::Vector3f::UnitZ());
 
-    matrix.block<3, 3>(0, 0) = (heading_angle * pitch_angle * roll_angle).toRotationMatrix().normalized();
+    // The product of AngleAxis rotations is already an exact orthonormal
+    // rotation matrix. Matrix::normalized() divides by the Frobenius norm
+    // (~sqrt(3) for a rotation matrix), not orthonormalization — applying it
+    // here silently scaled every live nav orientation prior by ~1/sqrt(3).
+    matrix.block<3, 3>(0, 0) = (heading_angle * pitch_angle * roll_angle).toRotationMatrix();
 
     return matrix;
 }
@@ -206,8 +209,6 @@ void VisualOdometry::dispatch_mono_with_context(const PendingMonoFrame& frame, c
     const utils::FrameLogEntry entry = make_frame_log_entry(timestamp, image_name, vo_result);
     finalize_tracking_step(timestamp, vo_result, entry, first_frame_timestamp_sec, tracking_lost_timestamp_sec,
                            initialization_timestamp_sec, prev_vo_result_, pose_estimates_, log_writer_);
-    // Throttle to kDebugVideoFps; VideoWriter needs paced writes to produce a valid output file.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void VisualOdometry::handle_stereo_image(const cv::Mat& left_image, const cv::Mat& right_image,
@@ -257,8 +258,6 @@ void VisualOdometry::dispatch_stereo_with_context(const PendingStereoFrame& fram
     const utils::FrameLogEntry entry = make_frame_log_entry(timestamp, image_name, vo_result);
     finalize_tracking_step(timestamp, vo_result, entry, first_frame_timestamp_sec, tracking_lost_timestamp_sec,
                            initialization_timestamp_sec, prev_vo_result_, pose_estimates_, log_writer_);
-    // Throttle to kDebugVideoFps; VideoWriter needs paced writes to produce a valid output file.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 void VisualOdometry::write_debug_video_frame(const cv::Mat& frame)

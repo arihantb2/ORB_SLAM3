@@ -330,9 +330,13 @@ private:
     cv::VideoWriter video_writer_;
 };
 
+// Normalizes `image` to an 8-bit, 3-channel BGR Mat regardless of input
+// format. Callers downstream (dispatch_mono_with_context /
+// dispatch_stereo_with_context) unconditionally run
+// cv::cvtColor(..., COLOR_BGR2GRAY) on the result, which throws on
+// single-channel input -- so every branch here must produce 3 channels.
 inline void convert_image(const cv::Mat& image, cv::Mat& display_image)
 {
-    // Convert from 16-bit Bayer BGGR to BGR
     if (image.type() == CV_16UC1 && image.channels() == 1)
     {
         // Image is in bayer_bggr16 format, convert to BGR
@@ -342,18 +346,21 @@ inline void convert_image(const cv::Mat& image, cv::Mat& display_image)
         // Convert 16-bit to 8-bit for display (scale from 0-65535 to 0-255)
         bgr_16bit.convertTo(display_image, CV_8UC3, 1.0 / 256.0);
     }
+    else if (image.type() == CV_16UC3)
+    {
+        // 16-bit BGR, convert to 8-bit
+        image.convertTo(display_image, CV_8UC3, 1.0 / 256.0);
+    }
+    else if (image.channels() == 1)
+    {
+        // Already 8-bit grayscale (e.g. a pre-debayered mono8 log): convert
+        // to BGR so the output always has 3 channels.
+        cv::cvtColor(image, display_image, cv::COLOR_GRAY2BGR);
+    }
     else
     {
-        // Already converted or different format, use as is
-        if (image.type() == CV_16UC3)
-        {
-            // 16-bit BGR, convert to 8-bit
-            image.convertTo(display_image, CV_8UC3, 1.0 / 256.0);
-        }
-        else
-        {
-            display_image = image.clone();
-        }
+        // Already BGR (or another multi-channel format): use as is.
+        display_image = image.clone();
     }
 }
 

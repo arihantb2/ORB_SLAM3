@@ -29,6 +29,19 @@ geometry_msgs::msg::Point point_from(const Eigen::Vector3f& p)
     out.z = static_cast<double>(p.z());
     return out;
 }
+
+// RViz does not reliably clear a previously displayed SPHERE_LIST/LINE_LIST
+// marker when it's republished with action=ADD and zero points (empty
+// geometry updates are typically ignored) -- so after reset() clears all
+// state, the last non-empty marker keeps showing stale geometry. Publishing
+// action=DELETE for an empty marker actually removes it.
+void finalizeMarkerAction(visualization_msgs::msg::Marker& marker)
+{
+    if (marker.points.empty())
+    {
+        marker.action = visualization_msgs::msg::Marker::DELETE;
+    }
+}
 }  // namespace
 
 LocalMappingPublisher::LocalMappingPublisher(const rclcpp::Node::SharedPtr& node, const Options& options)
@@ -346,6 +359,7 @@ void LocalMappingPublisher::publish_visualization(const rclcpp::Time& stamp)
             keyframes.colors.push_back(color(0.0F, 0.0F, 1.0F, 1.0F));
         }
     }
+    finalizeMarkerAction(keyframes);
     keyframes_pub_->publish(keyframes);
 
     auto make_covisibility_marker = [&](int id,
@@ -393,6 +407,9 @@ void LocalMappingPublisher::publish_visualization(const rclcpp::Time& stamp)
         target_marker->points.push_back(point_from(it_a->second.translation()));
         target_marker->points.push_back(point_from(it_b->second.translation()));
     }
+    finalizeMarkerAction(covisibility_low);
+    finalizeMarkerAction(covisibility_mid);
+    finalizeMarkerAction(covisibility_high);
     covisibility_pub_->publish(covisibility_low);
     covisibility_pub_->publish(covisibility_mid);
     covisibility_pub_->publish(covisibility_high);
@@ -419,6 +436,7 @@ void LocalMappingPublisher::publish_visualization(const rclcpp::Time& stamp)
         spanning_tree.points.push_back(point_from(it_c->second.translation()));
         spanning_tree.points.push_back(point_from(it_p->second.translation()));
     }
+    finalizeMarkerAction(spanning_tree);
     spanning_tree_pub_->publish(spanning_tree);
 }
 

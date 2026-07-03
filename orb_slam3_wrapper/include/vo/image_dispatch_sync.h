@@ -34,7 +34,10 @@ public:
                           [](const PendingMonoFrame& a, double t) { return a.timestamp < t; });
             to_process = drain_locked();
         }
-        invoke_callbacks(std::move(to_process));
+        // invoke_callbacks() takes a const& (see below), so nothing is
+        // actually moved here -- call it plainly so the code doesn't imply a
+        // transfer that isn't happening.
+        invoke_callbacks(to_process);
     }
 
     void push_frame(PendingStereoFrame frame)
@@ -46,7 +49,7 @@ public:
                           [](const PendingStereoFrame& a, double t) { return a.timestamp < t; });
             to_process = drain_locked();
         }
-        invoke_callbacks(std::move(to_process));
+        invoke_callbacks(to_process);
     }
 
     void on_nav_updated()
@@ -56,7 +59,7 @@ public:
             std::lock_guard<std::mutex> lock(mutex_);
             to_process = drain_locked();
         }
-        invoke_callbacks(std::move(to_process));
+        invoke_callbacks(to_process);
     }
 
     size_t pending_mono_size() const

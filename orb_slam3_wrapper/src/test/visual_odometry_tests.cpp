@@ -4,6 +4,7 @@
 #include <static_tf/static_tf_tree.hpp>
 
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 
@@ -121,6 +122,61 @@ static void test_images_before_first_nav_are_not_dispatched()
     assert(VisualOdometryTestHelper::pending_mono_size(vo) == 0);
 }
 
+static void test_acfr_nav_to_eigen_matrix_zero_angles_is_identity_rotation()
+{
+    // Regression test: acfr_nav_to_eigen_matrix() used to call
+    // .normalized() on the rotation block, which divides by the matrix's
+    // Frobenius norm (~sqrt(3) for a rotation matrix) rather than
+    // orthonormalizing it. At zero roll/pitch/heading the "rotation" should
+    // be exactly identity; under the bug it was scaled to ~1/sqrt(3) instead.
+    acfrlcm::auv_acfr_nav_t nav{};
+    nav.x = 1.0f;
+    nav.y = 2.0f;
+    nav.depth = 3.0f;
+    nav.roll = 0.0f;
+    nav.pitch = 0.0f;
+    nav.heading = 0.0f;
+
+    const Eigen::Matrix4f m = visual_odometry::acfr_nav_to_eigen_matrix(nav);
+    const Eigen::Matrix3f R = m.block<3, 3>(0, 0);
+
+    const float err = (R - Eigen::Matrix3f::Identity()).norm();
+    assert(err < 1e-6f);
+
+    assert(std::abs(m(0, 3) - 1.0f) < 1e-6f);
+    assert(std::abs(m(1, 3) - 2.0f) < 1e-6f);
+    assert(std::abs(m(2, 3) - 3.0f) < 1e-6f);
+}
+
+static void test_acfr_nav_to_eigen_matrix_produces_orthonormal_rotation()
+{
+    // The bug scaled every rotation matrix uniformly by 1/sqrt(3), so
+    // R^T*R == I/3 instead of I for any angle combination, not just zero
+    // angles -- this is the general-case regression guard for non-trivial
+    // rotations.
+    acfrlcm::auv_acfr_nav_t nav{};
+    nav.roll = 0.3f;
+    nav.pitch = -0.2f;
+    nav.heading = static_cast<float>(M_PI) / 2.0f;
+
+    const Eigen::Matrix4f m = visual_odometry::acfr_nav_to_eigen_matrix(nav);
+    const Eigen::Matrix3f R = m.block<3, 3>(0, 0);
+
+    const float orthonormalityErr = (R.transpose() * R - Eigen::Matrix3f::Identity()).norm();
+    assert(orthonormalityErr < 1e-5f);
+
+    const float detErr = std::abs(R.determinant() - 1.0f);
+    assert(detErr < 1e-5f);
+
+    // Cross-check against the equivalent double-precision Eigen construction.
+    const auto roll_angle = Eigen::AngleAxisf(nav.roll, Eigen::Vector3f::UnitX());
+    const auto pitch_angle = Eigen::AngleAxisf(nav.pitch, Eigen::Vector3f::UnitY());
+    const auto heading_angle = Eigen::AngleAxisf(nav.heading, Eigen::Vector3f::UnitZ());
+    const Eigen::Matrix3f expected = (heading_angle * pitch_angle * roll_angle).toRotationMatrix();
+    const float err = (R - expected).norm();
+    assert(err < 1e-6f);
+}
+
 static std::string write_temp_nav_csv()
 {
     const std::string path = "/tmp/vo_nav_csv_tests.csv";
@@ -150,6 +206,8 @@ static void test_nav_csv_dispatches_without_nav_messages()
 
 int main()
 {
+    test_acfr_nav_to_eigen_matrix_zero_angles_is_identity_rotation();
+    test_acfr_nav_to_eigen_matrix_produces_orthonormal_rotation();
     test_image_dispatched_only_when_sandwiched();
     test_images_before_first_nav_are_not_dispatched();
     test_nav_csv_dispatches_without_nav_messages();
