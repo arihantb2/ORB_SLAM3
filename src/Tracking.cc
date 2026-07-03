@@ -1576,10 +1576,6 @@ bool Tracking::NeedNewKeyFrame()
     {
         return false;
     }
-    if (mForceEveryFrameKeyframe)
-    {
-        return true;
-    }
 
     const int nKFs = mpAtlas->KeyFramesInMap();
 
@@ -1641,14 +1637,23 @@ bool Tracking::NeedNewKeyFrame()
     const bool c2 =
         (((mnMatchesInliers < nRefMatches * thRefRatio || bNeedToInsertClose)) && mnMatchesInliers > mNewKFMinInliers);
 
-    const bool needKeyFrame = ((c1a || c1b || c1c) && c2);
+    // Tracking.NewKF.ForceEveryFrame overrides the c1/c2 decision heuristics
+    // above, but must still flow through the admission-control checks below
+    // (bLocalMappingIdle / IsInitializing / KeyframesInQueue) — otherwise a
+    // tracking thread running faster than local mapping grows the keyframe
+    // queue without bound, silently ignoring mNewKFMaxKFsInQueue.
+    const bool needKeyFrame = mForceEveryFrameKeyframe || ((c1a || c1b || c1c) && c2);
     if (!needKeyFrame)
     {
         return false;
     }
 
     std::string kfReason;
-    if (c1a)
+    if (mForceEveryFrameKeyframe)
+    {
+        kfReason = "Tracking.NewKF.ForceEveryFrame enabled";
+    }
+    else if (c1a)
     {
         kfReason = "too many frames since last keyframe (c1a)";
     }
