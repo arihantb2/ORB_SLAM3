@@ -64,10 +64,21 @@ public:
     MapPoint* Acquire(Args&&... args);
 
     // Release: read chunk/slot indices from pMP, call its destructor, then
-    // decrement the chunk's live count. If live reaches 0 the chunk's aligned
-    // memory block is freed to the OS; the Chunk entry remains as a tombstone so
-    // chunk indices are never reused and the (chunk_idx, slot_idx) mapping stays
-    // consistent for the lifetime of the pool.
+    // decrement the chunk's live count. If live reaches 0 (and the chunk is not
+    // still the active bump-allocation target — see the isActiveChunk guard in
+    // MapPointPool.cc) the chunk's aligned memory block is freed to the OS; the
+    // Chunk entry remains as a tombstone so chunk indices are never reused and
+    // the (chunk_idx, slot_idx) mapping stays consistent for the lifetime of the
+    // pool.
+    //
+    // NOTE: Map::EraseMapPoint() deliberately does NOT call this immediately —
+    // raw MapPoint* are cached without synchronization across threads (Tracking's
+    // Frame::mvpMapPoints, Map::mvpReferenceMapPoints, etc.), so destroying a
+    // point the moment it's marked bad would be a use-after-free for any thread
+    // still holding a stale pointer to it. Points are currently reclaimed only in
+    // bulk via DestroyAll() when their owning Map is cleared/destroyed. Release()
+    // remains available (and covered by MapPointPoolTests) for a future
+    // synchronized/epoch-based reclamation scheme.
     void Release(MapPoint* pMP);
 
     // Destroy all live MapPoints and free all chunk memory. NOT thread-safe —
@@ -112,6 +123,12 @@ MapPoint* MapPointPool::Acquire(Args&&... args)
 
         if (mChunks.empty() || mChunks.back().next == kMapPointChunkSize)
             AllocateNewChunk();
+
+        // Release() must never free the chunk it's still bump-allocating from
+        // (see the isActiveChunk guard in MapPointPool::Release). This assert
+        // documents and enforces that invariant at the one place a violation
+        // would otherwise silently placement-new into freed memory.
+        assert(mChunks.back().memory != nullptr && "Active chunk was freed while still accepting allocations");
 
         chunk_idx = mChunks.size() - 1;
         slot_idx = mChunks.back().next++;

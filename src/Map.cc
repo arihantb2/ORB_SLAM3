@@ -91,14 +91,22 @@ void Map::AddMapPoint(MapPoint* pMP)
 
 void Map::EraseMapPoint(MapPoint* pMP)
 {
-    {
-        std::unique_lock<std::mutex> lock(mMutexMap);
-        mspMapPoints.erase(pMP);
-    }
-    // mMutexMap is released before Release() so that mMutexMap and mPoolMutex
-    // (inside the pool) are never held simultaneously — see lock-order notes in
-    // MapPointPool.h.
-    mMapPointPool.Release(pMP);
+    std::unique_lock<std::mutex> lock(mMutexMap);
+    mspMapPoints.erase(pMP);
+    // Deliberately NOT releasing pMP back to the pool here (upstream ORB-SLAM3
+    // never deletes MapPoints from EraseMapPoint either, for the same reason):
+    // raw MapPoint* are cached without synchronization across threads — e.g.
+    // Frame::mvpMapPoints in the Tracking thread's mCurrentFrame/mLastFrame,
+    // Map::mvpReferenceMapPoints, KeyFrame match vectors, and MapPoint::mpReplaced
+    // chains. SetBadFlag() (the only caller of EraseMapPoint) is invoked from
+    // LocalMapping on a different thread than the one holding those pointers, so
+    // destroying pMP here would be a use-after-free the next time Tracking (or
+    // anyone else still holding a stale pointer) calls a method on it — even just
+    // pMP->isBad(). The pool still reclaims the memory: pMP stays alive, still
+    // reachable via its now-dangling-looking-but-actually-valid raw pointer with
+    // isBad() == true, until the owning Map is destroyed or cleared, at which
+    // point MapPointPool::DestroyAll() destructs and frees every point still
+    // resident in the pool (erased or not).
 }
 
 MapPoint* Map::CreateMapPoint(const Eigen::Vector3f& Pos, KeyFrame* pRefKF)

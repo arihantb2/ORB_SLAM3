@@ -83,7 +83,15 @@ void MapPointPool::Release(MapPoint* pMP)
     chunk.occupied[slot_idx] = false;
     --chunk.live;
 
-    if (chunk.live == 0)
+    // Never free the chunk that Acquire() is still bump-allocating from: Acquire
+    // only allocates a *new* chunk once mChunks.back().next == kMapPointChunkSize,
+    // so freeing the active (still not full) back chunk here would leave the next
+    // Acquire() placement-new'ing a MapPoint into freed memory. Once this chunk
+    // either fills up (and a newer chunk becomes active) or is superseded by a
+    // subsequently allocated chunk, a later Release() that drains it to 0 will
+    // free it normally.
+    const bool isActiveChunk = (chunk_idx == mChunks.size() - 1) && (chunk.next < kMapPointChunkSize);
+    if (chunk.live == 0 && !isActiveChunk)
     {
         // All MapPoints in this chunk have been retired — free the memory block.
         // The Chunk entry remains as a tombstone (memory == nullptr) so that

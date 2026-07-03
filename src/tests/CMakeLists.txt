@@ -20,3 +20,18 @@ target_link_libraries(orb_slam3_gtsam_factor_tests
 )
 
 add_test(NAME orb_slam3_gtsam_factor_tests COMMAND orb_slam3_gtsam_factor_tests)
+
+# Unit tests for MapPointPool chunk lifecycle and Map's MapPoint reclamation
+# policy. Only needs the core ORB_SLAM3 library (Map/MapPoint/KeyFrame/
+# MapPointPool) — no GTSAM dependency.
+add_executable(orb_slam3_map_point_pool_tests
+    MapPointPoolTests.cpp
+)
+
+target_link_libraries(orb_slam3_map_point_pool_tests
+    ORB_SLAM3
+    GTest::gtest_main
+    ${OpenCV_LIBS}
+)
+
+add_test(NAME orb_slam3_map_point_pool_tests COMMAND orb_slam3_map_point_pool_tests)
